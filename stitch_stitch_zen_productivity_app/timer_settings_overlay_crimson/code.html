@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - Serene Logic</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "primary-container": "#34100f",
+                "surface-dim": "#e1d8d8",
+                "surface-tint": "#84504e",
+                "surface-container-high": "#f0e6e6",
+                "on-secondary-fixed": "#410004",
+                "on-error": "#ffffff",
+                "tertiary-container": "#3e030a",
+                "secondary": "#a53937",
+                "surface-container-lowest": "#ffffff",
+                "outline": "#847372",
+                "surface-bright": "#fff8f7",
+                "on-secondary": "#ffffff",
+                "primary-fixed-dim": "#f8b6b2",
+                "inverse-on-surface": "#f8eeee",
+                "rose-ash": "#B39292",
+                "on-error-container": "#93000a",
+                "surface-variant": "#eae0e0",
+                "on-primary-fixed": "#34100f",
+                "background": "#fff8f7",
+                "tertiary-fixed-dim": "#ffb3b2",
+                "outline-variant": "#d6c2c0",
+                "error": "#ba1a1a",
+                "surface-container-low": "#fbf1f1",
+                "on-surface-variant": "#514342",
+                "on-primary-container": "#ae7572",
+                "surface-container-highest": "#eae0e0",
+                "surface-container": "#f5ecec",
+                "primary": "#000000",
+                "on-surface": "#1f1b1b",
+                "surface": "#fff8f7",
+                "tertiary-fixed": "#ffdad8",
+                "deep-crimson": "#1A0505",
+                "secondary-container": "#fe7c75",
+                "on-secondary-fixed-variant": "#852222",
+                "tertiary": "#000000",
+                "on-background": "#1f1b1b",
+                "primary-fixed": "#ffdad7",
+                "on-tertiary-container": "#c46a6a",
+                "error-container": "#ffdad6",
+                "on-secondary-container": "#721317",
+                "inverse-surface": "#342f30",
+                "on-tertiary": "#ffffff",
+                "secondary-fixed-dim": "#ffb3ae",
+                "on-primary": "#ffffff",
+                "divider-red": "rgba(45, 10, 10, 0.08)",
+                "surface-bone": "#FFF5F5",
+                "on-tertiary-fixed-variant": "#782f31",
+                "on-primary-fixed-variant": "#693a38",
+                "inverse-primary": "#f8b6b2",
+                "on-tertiary-fixed": "#3e030a",
+                "secondary-fixed": "#ffdad7"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "gutter": "24px",
+                "margin-desktop": "80px",
+                "xl": "40px",
+                "lg": "24px",
+                "base": "4px",
+                "xs": "4px",
+                "xxl": "80px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-md": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "timer-display": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-md": [
+                        "13px",
+                        {
+                                "lineHeight": "1.0",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-md": [
+                        "15px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "500"
+                        }
+                ],
+                "display": [
+                        "48px",
+                        {
+                                "lineHeight": "1.1",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "timer-display": [
+                        "80px",
+                        {
+                                "lineHeight": "1.0",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "300"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .custom-ease { transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 350ms; }
+        
+        /* Custom Range Slider Styling for minimal look */
+        input[type=range] {
+            -webkit-appearance: none; 
+            width: 100%; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #000000;
+            cursor: pointer;
+            margin-top: -7px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #d6c2c0;
+            border-radius: 1px;
+        }
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #847372;
+        }
+        
+        /* Custom Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #000000;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #000000;
+        }
+        .toggle-checkbox:checked + .toggle-label:after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+        .toggle-label {
+            width: 40px;
+            height: 24px;
+            background-color: #eae0e0;
+            border-radius: 9999px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toggle-label:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 350ms cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex items-center justify-center relative overflow-hidden">
+<!-- Ambient background layer to simulate the "focus environment" slightly blurred/dimmed -->
+<div class="absolute inset-0 z-0 bg-surface-container-low opacity-50 flex items-center justify-center">
+<!-- Abstract timer representation in background -->
+<div class="w-96 h-96 rounded-full border-[1px] border-outline-variant opacity-20 relative">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-1 h-4 bg-primary rounded-full"></div>
+<div class="absolute inset-0 rounded-full border-[1px] border-primary opacity-30" style="clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, 50% 0%);"></div>
+</div>
+</div>
+<!-- Main Navigation Shell - Left SideNavBar (Suppressed intentionally as per rules for focused journey, but keeping structural space if it were visible. For Settings overlay, we prioritize canvas.) -->
+<nav aria-label="Sidebar Navigation" class="fixed left-0 top-0 w-16 h-full flex flex-col justify-between py-8 px-2 z-40 bg-surface border-r border-outline-variant hidden md:flex">
+<div class="flex flex-col items-center gap-xl w-full">
+<div class="font-display text-display text-primary flex justify-center items-center h-12 w-12 text-sm tracking-tighter">
+                SL
+            </div>
+<ul class="flex flex-col gap-md w-full items-center">
+<li>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-secondary hover:text-primary transition-colors duration-300 custom-ease" href="#" title="Timer">
+<span class="material-symbols-outlined" data-icon="timer">timer</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-secondary hover:text-primary transition-colors duration-300 custom-ease" href="#" title="Todo">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-secondary hover:text-primary transition-colors duration-300 custom-ease" href="#" title="Groups">
+<span class="material-symbols-outlined" data-icon="grid_view">grid_view</span>
+</a>
+</li>
+</ul>
+</div>
+<ul class="flex flex-col gap-md w-full items-center">
+<li>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-secondary hover:text-primary transition-colors duration-300 custom-ease" href="#" title="Stats">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+</a>
+</li>
+<li>
+<a class="flex flex-col items-center justify-center w-12 h-12 rounded-lg text-secondary hover:text-primary transition-colors duration-300 custom-ease" href="#" title="Sound">
+<span class="material-symbols-outlined" data-icon="graphic_eq">graphic_eq</span>
+</a>
+</li>
+<li>
+<!-- Active Settings Icon -->
+<a aria-current="page" class="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-surface-container-high text-primary font-bold custom-ease shadow-[0px_4px_20px_rgba(45,10,10,0.08)] border-[1px] border-outline-variant scale-95" href="#" title="Settings">
+<span class="material-symbols-outlined" data-icon="settings" data-weight="fill" style="font-variation-settings: 'FILL' 1;">settings</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Top Navigation (Mobile Bottom Bar omitted for desktop focused view) -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-4rem)] flex justify-between items-center px-xl py-md z-30 bg-transparent hidden md:flex">
+<h1 class="font-headline-md text-headline-md text-primary font-extrabold tracking-tight">Settings</h1>
+<div class="flex items-center gap-md">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:opacity-70 transition-opacity duration-300">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+</header>
+<!-- Settings Overlay Container -->
+<main class="relative z-20 w-full max-w-4xl px-gutter md:px-0 md:ml-16 h-full md:h-[calc(100vh-80px)] flex flex-col md:flex-row gap-lg my-xl">
+<!-- Main Settings Panel (Bento-style layout) -->
+<div class="w-full flex-1 bg-surface-container-lowest border-[1px] border-surface-variant rounded-xl shadow-[0px_4px_20px_rgba(45,10,10,0.08)] overflow-hidden flex flex-col md:flex-row h-full max-h-[800px]">
+<!-- Internal Sidebar Navigation for Settings -->
+<div class="w-full md:w-64 border-b md:border-b-0 md:border-r border-surface-variant bg-surface-bright flex flex-col p-lg gap-sm shrink-0 overflow-y-auto">
+<h2 class="font-headline-md text-headline-md text-primary mb-md mt-sm md:hidden">Settings</h2>
+<nav class="flex flex-row md:flex-col gap-sm overflow-x-auto md:overflow-visible pb-sm md:pb-0 hide-scrollbar">
+<button aria-current="page" class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary font-label-md text-label-md whitespace-nowrap custom-ease text-left bg-surface-container-high text-primary">
+<span class="material-symbols-outlined text-[18px]">timer</span>
+                        Timer
+                    </button>
+<button class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary font-label-md text-label-md whitespace-nowrap custom-ease text-left">
+<span class="material-symbols-outlined text-[18px]">graphic_eq</span>
+                        Sounds
+                    </button>
+<button class="flex items-center gap-sm px-md py-sm rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary font-label-md text-label-md whitespace-nowrap custom-ease text-left">
+<span class="material-symbols-outlined text-[18px]">palette</span>
+                        Appearance
+                    </button>
+</nav>
+</div>
+<!-- Settings Content Area -->
+<div class="flex-1 p-lg md:p-xl overflow-y-auto bg-surface-container-lowest">
+<div class="max-w-2xl mx-auto space-y-xl pb-xxl">
+<!-- Section: Profile -->
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Section: Timer Defaults -->
+<section aria-labelledby="timer-heading" class="space-y-lg">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary mb-xs" id="timer-heading">Timer Defaults</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Configure your standard session lengths.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Focus Duration -->
+<div class="bg-surface border-[1px] border-surface-variant p-md rounded-lg flex flex-col justify-between custom-ease hover:border-outline-variant">
+<span class="font-label-md text-label-md text-on-surface-variant mb-md">Focus</span>
+<div class="flex items-end gap-xs">
+<input class="w-16 bg-transparent border-b-[1px] border-outline-variant focus:border-primary text-headline-lg font-headline-lg text-primary py-xs px-0 outline-none text-center appearance-none transition-colors duration-300" max="120" min="1" type="number" value="25"/>
+<span class="font-body-md text-body-md text-secondary pb-sm">min</span>
+</div>
+</div>
+<!-- Short Break -->
+<div class="bg-surface border-[1px] border-surface-variant p-md rounded-lg flex flex-col justify-between custom-ease hover:border-outline-variant">
+<span class="font-label-md text-label-md text-on-surface-variant mb-md">Short Break</span>
+<div class="flex items-end gap-xs">
+<input class="w-16 bg-transparent border-b-[1px] border-outline-variant focus:border-primary text-headline-lg font-headline-lg text-primary py-xs px-0 outline-none text-center appearance-none transition-colors duration-300" max="30" min="1" type="number" value="5"/>
+<span class="font-body-md text-body-md text-secondary pb-sm">min</span>
+</div>
+</div>
+<!-- Long Break -->
+<div class="bg-surface border-[1px] border-surface-variant p-md rounded-lg flex flex-col justify-between custom-ease hover:border-outline-variant">
+<span class="font-label-md text-label-md text-on-surface-variant mb-md">Long Break</span>
+<div class="flex items-end gap-xs">
+<input class="w-16 bg-transparent border-b-[1px] border-outline-variant focus:border-primary text-headline-lg font-headline-lg text-primary py-xs px-0 outline-none text-center appearance-none transition-colors duration-300" max="60" min="5" type="number" value="15"/>
+<span class="font-body-md text-body-md text-secondary pb-sm">min</span>
+</div>
+</div>
+</div>
+<!-- Toggle -->
+<div class="flex items-center justify-between p-md border-[1px] border-surface-variant rounded-lg bg-surface">
+<div>
+<span class="block font-body-md text-body-md text-primary font-medium">Auto-start Breaks</span>
+<span class="block font-label-md text-label-md text-on-surface-variant mt-xs">Automatically begin break timer when focus ends</span>
+</div>
+<div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 opacity-0" id="auto-start" name="toggle" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-variant cursor-pointer" for="auto-start"></label>
+</div>
+</div>
+</section>
+<div class="h-px bg-surface-variant w-full"></div>
+<!-- Form Actions (Floating at bottom of scroll usually, placed inline for this static view) -->
+<div class="flex justify-end gap-md pt-lg">
+<button class="px-lg py-sm rounded-lg bg-transparent border-[1px] border-outline-variant text-primary font-label-md text-label-md hover:bg-surface-container custom-ease transition-colors">Discard</button>
+<button class="px-lg py-sm rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 custom-ease transition-opacity shadow-[0px_4px_20px_rgba(45,10,10,0.08)]">Save Changes</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple script to handle input type number hiding arrows in webkit
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+            input.addEventListener('wheel', function(e) {
+                e.preventDefault();
+            }, { passive: false });
+        });
+    </script>
+</body></html>

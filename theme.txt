@@ -1,0 +1,120 @@
+Here is the concise theme-system TXT:
+
+THEME SYSTEM
+============
+
+CORE IDEA
+---------
+
+The user's selected profile color becomes the essence of the entire UI theme.
+
+There are 24 available accent themes:
+
+- 23 predefined colors
+- 1 custom color selected through a color wheel
+
+The selected color is not simply used as an accent. It is used to generate the entire color system.
+
+
+COLOR GENERATION LOGIC
+----------------------
+
+The theme is derived from three base tones:
+
+LIGHT MODE:
+- Primary: White
+- Secondary: Grey
+- Accent: Black
+
+DARK MODE:
+- Primary: Black
+- Secondary: Dark Grey
+- Accent: White
+
+The user's selected color is mixed into each base tone by a centrally defined percentage.
+
+Example with RED:
+
+LIGHT MODE:
+- White → very light red / tinted white
+- Grey → red-tinted grey
+- Black → very dark red
+
+DARK MODE:
+- Black → very dark red
+- Dark Grey → dark red-tinted grey
+- White → light red / tinted white
+
+
+CENTRAL THEME CONFIGURATION
+---------------------------
+
+All color-mixing percentages must be defined centrally so they can be changed easily without modifying individual components.
+
+Example:
+
+THEME_MIX = {
+    primary: 5%,
+    secondary: 12%,
+    accent: 25%
+}
+
+These percentages control how strongly the selected user color influences each base tone.
+
+Changing these values should automatically affect every generated theme.
+
+
+COMPONENT THEMING
+-----------------
+
+Components must consume the generated theme tokens rather than hardcoded colors.
+
+Examples:
+
+- Background
+- Cards
+- Borders
+- Text
+- Buttons
+- Inputs
+- Timer
+- Timer progress
+- Sidebar
+- Overlays
+- Charts
+- Hover states
+- Focus states
+- Active states
+
+All components should automatically adapt when:
+
+1. The user changes their profile color.
+2. The user switches between light and dark mode.
+
+
+USER EXPERIENCE
+---------------
+
+Theme selection:
+
+23 predefined color choices
++
+1 custom color wheel
+
+The selected color is simultaneously:
+
+- The user's profile/accent color
+- Their identity color in Groups
+- The foundation of their personal UI theme
+- The color used for their Pomodoro bubble
+- The color used to identify them in shared tasks/presence
+
+
+DESIGN PRINCIPLE
+----------------
+
+The UI should remain minimalist and neutral.
+
+The selected color should feel like a subtle tint throughout the interface rather than a brightly colored UI.
+
+The user's chosen color should be noticeable enough to give the application a personal identity, while white/grey/black remain the dominant visual structure.

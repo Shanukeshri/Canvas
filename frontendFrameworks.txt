@@ -1,0 +1,15 @@
+Frontend framework to use 
+
+UI
+1. shadcn/ui — component system
+2. Radix UI — accessible primitives
+3. Lucide React — icons
+4. clsx — conditional classes
+5. tailwind-merge — Tailwind class merging
+
+Animation & Interaction
+1. GSAP — advanced animations
+2. GSAP ScrollTrigger — scroll-linked animations
+3. Lenis — smooth scrolling
+Visualization
+1. Recharts — statistics/charts

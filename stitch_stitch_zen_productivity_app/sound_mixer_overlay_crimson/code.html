@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ZenFocus - Sound Mixer</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "primary-container": "#34100f",
+                "surface-dim": "#e1d8d8",
+                "surface-tint": "#84504e",
+                "surface-container-high": "#f0e6e6",
+                "on-secondary-fixed": "#410004",
+                "on-error": "#ffffff",
+                "tertiary-container": "#3e030a",
+                "secondary": "#a53937",
+                "surface-container-lowest": "#ffffff",
+                "outline": "#847372",
+                "surface-bright": "#fff8f7",
+                "on-secondary": "#ffffff",
+                "primary-fixed-dim": "#f8b6b2",
+                "inverse-on-surface": "#f8eeee",
+                "rose-ash": "#B39292",
+                "on-error-container": "#93000a",
+                "surface-variant": "#eae0e0",
+                "on-primary-fixed": "#34100f",
+                "background": "#fff8f7",
+                "tertiary-fixed-dim": "#ffb3b2",
+                "outline-variant": "#d6c2c0",
+                "error": "#ba1a1a",
+                "surface-container-low": "#fbf1f1",
+                "on-surface-variant": "#514342",
+                "on-primary-container": "#ae7572",
+                "surface-container-highest": "#eae0e0",
+                "surface-container": "#f5ecec",
+                "primary": "#000000",
+                "on-surface": "#1f1b1b",
+                "surface": "#fff8f7",
+                "tertiary-fixed": "#ffdad8",
+                "deep-crimson": "#1A0505",
+                "secondary-container": "#fe7c75",
+                "on-secondary-fixed-variant": "#852222",
+                "tertiary": "#000000",
+                "on-background": "#1f1b1b",
+                "primary-fixed": "#ffdad7",
+                "on-tertiary-container": "#c46a6a",
+                "error-container": "#ffdad6",
+                "on-secondary-container": "#721317",
+                "inverse-surface": "#342f30",
+                "on-tertiary": "#ffffff",
+                "secondary-fixed-dim": "#ffb3ae",
+                "on-primary": "#ffffff",
+                "divider-red": "rgba(45, 10, 10, 0.08)",
+                "surface-bone": "#FFF5F5",
+                "on-tertiary-fixed-variant": "#782f31",
+                "on-primary-fixed-variant": "#693a38",
+                "inverse-primary": "#f8b6b2",
+                "on-tertiary-fixed": "#3e030a",
+                "secondary-fixed": "#ffdad7"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+        },
+        "spacing": {
+                "md": "16px",
+                "gutter": "24px",
+                "margin-desktop": "80px",
+                "xl": "40px",
+                "lg": "24px",
+                "base": "4px",
+                "xs": "4px",
+                "xxl": "80px",
+                "sm": "8px"
+        },
+        "fontFamily": {
+                "label-md": [
+                        "Inter"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Inter"
+                ],
+                "display": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "timer-display": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "label-md": [
+                        "13px",
+                        {
+                                "lineHeight": "1.0",
+                                "letterSpacing": "0.02em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "body-md": [
+                        "15px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-md": [
+                        "20px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "500"
+                        }
+                ],
+                "display": [
+                        "48px",
+                        {
+                                "lineHeight": "1.1",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "500"
+                        }
+                ],
+                "timer-display": [
+                        "80px",
+                        {
+                                "lineHeight": "1.0",
+                                "letterSpacing": "-0.04em",
+                                "fontWeight": "300"
+                        }
+                ],
+                "body-lg": [
+                        "18px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "1.2",
+                                "fontWeight": "500"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        /* Custom styles for WebKit range inputs to align with minimalist aesthetic */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #000000; /* Primary */
+            cursor: pointer;
+            margin-top: -5px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+        input[type=range]:hover::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            cursor: pointer;
+            background: #d6c2c0; /* Outline Variant */
+            border-radius: 2px;
+        }
+        
+        /* Smooth fade-in for overlay */
+        .overlay-enter {
+            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .modal-enter {
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; backdrop-filter: blur(0px); }
+            to { opacity: 1; backdrop-filter: blur(4px); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen relative overflow-hidden font-body-md">
+<!-- Background App Context (Simulated) -->
+<div class="absolute inset-0 flex flex-col items-center justify-center opacity-30 pointer-events-none">
+<h1 class="font-timer-display text-timer-display text-primary">25:00</h1>
+<p class="font-body-lg text-body-lg text-secondary mt-md">Focus Session</p>
+</div>
+<!-- Sound Mixer Overlay -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-surface-dim/40 overlay-enter px-lg">
+<!-- Modal Container -->
+<div class="w-full max-w-[560px] bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex flex-col max-h-[921px] overflow-hidden modal-enter relative">
+<!-- Header -->
+<header class="flex justify-between items-center px-lg py-md border-b border-outline-variant bg-surface-container-lowest shrink-0">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" data-icon="graphic_eq" style="font-size: 20px;">graphic_eq</span>
+<h2 class="font-headline-md text-headline-md text-primary tracking-tight">Soundscapes</h2>
+</div>
+<button aria-label="Close" class="text-secondary hover:text-primary transition-colors duration-300 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</header>
+<!-- Scrollable Body -->
+<div class="flex-1 overflow-y-auto px-lg py-xl space-y-xl">
+<!-- Current Mix Section -->
+<section>
+<div class="flex justify-between items-end mb-md">
+<h3 class="font-label-md text-label-md text-secondary uppercase tracking-widest">Current Mix</h3>
+<span class="font-label-md text-label-md text-secondary">2 Active</span>
+</div>
+<div class="space-y-sm bg-surface rounded-lg border border-outline-variant p-md">
+<!-- Active Sound 1 -->
+<div class="flex items-center gap-md group">
+<span class="material-symbols-outlined text-primary shrink-0" data-icon="water_drop" style="font-size: 18px;">water_drop</span>
+<span class="font-body-md text-body-md text-primary w-28 truncate font-medium">Heavy Rain</span>
+<div class="flex-1 flex items-center h-4 group-hover:opacity-100 transition-opacity">
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[70%]"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-secondary w-8 text-right">70%</span>
+</div>
+<!-- Active Sound 2 -->
+<div class="flex items-center gap-md group">
+<span class="material-symbols-outlined text-primary shrink-0" data-icon="waves" style="font-size: 18px;">waves</span>
+<span class="font-body-md text-body-md text-primary w-28 truncate font-medium">Brown Noise</span>
+<div class="flex-1 flex items-center h-4 group-hover:opacity-100 transition-opacity">
+<div class="w-full h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[35%]"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-secondary w-8 text-right">35%</span>
+</div>
+</div>
+</section>
+<!-- Categories -->
+<section>
+<div class="flex gap-sm border-b border-outline-variant pb-sm mb-lg overflow-x-auto no-scrollbar">
+<button class="px-md py-sm rounded-full font-label-md text-label-md bg-primary-container text-on-primary-container transition-colors duration-300 shrink-0">Nature</button>
+<button class="px-md py-sm rounded-full font-label-md text-label-md text-secondary hover:text-primary hover:bg-surface-container-low transition-colors duration-300 shrink-0">Ambient</button>
+<button class="px-md py-sm rounded-full font-label-md text-label-md text-secondary hover:text-primary hover:bg-surface-container-low transition-colors duration-300 shrink-0">Noise</button>
+</div>
+<!-- Sound Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<!-- Card: Active -->
+<div class="p-md rounded-lg border border-primary bg-surface transition-colors duration-300">
+<div class="flex justify-between items-start mb-lg">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="water_drop" style="font-size: 16px;">water_drop</span>
+</div>
+<span class="font-body-md text-body-md text-primary font-medium">Heavy Rain</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="pause" style="font-size: 16px; font-variation-settings: 'FILL' 1;">pause</span>
+</button>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="volume_down" style="font-size: 14px;">volume_down</span>
+<input aria-label="Heavy Rain Volume" class="w-full" max="100" min="0" type="range" value="70"/>
+</div>
+</div>
+<!-- Card: Inactive -->
+<div class="p-md rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface transition-colors duration-300 group">
+<div class="flex justify-between items-start mb-lg opacity-60 group-hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors" data-icon="local_fire_department" style="font-size: 16px;">local_fire_department</span>
+</div>
+<span class="font-body-md text-body-md text-secondary group-hover:text-primary transition-colors">Fireplace</span>
+</div>
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-secondary hover:text-primary hover:border-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="play_arrow" style="font-size: 16px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="flex items-center gap-sm opacity-40">
+<span class="material-symbols-outlined text-secondary" data-icon="volume_mute" style="font-size: 14px;">volume_mute</span>
+<input aria-label="Fireplace Volume" class="w-full cursor-not-allowed" disabled="" max="100" min="0" type="range" value="0"/>
+</div>
+</div>
+<!-- Card: Inactive -->
+<div class="p-md rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface transition-colors duration-300 group">
+<div class="flex justify-between items-start mb-lg opacity-60 group-hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors" data-icon="forest" style="font-size: 16px;">forest</span>
+</div>
+<span class="font-body-md text-body-md text-secondary group-hover:text-primary transition-colors">Deep Forest</span>
+</div>
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-secondary hover:text-primary hover:border-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="play_arrow" style="font-size: 16px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="flex items-center gap-sm opacity-40">
+<span class="material-symbols-outlined text-secondary" data-icon="volume_mute" style="font-size: 14px;">volume_mute</span>
+<input aria-label="Deep Forest Volume" class="w-full cursor-not-allowed" disabled="" max="100" min="0" type="range" value="0"/>
+</div>
+</div>
+<!-- Card: Inactive -->
+<div class="p-md rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface transition-colors duration-300 group">
+<div class="flex justify-between items-start mb-lg opacity-60 group-hover:opacity-100 transition-opacity">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary group-hover:text-primary transition-colors" data-icon="air" style="font-size: 16px;">air</span>
+</div>
+<span class="font-body-md text-body-md text-secondary group-hover:text-primary transition-colors">Wind Chimes</span>
+</div>
+<button class="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-secondary hover:text-primary hover:border-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="play_arrow" style="font-size: 16px; font-variation-settings: 'FILL' 1;">play_arrow</span>
+</button>
+</div>
+<div class="flex items-center gap-sm opacity-40">
+<span class="material-symbols-outlined text-secondary" data-icon="volume_mute" style="font-size: 14px;">volume_mute</span>
+<input aria-label="Wind Chimes Volume" class="w-full cursor-not-allowed" disabled="" max="100" min="0" type="range" value="0"/>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer: Master Volume -->
+<footer class="p-lg border-t border-outline-variant bg-surface shrink-0">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-primary" data-icon="volume_up" style="font-size: 20px;">volume_up</span>
+<div class="flex-1 relative">
+<input aria-label="Master Volume" class="w-full relative z-10" max="100" min="0" type="range" value="65"/>
+<!-- Decorative tracker line behind input -->
+<div class="absolute inset-0 flex items-center pointer-events-none z-0">
+<div class="h-[2px] w-[65%] bg-primary rounded-l-full"></div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-primary w-12 text-right">65%</span>
+</div>
+</footer>
+</div>
+</div>
+</body></html>
