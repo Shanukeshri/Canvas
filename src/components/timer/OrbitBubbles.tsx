@@ -30,7 +30,7 @@ interface BubblePhysics {
 }
 
 export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
-  const { toggleAttachFriend } = useApp();
+  const { toggleAttachFriend, timerState } = useApp();
 
   const bubbleDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const physicsRef = useRef<Record<string, BubblePhysics>>({});
@@ -309,6 +309,8 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           glow: friend.color || '#a855f7',
         };
 
+        const isPaused = timerState === 'paused' || (!friend.isFocusing && friend.status !== 'focusing');
+
         return (
           <div
             key={friend.id}
@@ -365,12 +367,15 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                 />
                 {/* Dynamic progress arc in friend's unique color */}
                 <circle
-                  className="-rotate-90 origin-center transition-all duration-700 ease-out"
+                  className={clsx(
+                    "-rotate-90 origin-center transition-all duration-700 ease-out",
+                    isPaused && "opacity-35"
+                  )}
                   cx="50"
                   cy="50"
                   fill="none"
                   r="48"
-                  stroke={themeTokens.primary}
+                  stroke={isPaused ? 'var(--outline)' : themeTokens.primary}
                   strokeDasharray="301.59"
                   strokeDashoffset={strokeDashoffset}
                   strokeWidth="1.2"
@@ -381,14 +386,22 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               {/* Center Content — Matches Main Timer Typography & Proportions */}
               <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
                 {/* Name Header in Place of 'FOCUS' */}
-                <span className="font-label-md text-xs md:text-sm text-outline tracking-[0.25em] uppercase transition-colors group-hover:text-primary">
+                <span
+                  className={clsx(
+                    "font-label-md text-xs md:text-sm text-outline tracking-[0.25em] uppercase transition-colors",
+                    !isPaused && "group-hover:text-primary"
+                  )}
+                >
                   {friend.name}
                 </span>
 
-                {/* Countdown Numbers in Friend's Theme Color */}
+                {/* Countdown Numbers in Friend's Theme Color or Greyish if Paused */}
                 <span
-                  className="font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light"
-                  style={{ color: themeTokens.primary }}
+                  className={clsx(
+                    "font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+                    isPaused && "opacity-50"
+                  )}
+                  style={{ color: isPaused ? 'var(--outline)' : themeTokens.primary }}
                 >
                   {friend.timerMinutes}:{friend.timerSeconds ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
                 </span>

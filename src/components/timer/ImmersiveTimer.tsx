@@ -154,8 +154,11 @@ export function ImmersiveTimer() {
         {/* Center Content */}
         <div className="flex flex-col items-center justify-center z-10 space-y-2 pointer-events-none">
           <span
-            className="font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors"
-            style={{ color: theme.hex }}
+            className={clsx(
+              "font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors",
+              timerState === 'paused' && "opacity-70"
+            )}
+            style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
           >
             {timerState === 'idle' && 'FOCUS'}
             {timerState === 'running' && (isBreakPhase ? 'REST' : 'FOCUS')}
@@ -164,8 +167,11 @@ export function ImmersiveTimer() {
           </span>
 
           <span
-            className="font-timer-display text-[78px] lg:text-[100px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light"
-            style={{ color: 'var(--timer-digits, var(--primary))' }}
+            className={clsx(
+              "font-timer-display text-[78px] lg:text-[100px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+              timerState === 'paused' && "opacity-50"
+            )}
+            style={{ color: timerState === 'paused' ? 'var(--outline)' : 'var(--timer-digits, var(--primary))' }}
           >
             {formatTime(remainingSeconds)}
           </span>
