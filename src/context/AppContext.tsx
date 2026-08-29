@@ -167,6 +167,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [timerState, isBreakPhase, timerMode, focusDurationMinutes]);
 
+  // Friends Independent Timer Tick Effect (Friends run their own sessions autonomously)
+  useEffect(() => {
+    const friendInterval = setInterval(() => {
+      setFriends((prevFriends) =>
+        prevFriends.map((f) => {
+          if (f.status === 'focusing' || f.status === 'break') {
+            const mins = f.timerMinutes ?? 25;
+            const secs = f.timerSeconds ?? 0;
+            const totalSecs = mins * 60 + secs;
+            if (totalSecs > 1) {
+              const nextTotal = totalSecs - 1;
+              return {
+                ...f,
+                timerMinutes: Math.floor(nextTotal / 60),
+                timerSeconds: nextTotal % 60,
+              };
+            } else {
+              // Transition between focus session and break autonomously
+              if (f.status === 'focusing') {
+                return {
+                  ...f,
+                  status: 'break',
+                  isFocusing: false,
+                  timerMinutes: 5,
+                  timerSeconds: 0,
+                  currentTask: 'Taking a 5m break',
+                };
+              } else {
+                return {
+                  ...f,
+                  status: 'focusing',
+                  isFocusing: true,
+                  timerMinutes: 25,
+                  timerSeconds: 0,
+                  currentTask: 'Deep Focus Session',
+                };
+              }
+            }
+          }
+          return f;
+        })
+      );
+    }, 1000);
+
+    return () => clearInterval(friendInterval);
+  }, []);
+
   // Ambient Web Audio API Synthesizer Engine
   useEffect(() => {
     try {

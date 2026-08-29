@@ -30,7 +30,7 @@ interface BubblePhysics {
 }
 
 export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
-  const { toggleAttachFriend, timerState } = useApp();
+  const { toggleAttachFriend } = useApp();
 
   const bubbleDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const physicsRef = useRef<Record<string, BubblePhysics>>({});
@@ -111,7 +111,6 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
 
       // Mutual bubble avoidance distance (two ~270px bubbles need >300px clearance)
       const bubbleAvoidDist = 340;
-      const minBubbleDist = 280;
 
       const friendsList = Object.values(physicsRef.current);
 
@@ -309,7 +308,12 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           glow: friend.color || '#a855f7',
         };
 
-        const isPaused = timerState === 'paused' || (!friend.isFocusing && friend.status !== 'focusing');
+        // Each friend has their OWN state independent of the main timer
+        const isFriendFocusing = friend.status === 'focusing' || friend.isFocusing === true;
+        const isFriendBreak = friend.status === 'break';
+        const isInactive = !isFriendFocusing && !isFriendBreak;
+
+        const friendColor = isFriendBreak ? '#34d399' : themeTokens.primary;
 
         return (
           <div
@@ -369,13 +373,13 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                 <circle
                   className={clsx(
                     "-rotate-90 origin-center transition-all duration-700 ease-out",
-                    isPaused && "opacity-35"
+                    isInactive && "opacity-35"
                   )}
                   cx="50"
                   cy="50"
                   fill="none"
                   r="48"
-                  stroke={isPaused ? 'var(--outline)' : themeTokens.primary}
+                  stroke={isInactive ? 'var(--outline)' : friendColor}
                   strokeDasharray="301.59"
                   strokeDashoffset={strokeDashoffset}
                   strokeWidth="1.2"
@@ -385,25 +389,26 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
 
               {/* Center Content — Matches Main Timer Typography & Proportions */}
               <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
-                {/* Name Header in Place of 'FOCUS' */}
+                {/* Name Header */}
                 <span
                   className={clsx(
-                    "font-label-md text-xs md:text-sm text-outline tracking-[0.25em] uppercase transition-colors",
-                    !isPaused && "group-hover:text-primary"
+                    "font-label-md text-xs md:text-sm tracking-[0.25em] uppercase transition-colors font-medium",
+                    isInactive ? "text-outline" : "group-hover:opacity-90"
                   )}
+                  style={{ color: isInactive ? 'var(--outline)' : friendColor }}
                 >
                   {friend.name}
                 </span>
 
-                {/* Countdown Numbers in Friend's Theme Color or Greyish if Paused */}
+                {/* Countdown Numbers in Friend's Theme Color */}
                 <span
                   className={clsx(
                     "font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
-                    isPaused && "opacity-50"
+                    isInactive && "opacity-50"
                   )}
-                  style={{ color: isPaused ? 'var(--outline)' : themeTokens.primary }}
+                  style={{ color: isInactive ? 'var(--outline)' : friendColor }}
                 >
-                  {friend.timerMinutes}:{friend.timerSeconds ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
+                  {friend.timerMinutes}:{friend.timerSeconds !== undefined ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
                 </span>
 
                 {/* Session Indicator Dots matching Main Timer */}
@@ -413,10 +418,10 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                       key={i}
                       className={clsx(
                         'w-1.5 h-1.5 rounded-full transition-all',
-                        i < 2 ? 'scale-125' : 'bg-outline-variant'
+                        i < 2 ? 'scale-125' : 'opacity-30'
                       )}
                       style={{
-                        backgroundColor: i < 2 ? themeTokens.primary : undefined,
+                        backgroundColor: i < 2 ? friendColor : 'var(--outline-variant)',
                       }}
                     />
                   ))}
@@ -424,9 +429,12 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               </div>
 
               {/* Hover Tooltip for Task Details */}
-              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shadow-sm pointer-events-none z-30">
-                <span className="text-on-surface-variant">Task: </span>
-                <span style={{ color: themeTokens.primary }}>{friend.currentTask || 'Focusing quietly'}</span>
+              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shadow-sm pointer-events-none z-30 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: friendColor }} />
+                <span className="text-on-surface-variant">
+                  {friend.status === 'break' ? 'Break: ' : friend.status === 'focusing' ? 'Focusing: ' : 'Status: '}
+                </span>
+                <span style={{ color: friendColor }}>{friend.currentTask || (friend.status === 'break' ? '5m Break' : 'Focus Session')}</span>
               </div>
             </div>
           </div>
