@@ -438,20 +438,11 @@ export function ZenTodosPage() {
               setIsAddingList(true);
               scrollToFarRight();
             }}
-            className="h-10 flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-low/70 hover:bg-surface-container border border-surface-variant/40 text-on-surface-variant/80 hover:text-primary font-label-md text-sm font-medium transition-all shadow-sm"
+            className="h-10 flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-sm font-medium hover:opacity-90 transition-all shadow-sm"
             title="Create a new todo column"
           >
             <Layers className="w-4 h-4" />
             <span>+ New List</span>
-          </button>
-
-          {/* Add Task Button */}
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="h-10 flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-on-primary font-label-md text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Task</span>
           </button>
         </div>
       </header>
