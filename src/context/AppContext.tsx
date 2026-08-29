@@ -62,6 +62,7 @@ interface AppContextType {
   toggleTaskComplete: (id: string) => void;
   deleteTask: (id: string) => void;
   updateTask: (task: Task) => void;
+  reorderTasks: (tasks: Task[]) => void;
 
   // Friends & Attached Friend Bubbles State
   friends: Friend[];
@@ -312,6 +313,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
   };
 
+  const reorderTasks = (newTasks: Task[]) => {
+    setTasks(newTasks);
+  };
+
   // Friend Attachment
   const toggleAttachFriend = (friendId: string) => {
     setAttachedFriendIds((prev) =>
@@ -414,6 +419,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleTaskComplete,
         deleteTask,
         updateTask,
+        reorderTasks,
         friends,
         attachedFriendIds,
         toggleAttachFriend,
