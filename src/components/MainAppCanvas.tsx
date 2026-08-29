@@ -18,27 +18,16 @@ import { FriendsOverlay } from '@/components/overlays/FriendsOverlay';
 import { NotificationsOverlay } from '@/components/overlays/NotificationsOverlay';
 import { TaskDetailOverlay } from '@/components/overlays/TaskDetailOverlay';
 
-export function MainAppCanvas({ onBackToLanding }: { onBackToLanding?: () => void }) {
+export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () => void }) {
   const { activeTab } = useApp();
 
   return (
     <div className="relative flex min-h-screen w-full bg-zen-bg text-zen-text overflow-hidden selection:bg-zen-accent selection:text-white">
-      {/* Collapsed Sidebar Navigation */}
-      <Sidebar />
+      {/* Fixed Non-expanding Sidebar Navigation with Tooltips */}
+      <Sidebar onOpenProductPage={onOpenProductPage} />
 
       {/* Main Focus Canvas Area */}
-      <main className="flex-1 ml-16 min-h-screen relative flex flex-col">
-        {onBackToLanding && (
-          <div className="absolute top-4 right-6 z-30">
-            <button
-              onClick={onBackToLanding}
-              className="px-3.5 py-1.5 rounded-full border border-zen-border bg-zen-surface/60 backdrop-blur-md text-xs font-semibold text-zen-text-muted hover:text-zen-text hover:border-zen-accent transition-all"
-            >
-              ← Back to Product Story
-            </button>
-          </div>
-        )}
-
+      <main className="flex-1 ml-[72px] min-h-screen relative flex flex-col overflow-hidden">
         {/* Primary Page Render */}
         {activeTab === 'timer' && <ImmersiveTimer />}
         {activeTab === 'todos' && <ZenTodosPage />}

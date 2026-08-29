@@ -11,5 +11,5 @@ export default function Home() {
     return <ProductLandingPage onEnterApp={() => setViewMode('app')} />;
   }
 
-  return <MainAppCanvas onBackToLanding={() => setViewMode('landing')} />;
+  return <MainAppCanvas onOpenProductPage={() => setViewMode('landing')} />;
 }

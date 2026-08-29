@@ -95,7 +95,7 @@
 }
 
 :root {
-  /* Crimson Zen Light Theme Tokens (Matches stitch_stitch_zen_productivity_app) */
+  /* Crimson Zen Light Theme Tokens */
   --primary: #34100f;
   --on-primary: #ffffff;
   --primary-container: #eae0e0;
@@ -220,6 +220,50 @@ body {
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Zero-CPU Compositor-driven Pure CSS Zen Floating Animations */
+@keyframes zenFloat0 {
+  0% { transform: translate3d(-380px, -200px, 0) translate(-50%, -50%); }
+  25% { transform: translate3d(-330px, -240px, 0) translate(-50%, -50%); }
+  50% { transform: translate3d(-400px, -165px, 0) translate(-50%, -50%); }
+  75% { transform: translate3d(-430px, -220px, 0) translate(-50%, -50%); }
+  100% { transform: translate3d(-380px, -200px, 0) translate(-50%, -50%); }
+}
+
+@keyframes zenFloat1 {
+  0% { transform: translate3d(380px, 200px, 0) translate(-50%, -50%); }
+  25% { transform: translate3d(430px, 160px, 0) translate(-50%, -50%); }
+  50% { transform: translate3d(345px, 235px, 0) translate(-50%, -50%); }
+  75% { transform: translate3d(370px, 175px, 0) translate(-50%, -50%); }
+  100% { transform: translate3d(380px, 200px, 0) translate(-50%, -50%); }
+}
+
+@keyframes zenFloat2 {
+  0% { transform: translate3d(370px, -200px, 0) translate(-50%, -50%); }
+  30% { transform: translate3d(420px, -240px, 0) translate(-50%, -50%); }
+  60% { transform: translate3d(330px, -165px, 0) translate(-50%, -50%); }
+  100% { transform: translate3d(370px, -200px, 0) translate(-50%, -50%); }
+}
+
+@keyframes zenFloat3 {
+  0% { transform: translate3d(-370px, 200px, 0) translate(-50%, -50%); }
+  30% { transform: translate3d(-420px, 240px, 0) translate(-50%, -50%); }
+  60% { transform: translate3d(-330px, 165px, 0) translate(-50%, -50%); }
+  100% { transform: translate3d(-370px, 200px, 0) translate(-50%, -50%); }
+}
+
+.zen-float-0 {
+  animation: zenFloat0 42s ease-in-out infinite;
+}
+.zen-float-1 {
+  animation: zenFloat1 48s ease-in-out infinite;
+}
+.zen-float-2 {
+  animation: zenFloat2 45s ease-in-out infinite;
+}
+.zen-float-3 {
+  animation: zenFloat3 52s ease-in-out infinite;
 }
 
 /* Custom Scrollbars */
