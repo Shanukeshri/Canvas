@@ -116,8 +116,8 @@ export function ImmersiveTimer() {
       >
         {/* Subtle Tinted Inner Canvas Disc */}
         <div
-          className="absolute inset-6 rounded-full border border-surface-variant/60 pointer-events-none transition-colors"
-          style={{ backgroundColor: 'var(--timer-surface)' }}
+          className="absolute inset-6 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.05]"
+          style={{ backgroundColor: theme.hex }}
         />
 
         {/* SVG Progress Circle Ring — Minimalist Precision with User Theme Color */}
@@ -192,7 +192,7 @@ export function ImmersiveTimer() {
 
       {/* Floating Invite / Add Friends Plus Button in Bottom Right */}
       <button
-        onClick={() => setOverlay('friends')}
+        onClick= { () => setOverlay('friends') }
         aria-label="Invite Friends & Add to Window"
         className="fixed bottom-7 right-7 w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm z-30 group cursor-pointer"
         title="Invite friends & add to canvas"
