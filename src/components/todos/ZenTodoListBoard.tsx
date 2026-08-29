@@ -91,48 +91,61 @@ export function ZenTodoListBoard({
   const isDraggingBoardRef = useRef(false);
   const startXRef = useRef(0);
   const scrollLeftRef = useRef(0);
+  const scrollRafRef = useRef<number | null>(null);
 
   // Active column index tracking for compact / single list mode
   const [activeColIndex, setActiveColIndex] = useState(0);
 
   const handleBoardScroll = () => {
-    if (!boardRef.current) return;
-    const scrollLeft = boardRef.current.scrollLeft;
-    const width = boardRef.current.clientWidth || 1;
-    const newIdx = Math.round(scrollLeft / width);
-    setActiveColIndex(newIdx);
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      if (!boardRef.current) return;
+      const container = boardRef.current;
+      const scrollLeft = container.scrollLeft;
+      const card = container.querySelector('.todo-column-card') as HTMLElement | null;
+      const cardWidth = card ? card.offsetWidth + (compactMode ? 14 : 24) : (container.clientWidth || 1);
+      const newIdx = Math.round(scrollLeft / cardWidth);
+      setActiveColIndex(Math.max(0, Math.min(newIdx, Math.max(0, columns.length - 1))));
+    });
   };
 
   const scrollToIndex = (idx: number) => {
     if (!boardRef.current) return;
-    const width = boardRef.current.clientWidth;
-    boardRef.current.scrollTo({
-      left: idx * (width + (compactMode ? 12 : 24)),
+    const container = boardRef.current;
+    const card = container.querySelector('.todo-column-card') as HTMLElement | null;
+    const cardWidth = card ? card.offsetWidth + (compactMode ? 14 : 24) : (container.clientWidth || 1);
+    container.scrollTo({
+      left: idx * cardWidth,
       behavior: 'smooth',
     });
   };
 
-  // Set up wheel scroll listener:
-  // - If mouse is over a todo list card's scrollable list: vertical wheel scrolls that specific todo list vertically.
-  // - If mouse is on board background or column header: vertical/horizontal wheel scrolls horizontally with snap.
+  // Clean, non-jittering wheel listener:
+  // - Inside column cards: Allows native vertical scrolling of .todo-list-scrollable without triggering horizontal jumping.
+  // - Outside cards (canvas background in wide mode): Translates vertical wheel to horizontal board scroll smoothly.
   useEffect(() => {
     const container = boardRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      const scrollableList = target?.closest('.todo-list-scrollable') as HTMLElement | null;
+      const hoveredCard = target?.closest('.todo-column-card');
 
-      // If scrolling inside the vertical task list, let it scroll vertically
-      if (scrollableList && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      if (hoveredCard) {
+        const scrollableList = hoveredCard.querySelector('.todo-list-scrollable') as HTMLElement | null;
+        if (scrollableList && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          if (!target?.closest('.todo-list-scrollable')) {
+            scrollableList.scrollTop += e.deltaY;
+            e.preventDefault();
+          }
+        }
         return;
       }
 
-      if (Math.abs(e.deltaY) > 0) {
+      if (!compactMode && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) {
         e.preventDefault();
         container.scrollLeft += e.deltaY;
-      } else if (Math.abs(e.deltaX) > 0) {
-        container.scrollLeft += e.deltaX;
       }
     };
 
@@ -553,7 +566,7 @@ export function ZenTodoListBoard({
         </header>
       )}
 
-      {/* Main Horizontally Scrollable Board Canvas with Scroll Breaking */}
+      {/* Main Horizontally Scrollable Board Canvas with Clean Scroll Breaking */}
       <div
         ref={boardRef}
         onScroll={handleBoardScroll}
@@ -564,13 +577,14 @@ export function ZenTodoListBoard({
         className={clsx(
           'flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden flex flex-row items-start cursor-default',
           compactMode
-            ? 'px-3 py-3 gap-3.5 snap-x snap-mandatory scroll-smooth'
+            ? 'p-3 gap-3.5 snap-x snap-mandatory'
             : 'px-8 py-6 gap-6'
         )}
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'var(--outline-variant) transparent',
           scrollSnapType: compactMode ? 'x mandatory' : undefined,
+          overscrollBehaviorX: 'contain',
         }}
       >
         {columns.map((col, colIdx) => {
@@ -682,6 +696,7 @@ export function ZenTodoListBoard({
                 style={{
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'var(--outline-variant) transparent',
+                  overscrollBehaviorY: 'contain',
                 }}
               >
                 {colTasks.length === 0 ? (

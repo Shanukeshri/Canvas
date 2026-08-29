@@ -85,53 +85,60 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
       const dt = Math.min((now - lastTime) / 1000, 0.05); // cap dt to prevent huge jumps
       lastTime = now;
 
-      // Exact container width and height (strictly bounds within the 2/3 container)
+      // 1. LIVE DYNAMIC CONTAINER MEASUREMENTS
       const containerEl = containerRef.current;
-      const w = containerEl && containerEl.clientWidth > 100 ? containerEl.clientWidth : (typeof window !== 'undefined' ? (compact ? window.innerWidth * 0.6 : window.innerWidth) : 900);
-      const h = containerEl && containerEl.clientHeight > 100 ? containerEl.clientHeight : (typeof window !== 'undefined' ? window.innerHeight * 0.85 : 700);
-
-      // Dynamically measure the actual rendered radius of the main central timer
-      const mainTimerEl = typeof document !== 'undefined' ? document.getElementById('main-timer-ring') : null;
-      const mainTimerRadius = mainTimerEl ? mainTimerEl.getBoundingClientRect().width / 2 : (compact ? 130 : 180);
-      
-      // Proportional bubble radius for compact/group mode vs full screen
-      const friendRadius = compact ? 75 : 105;
-
-      // Dynamic clearance boundaries
-      const minCenterDist = mainTimerRadius + friendRadius + 16;
-      const centerAvoidDist = minCenterDist + 35;
-
-      // Strict boundaries inside the actual rendered container
+      const containerRect = containerEl ? containerEl.getBoundingClientRect() : null;
+      const w = containerRect && containerRect.width > 50 ? containerRect.width : (typeof window !== 'undefined' ? (compact ? window.innerWidth * 0.6 : window.innerWidth) : 900);
+      const h = containerRect && containerRect.height > 50 ? containerRect.height : (typeof window !== 'undefined' ? window.innerHeight * 0.85 : 700);
       const halfW = w / 2;
       const halfH = h / 2;
-      const marginX = friendRadius + 18;
-      const marginY = friendRadius + 18;
-      const minX = -halfW + marginX;
-      const maxX = halfW - marginX;
-      const minY = -halfH + marginY;
-      const maxY = halfH - marginY;
 
-      // Dynamic scale for the infinity path adapted to container bounds
-      const ampX = Math.max(minCenterDist + 10, Math.min(maxX - 10, minCenterDist + 45));
-      const ampY = Math.max((minCenterDist + 10) * 0.42, Math.min(maxY - 10, (minCenterDist + 45) * 0.45));
+      // 2. LIVE DYNAMIC MAIN TIMER MEASUREMENT
+      const mainTimerEl = typeof document !== 'undefined' ? document.getElementById('main-timer-ring') : null;
+      const mainTimerRect = mainTimerEl ? mainTimerEl.getBoundingClientRect() : null;
+      const mainTimerRadius = mainTimerRect && mainTimerRect.width > 20 ? mainTimerRect.width / 2 : (compact ? 130 : 180);
 
-      // Mutual bubble avoidance distance
-      const bubbleAvoidDist = friendRadius * 2 + 18;
-
+      // 3. LIVE DYNAMIC INDIVIDUAL BUBBLE RADII
       const friendsList = Object.values(physicsRef.current);
+      const liveBubbleRadii: Record<string, number> = {};
+      friendsList.forEach((body) => {
+        const dom = bubbleDomRefs.current[body.id];
+        if (dom) {
+          const rect = dom.getBoundingClientRect();
+          liveBubbleRadii[body.id] = rect.width > 20 ? rect.width / 2 : (compact ? 75 : 105);
+        } else {
+          liveBubbleRadii[body.id] = compact ? 75 : 105;
+        }
+      });
 
       friendsList.forEach((body) => {
         if (body.isDragging) {
-          // If being dragged, direct position control
           return;
         }
 
-        // 1. Infinity Lemniscate Guidance Force (Very slow, serene pace ~60s loop)
+        const r_i = liveBubbleRadii[body.id] || (compact ? 75 : 105);
+        const margin = 16;
+        const minX = -halfW + r_i + margin;
+        const maxX = halfW - r_i - margin;
+        const minY = -halfH + r_i + margin;
+        const maxY = halfH - r_i - margin;
+
+        // Dynamic clearance boundaries based on live main timer size + live bubble size
+        const minCenterDist = mainTimerRadius + r_i + 16;
+        const centerAvoidDist = minCenterDist + 35;
+
+        // Dynamic scale for the guidance orbit path adapted to live container bounds
+        // On horizontally wide viewports, ampX gives plenty of side clearance
+        const ampX = Math.max(minCenterDist + 15, Math.min(maxX - 10, minCenterDist + 55));
+        // Clamp ampY to safe vertical bounds so the guidance curve NEVER steers towards ceiling/floor pinch points
+        const maxSafeY = Math.max(20, maxY - 15);
+        const ampY = Math.min(maxSafeY, Math.max(25, maxY * 0.55));
+
+        // 1. Guidance Force along smooth side-elongated figure-8
         body.phase += 0.07 * dt;
         const targetX = Math.sin(body.phase) * ampX;
         const targetY = (Math.sin(2 * body.phase) / 2) * ampY;
 
-        // Gentle spring driving force towards infinity path
         const kDrive = 0.45;
         const fxDrive = (targetX - body.x) * kDrive;
         const fyDrive = (targetY - body.y) * kDrive;
@@ -139,45 +146,65 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         let totalFx = fxDrive;
         let totalFy = fyDrive;
 
-        // 2. Strong Central Main Timer Avoidance (Repulsion from 0, 0)
+        // 2. Center Timer Clearance Guidance:
+        // If distance < centerAvoidDist, push away.
+        // If vertical room is tight (|y| approaching maxY), redirect repulsion force horizontally into X rather than into Y!
         const distFromCenter = Math.hypot(body.x, body.y);
-        if (distFromCenter < centerAvoidDist) {
+        if (distFromCenter < centerAvoidDist && distFromCenter > 0) {
           const overlap = centerAvoidDist - distFromCenter;
-          const nx = distFromCenter > 0 ? body.x / distFromCenter : 1;
-          const ny = distFromCenter > 0 ? body.y / distFromCenter : 0;
-          // Smooth progressive repulsion pushing strongly away from center
-          const pushForce = (overlap / (centerAvoidDist - minCenterDist + 30)) * 650;
+          let nx = body.x / distFromCenter;
+          let ny = body.y / distFromCenter;
+
+          // If vertical space is constrained, redirect vertical push to horizontal side clearance
+          if (Math.abs(body.y) > maxY * 0.7) {
+            const sideSign = body.x >= 0 ? 1 : -1;
+            nx = sideSign * Math.max(0.7, Math.abs(nx));
+            ny *= 0.3; // soften vertical push so it doesn't slam into the wall
+          }
+
+          const pushForce = (overlap / (centerAvoidDist - minCenterDist + 30)) * 600;
           totalFx += nx * pushForce;
           totalFy += ny * pushForce;
+
+          // Add gentle tangential guidance around timer
+          totalFx += -ny * 35;
+          totalFy += nx * 35;
         }
 
-        // 3. Mutual Friends Avoidance (Push away from each other)
+        // 3. Mutual Live Friends Avoidance (Using live measured radii of both bubbles)
         friendsList.forEach((other) => {
           if (other.id === body.id) return;
+          const r_other = liveBubbleRadii[other.id] || (compact ? 75 : 105);
+          const liveAvoidDist = r_i + r_other + 16;
+
           const dx = body.x - other.x;
           const dy = body.y - other.y;
           const d = Math.hypot(dx, dy);
-          if (d < bubbleAvoidDist && d > 0) {
-            const overlap = bubbleAvoidDist - d;
+          if (d < liveAvoidDist && d > 0) {
+            const overlap = liveAvoidDist - d;
             const nx = dx / d;
             const ny = dy / d;
-            const push = (overlap / bubbleAvoidDist) * 450;
+            const push = (overlap / liveAvoidDist) * 450;
             totalFx += nx * push;
             totalFy += ny * push;
           }
         });
 
-        // 4. Viewport Edge Boundaries Avoidance (Soft spring walls)
+        // 4. Viewport Live Edge Boundaries Avoidance (Soft spring walls)
         if (body.x < minX) {
-          totalFx += (minX - body.x) * 3.5;
+          totalFx += (minX - body.x) * 5.0;
+          if (body.vx < 0) body.vx *= 0.7;
         } else if (body.x > maxX) {
-          totalFx += (maxX - body.x) * 3.5;
+          totalFx += (maxX - body.x) * 5.0;
+          if (body.vx > 0) body.vx *= 0.7;
         }
 
         if (body.y < minY) {
-          totalFy += (minY - body.y) * 3.5;
+          totalFy += (minY - body.y) * 5.0;
+          if (body.vy < 0) body.vy *= 0.7;
         } else if (body.y > maxY) {
-          totalFy += (maxY - body.y) * 3.5;
+          totalFy += (maxY - body.y) * 5.0;
+          if (body.vy > 0) body.vy *= 0.7;
         }
 
         // Integrate acceleration, apply smooth velocity damping for calm motion
@@ -197,21 +224,33 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         body.x += body.vx * dt;
         body.y += body.vy * dt;
 
-        // Hard minimum distance constraint from center
-        const newDistFromCenter = Math.hypot(body.x, body.y);
-        if (newDistFromCenter < minCenterDist && newDistFromCenter > 0) {
-          const nx = body.x / newDistFromCenter;
-          const ny = body.y / newDistFromCenter;
-          body.x = nx * minCenterDist;
-          body.y = ny * minCenterDist;
-          // Deflect tangential velocity around center
-          body.vx += -ny * 15;
-          body.vy += nx * 15;
+        // 5. HARMONIOUS CONSTRAINT PROJECTION (Simultaneous Center & Boundary Solvation)
+        // First clamp Y strictly inside [minY, maxY]
+        body.y = Math.max(minY, Math.min(maxY, body.y));
+
+        // Check if inside center clearance:
+        const currentDist = Math.hypot(body.x, body.y);
+        if (currentDist < minCenterDist) {
+          // Calculate the required safe X on the side for this valid Y
+          const safeYSquared = body.y * body.y;
+          const reqX = Math.sqrt(Math.max(10, minCenterDist * minCenterDist - safeYSquared));
+          const sideSign = body.x >= 0 ? 1 : -1;
+          body.x = sideSign * reqX;
+
+          // Deflect radial velocity tangentially around the timer circle
+          const nx = body.x / minCenterDist;
+          const ny = body.y / minCenterDist;
+          const dotRadial = body.vx * nx + body.vy * ny;
+          if (dotRadial < 0) {
+            body.vx -= dotRadial * nx;
+            body.vy -= dotRadial * ny;
+          }
+          body.vx += -ny * 12;
+          body.vy += nx * 12;
         }
 
-        // Hard clamp inside viewport
+        // Finally clamp X strictly inside [minX, maxX]
         body.x = Math.max(minX, Math.min(maxX, body.x));
-        body.y = Math.max(minY, Math.min(maxY, body.y));
       });
 
       // Update DOM elements transforms directly for 60/120fps smooth motion

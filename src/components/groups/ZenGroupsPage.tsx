@@ -369,11 +369,11 @@ export function ZenGroupsPage() {
           'h-full flex flex-col bg-surface-container-lowest/50 backdrop-blur-sm overflow-hidden shrink-0',
           'transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
           isTodoListOpen
-            ? 'w-full lg:w-[35%] lg:min-w-[360px] lg:max-w-[440px] xl:max-w-[500px] opacity-100 border-t lg:border-t-0 lg:border-l border-surface-variant/40 translate-x-0'
+            ? 'w-full lg:w-[360px] xl:w-[400px] 2xl:w-[440px] opacity-100 border-t lg:border-t-0 lg:border-l border-surface-variant/40 translate-x-0'
             : 'w-0 min-w-0 max-w-0 opacity-0 border-none pointer-events-none translate-x-8'
         )}
       >
-        <div className="w-full lg:w-[360px] xl:w-[440px] h-full min-h-0 flex flex-col">
+        <div className="w-full h-full min-h-0 flex flex-col overflow-hidden">
           <ZenTodoListBoard
             title="Group Tasks"
             tasks={currentGroup.tasks || []}
