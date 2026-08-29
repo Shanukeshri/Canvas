@@ -470,8 +470,6 @@ export function ZenTodoListBoard({
 
             {/* Action Controls & Search */}
             <div className="flex items-center gap-1.5">
-              {headerRightContent}
-
               {/* Search bar */}
               <div className="relative flex items-center">
                 <Search className="w-3 h-3 absolute left-2.5 text-outline/60 pointer-events-none" />
@@ -510,6 +508,9 @@ export function ZenTodoListBoard({
                 <Layers className="w-3 h-3" />
                 <span>+ List</span>
               </button>
+
+              {/* Right-most Action Controls (e.g. Collapse Button) */}
+              {headerRightContent}
             </div>
           </div>
 

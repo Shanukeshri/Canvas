@@ -17,6 +17,8 @@ import {
   Play,
   Pause,
   RotateCcw,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react';
 import clsx from 'clsx';
 import confetti from 'canvas-confetti';
@@ -48,6 +50,9 @@ export function ZenGroupsPage() {
   } = useApp();
 
   const { theme } = useTheme();
+
+  // Collapsible right todo list panel state
+  const [isTodoListOpen, setIsTodoListOpen] = useState(true);
 
   // Find active group or default to first group
   const currentGroup = groups.find((g) => g.id === activeGroupId) || groups[0];
@@ -166,10 +171,12 @@ export function ZenGroupsPage() {
       };
     });
 
+  const uncompletedTasksCount = currentGroup.tasks.filter((t) => !t.completed).length;
+
   return (
     <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
-      {/* ================= PART 1: TIMER PART (Takes 2/3 of the screen) ================= */}
-      <section className="flex-1 lg:flex-[2] lg:w-[65%] h-full relative bg-surface overflow-hidden flex flex-col">
+      {/* ================= PART 1: TIMER PART ================= */}
+      <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
         {/* Top Header Bar for Group */}
         <header className="shrink-0 z-20 px-6 py-4 border-b border-surface-variant/30 flex flex-wrap items-center justify-between gap-3 bg-surface/80 backdrop-blur-md">
           {/* Left: Group Name + ASCII Group Code Badge */}
@@ -209,7 +216,7 @@ export function ZenGroupsPage() {
             </div>
           </div>
 
-          {/* Right: Switch Group / Groups Overlay Trigger */}
+          {/* Right: Switch Group + Single Toggle Icon when collapsed */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setOverlay('groups')}
@@ -219,13 +226,31 @@ export function ZenGroupsPage() {
               <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
               <span>Switch Group</span>
             </button>
+
+            {/* Single Icon when Collapsed (No minimized sidebar strip) */}
+            {!isTodoListOpen && (
+              <button
+                onClick={() => setIsTodoListOpen(true)}
+                className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-surface-container-high hover:bg-surface-container border border-outline-variant text-primary hover:scale-105 active:scale-95 transition-all shadow-sm"
+                title="Open Group Tasks"
+                aria-label="Open Group Tasks"
+              >
+                <PanelRightOpen className="w-4 h-4 text-primary" />
+                {uncompletedTasksCount > 0 && (
+                  <span
+                    className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                    style={{ backgroundColor: theme.hex }}
+                  />
+                )}
+              </button>
+            )}
           </div>
         </header>
 
         {/* Main Immersive Canvas Area */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4 md:p-6">
           {/* Floating Orbit Member Bubbles Layer with Compact Scaling & Strict Avoidance */}
-          <OrbitBubbles attachedFriends={groupFriends} compact={true} />
+          <OrbitBubbles attachedFriends={groupFriends} compact={isTodoListOpen} />
 
           {/* Group Goal / Focus Task Indicator */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none w-full max-w-xl px-4">
@@ -243,7 +268,12 @@ export function ZenGroupsPage() {
             type="button"
             onClick={handleTimerClick}
             onDoubleClick={handleTimerDoubleClick}
-            className="flex flex-col items-center justify-center w-[230px] h-[230px] md:w-[260px] md:h-[260px] lg:w-[280px] lg:h-[280px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none relative"
+            className={clsx(
+              'flex flex-col items-center justify-center z-30 cursor-pointer group active:scale-[0.99] transition-all select-none bg-transparent border-none p-0 outline-none focus:outline-none relative',
+              isTodoListOpen
+                ? 'w-[230px] h-[230px] md:w-[260px] md:h-[260px] lg:w-[280px] lg:h-[280px]'
+                : 'w-[320px] h-[320px] md:w-[380px] md:h-[380px] lg:w-[420px] lg:h-[420px]'
+            )}
             title="Click to Start/Pause • Double-click to Reset"
           >
             {/* Subtle Inner Canvas Disc */}
@@ -285,7 +315,8 @@ export function ZenGroupsPage() {
             <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
               <span
                 className={clsx(
-                  'font-label-md text-[10px] md:text-[11px] tracking-[0.24em] uppercase font-medium transition-colors',
+                  'font-label-md tracking-[0.24em] uppercase font-medium transition-colors',
+                  isTodoListOpen ? 'text-[10px] md:text-[11px]' : 'text-xs md:text-sm',
                   timerState === 'paused' && 'opacity-70'
                 )}
                 style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
@@ -298,7 +329,10 @@ export function ZenGroupsPage() {
 
               <span
                 className={clsx(
-                  'font-timer-display text-[48px] md:text-[56px] lg:text-[62px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light',
+                  'font-timer-display leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light',
+                  isTodoListOpen
+                    ? 'text-[48px] md:text-[56px] lg:text-[62px]'
+                    : 'text-[64px] md:text-[76px] lg:text-[88px]',
                   timerState === 'paused' && 'opacity-50'
                 )}
                 style={{ color: timerState === 'paused' ? 'var(--outline)' : 'var(--timer-digits, var(--primary))' }}
@@ -313,7 +347,8 @@ export function ZenGroupsPage() {
                     <span
                       key={idx}
                       className={clsx(
-                        'w-1.5 h-1.5 rounded-full transition-all',
+                        'rounded-full transition-all',
+                        isTodoListOpen ? 'w-1.5 h-1.5' : 'w-2 h-2',
                         idx < sessionsCompleted ? 'scale-125' : 'opacity-30'
                       )}
                       style={{
@@ -328,22 +363,42 @@ export function ZenGroupsPage() {
         </div>
       </section>
 
-      {/* ================= PART 2: TODO LIST PART (Takes 1/3 of the screen) ================= */}
-      <section className="flex-1 lg:flex-1 lg:w-[35%] h-full flex flex-col border-t lg:border-t-0 lg:border-l border-surface-variant/40 bg-surface-container-lowest/50 backdrop-blur-sm overflow-hidden">
-        <ZenTodoListBoard
-          title="Group Tasks"
-          tasks={currentGroup.tasks || []}
-          onAddTask={(task) => addGroupTaskFull(currentGroup.id, task)}
-          onToggleComplete={(taskId) => toggleGroupTaskComplete(currentGroup.id, taskId)}
-          onDeleteTask={(taskId) => deleteGroupTask(currentGroup.id, taskId)}
-          onReorderTasks={(tasks) => reorderGroupTasks(currentGroup.id, tasks)}
-          customLists={currentGroup.customLists || ['Backlog', 'In Progress', 'Done']}
-          onAddCustomList={(name) => addGroupCustomList(currentGroup.id, name)}
-          onDeleteCustomList={(name) => deleteGroupCustomList(currentGroup.id, name)}
-          isGroupMode={true}
-          compactMode={true}
-          defaultProject={currentGroup.name}
-        />
+      {/* ================= PART 2: TODO LIST PART (Collapsible Sidebar) ================= */}
+      <section
+        className={clsx(
+          'h-full flex flex-col bg-surface-container-lowest/50 backdrop-blur-sm overflow-hidden shrink-0',
+          'transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          isTodoListOpen
+            ? 'w-full lg:w-[35%] lg:min-w-[360px] lg:max-w-[440px] xl:max-w-[500px] opacity-100 border-t lg:border-t-0 lg:border-l border-surface-variant/40 translate-x-0'
+            : 'w-0 min-w-0 max-w-0 opacity-0 border-none pointer-events-none translate-x-8'
+        )}
+      >
+        <div className="w-full lg:w-[360px] xl:w-[440px] h-full min-h-0 flex flex-col">
+          <ZenTodoListBoard
+            title="Group Tasks"
+            tasks={currentGroup.tasks || []}
+            onAddTask={(task) => addGroupTaskFull(currentGroup.id, task)}
+            onToggleComplete={(taskId) => toggleGroupTaskComplete(currentGroup.id, taskId)}
+            onDeleteTask={(taskId) => deleteGroupTask(currentGroup.id, taskId)}
+            onReorderTasks={(tasks) => reorderGroupTasks(currentGroup.id, tasks)}
+            customLists={currentGroup.customLists || ['Backlog', 'In Progress', 'Done']}
+            onAddCustomList={(name) => addGroupCustomList(currentGroup.id, name)}
+            onDeleteCustomList={(name) => deleteGroupCustomList(currentGroup.id, name)}
+            isGroupMode={true}
+            compactMode={true}
+            defaultProject={currentGroup.name}
+            headerRightContent={
+              <button
+                onClick={() => setIsTodoListOpen(false)}
+                className="p-1 text-outline hover:text-primary rounded-lg hover:bg-surface-container transition-colors shrink-0"
+                title="Collapse Tasks Panel"
+                aria-label="Collapse Tasks Panel"
+              >
+                <PanelRightClose className="w-3.5 h-3.5" />
+              </button>
+            }
+          />
+        </div>
       </section>
     </div>
   );
