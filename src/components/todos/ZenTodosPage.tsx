@@ -285,37 +285,34 @@ export function ZenTodosPage() {
   return (
     <div className="flex-1 h-screen flex flex-col overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
       {/* Top Header Bar */}
-      <header className="shrink-0 px-8 pt-8 pb-4 border-b border-surface-variant/40 flex flex-wrap items-center justify-between gap-4">
+      <header className="shrink-0 px-8 pt-8 pb-5 border-b border-surface-variant/30 flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="font-headline-md text-headline-md text-primary font-semibold tracking-tight text-xl md:text-2xl">
+            <h1 className="font-headline-md text-headline-md text-primary/90 font-semibold tracking-tight text-2xl md:text-3xl">
               Task Overview
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary/90 border border-primary/20">
               {totalActiveTasks} active tasks
             </span>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant text-xs md:text-sm mt-0.5">
-            Horizontally scrollable boards — scroll over lists vertically or over the board horizontally.
-          </p>
         </div>
 
         {/* Action Controls & Search */}
         <div className="flex items-center gap-3">
           {/* Search bar */}
           <div className="relative flex items-center">
-            <Search className="w-3.5 h-3.5 absolute left-3 text-outline pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-3.5 text-outline/60 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter tasks..."
-              className="pl-8 pr-3 py-1.5 rounded-xl bg-surface-container-low border border-surface-variant text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-primary w-40 md:w-52 transition-all"
+              className="h-10 pl-9 pr-4 py-2 rounded-xl bg-surface-container-low/70 border border-surface-variant/40 text-sm text-on-surface/90 placeholder:text-outline/60 focus:outline-none focus:border-primary/50 w-44 md:w-56 transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 text-outline hover:text-on-surface text-xs"
+                className="absolute right-3 text-outline/60 hover:text-on-surface text-xs"
               >
                 ✕
               </button>
@@ -328,17 +325,17 @@ export function ZenTodosPage() {
               setIsAddingList(true);
               scrollToFarRight();
             }}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container border border-surface-variant text-on-surface-variant hover:text-primary font-label-md text-xs font-medium transition-all shadow-sm"
+            className="h-10 flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-low/70 hover:bg-surface-container border border-surface-variant/40 text-on-surface-variant/80 hover:text-primary font-label-md text-sm font-medium transition-all shadow-sm"
             title="Create a new todo column"
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Layers className="w-4 h-4" />
             <span>+ New List</span>
           </button>
 
           {/* Add Task Button */}
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-medium hover:opacity-90 transition-opacity shadow-sm"
+            className="h-10 flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-on-primary font-label-md text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Add Task</span>
@@ -366,16 +363,16 @@ export function ZenTodosPage() {
           return (
             <section
               key={col.id}
-              className="todo-column-card w-[330px] min-w-[330px] max-w-[330px] shrink-0 bg-surface-container-low/90 backdrop-blur-sm rounded-2xl border border-surface-variant flex flex-col max-h-[calc(100vh-170px)] shadow-sm hover:border-outline-variant/60 transition-all"
+              className="todo-column-card w-[370px] min-w-[370px] max-w-[370px] lg:w-[390px] lg:min-w-[390px] lg:max-w-[390px] shrink-0 bg-surface-container-low/60 backdrop-blur-md rounded-2xl border border-surface-variant/40 flex flex-col max-h-[calc(100vh-175px)] shadow-sm hover:border-surface-variant/70 transition-all"
             >
               {/* Column Header */}
-              <div className="shrink-0 p-4 pb-3 border-b border-surface-variant flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="p-1 rounded-lg bg-surface-container">{col.icon}</div>
-                  <h2 className="font-label-md text-primary font-semibold text-xs uppercase tracking-wider truncate">
+              <div className="shrink-0 p-4.5 pb-3.5 border-b border-surface-variant/30 flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-1.5 rounded-xl bg-surface-container/60">{col.icon}</div>
+                  <h2 className="font-label-md text-primary/90 font-semibold text-sm md:text-[15px] tracking-normal truncate">
                     {col.title}
                   </h2>
-                  <span className="text-[11px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full shrink-0">
+                  <span className="text-xs font-medium text-on-surface-variant/80 bg-surface-container/70 px-2.5 py-0.5 rounded-full shrink-0">
                     {colTasks.length}
                   </span>
                 </div>
@@ -386,17 +383,17 @@ export function ZenTodosPage() {
                       setActiveInlineCol(isInlineActive ? null : col.id);
                     }}
                     title="Add task to this list"
-                    className="p-1 text-outline hover:text-primary rounded-lg hover:bg-surface-container transition-colors"
+                    className="p-1.5 text-outline/70 hover:text-primary rounded-lg hover:bg-surface-container/60 transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4" />
                   </button>
                   {col.isCustom && (
                     <button
                       onClick={() => handleDeleteList(col.title)}
                       title="Delete this list"
-                      className="p-1 text-outline hover:text-error rounded-lg hover:bg-surface-container transition-colors"
+                      className="p-1.5 text-outline/70 hover:text-error rounded-lg hover:bg-surface-container/60 transition-colors"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -404,7 +401,7 @@ export function ZenTodosPage() {
 
               {/* Inline Quick Add Row in Column Header when toggled */}
               {isInlineActive && (
-                <div className="shrink-0 p-3 bg-surface-container/60 border-b border-surface-variant flex flex-col gap-2 animate-in fade-in duration-150">
+                <div className="shrink-0 p-3.5 bg-surface-container/40 border-b border-surface-variant/30 flex flex-col gap-2.5 animate-in fade-in duration-150">
                   <input
                     type="text"
                     autoFocus
@@ -417,18 +414,18 @@ export function ZenTodosPage() {
                       if (e.key === 'Escape') setActiveInlineCol(null);
                     }}
                     placeholder="Task name... (Press Enter)"
-                    className="w-full px-3 py-1.5 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-primary"
+                    className="w-full px-3.5 py-2 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 placeholder:text-outline/60 focus:outline-none focus:border-primary/60"
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => setActiveInlineCol(null)}
-                      className="px-2 py-1 text-[11px] text-outline hover:text-on-surface"
+                      className="px-3 py-1.5 text-xs text-outline/70 hover:text-on-surface"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={() => handleInlineAddTask(col)}
-                      className="px-3 py-1 rounded-lg bg-primary text-on-primary text-[11px] font-medium hover:opacity-90"
+                      className="px-3.5 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-medium hover:opacity-90"
                     >
                       Add
                     </button>
@@ -438,18 +435,18 @@ export function ZenTodosPage() {
 
               {/* Vertically Scrollable Task Items Container */}
               <div
-                className="todo-list-scrollable flex-1 overflow-y-auto p-3 space-y-2.5"
+                className="todo-list-scrollable flex-1 overflow-y-auto p-3.5 space-y-3"
                 style={{
                   scrollbarWidth: 'thin',
                   scrollbarColor: 'var(--outline-variant) transparent',
                 }}
               >
                 {colTasks.length === 0 ? (
-                  <div className="py-8 text-center flex flex-col items-center justify-center text-outline text-xs italic">
+                  <div className="py-10 text-center flex flex-col items-center justify-center text-outline/70 text-sm italic">
                     <span>No tasks in this list</span>
                     <button
                       onClick={() => setActiveInlineCol(col.id)}
-                      className="mt-2 text-[11px] text-primary/80 hover:text-primary not-italic underline underline-offset-2"
+                      className="mt-2.5 text-xs text-primary/80 hover:text-primary not-italic underline underline-offset-2"
                     >
                       + Add a task
                     </button>
@@ -459,22 +456,22 @@ export function ZenTodosPage() {
                     <div
                       key={task.id}
                       className={clsx(
-                        'group relative bg-surface p-3 rounded-xl border border-surface-variant hover:border-outline-variant transition-all shadow-sm flex flex-col gap-2',
-                        task.completed && 'opacity-65'
+                        'group relative bg-surface-container-lowest/70 hover:bg-surface-container-lowest/90 p-4 rounded-xl border border-surface-variant/30 hover:border-surface-variant/60 transition-all flex flex-col gap-2.5 shadow-sm',
+                        task.completed && 'opacity-60'
                       )}
                     >
-                      <div className="flex items-start gap-2.5">
+                      <div className="flex items-start gap-3">
                         {/* Checkbox */}
                         <button
                           onClick={() => toggleTaskComplete(task.id)}
                           className={clsx(
-                            'mt-0.5 shrink-0 w-4 h-4 rounded-md border flex items-center justify-center transition-all',
+                            'mt-0.5 shrink-0 w-5 h-5 rounded-lg border flex items-center justify-center transition-all',
                             task.completed
-                              ? 'border-primary bg-primary text-on-primary'
-                              : 'border-outline-variant hover:border-primary bg-transparent text-transparent hover:text-primary/40'
+                              ? 'border-primary/80 bg-primary/90 text-on-primary'
+                              : 'border-surface-variant/60 hover:border-primary/60 bg-transparent text-transparent hover:text-primary/30'
                           )}
                         >
-                          <Check className="w-2.5 h-2.5" />
+                          <Check className="w-3 h-3" />
                         </button>
 
                         {/* Title and details */}
@@ -487,15 +484,15 @@ export function ZenTodosPage() {
                         >
                           <h3
                             className={clsx(
-                              'font-body-md text-xs font-medium text-on-surface leading-snug break-words group-hover:text-primary transition-colors',
-                              task.completed && 'line-through text-outline'
+                              'font-body-md text-sm md:text-[15px] font-medium text-on-surface/90 leading-snug break-words group-hover:text-primary/90 transition-colors',
+                              task.completed && 'line-through text-outline/60'
                             )}
                           >
                             {task.title}
                           </h3>
 
                           {task.description && (
-                            <p className="text-[11px] text-outline line-clamp-2 mt-1 leading-normal">
+                            <p className="text-xs text-outline/75 line-clamp-2 mt-1.5 leading-relaxed">
                               {task.description}
                             </p>
                           )}
@@ -510,38 +507,38 @@ export function ZenTodosPage() {
                                 setActiveTab('timer');
                               }}
                               title="Focus in Timer"
-                              className="p-1 text-primary hover:scale-110 rounded hover:bg-surface-container transition-all"
+                              className="p-1.5 text-primary/80 hover:text-primary hover:scale-110 rounded-lg hover:bg-surface-container/60 transition-all"
                             >
-                              <ArrowRight className="w-3.5 h-3.5" />
+                              <ArrowRight className="w-4 h-4" />
                             </button>
                           )}
                           <button
                             onClick={() => deleteTask(task.id)}
                             title="Delete task"
-                            className="p-1 text-outline hover:text-error rounded hover:bg-surface-container transition-colors"
+                            className="p-1.5 text-outline/60 hover:text-error rounded-lg hover:bg-surface-container/60 transition-colors"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
 
                       {/* Footer metadata badges */}
-                      <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-surface-variant/50 text-[10px]">
+                      <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-surface-variant/25 text-xs">
                         {/* Priority Badge */}
                         <span
                           className={clsx(
-                            'px-1.5 py-0.5 rounded font-medium flex items-center gap-1',
-                            task.priority === 'high' && 'bg-error/15 text-error',
-                            task.priority === 'medium' && 'bg-amber-500/15 text-amber-400',
-                            task.priority === 'low' && 'bg-surface-container text-outline'
+                            'px-2 py-0.5 rounded-md font-medium flex items-center gap-1.5 text-[11px]',
+                            task.priority === 'high' && 'bg-error/10 text-error/80',
+                            task.priority === 'medium' && 'bg-amber-500/10 text-amber-400/80',
+                            task.priority === 'low' && 'bg-surface-container/50 text-outline/70'
                           )}
                         >
                           <span
                             className={clsx(
                               'w-1.5 h-1.5 rounded-full',
-                              task.priority === 'high' && 'bg-error',
-                              task.priority === 'medium' && 'bg-amber-400',
-                              task.priority === 'low' && 'bg-outline'
+                              task.priority === 'high' && 'bg-error/80',
+                              task.priority === 'medium' && 'bg-amber-400/80',
+                              task.priority === 'low' && 'bg-outline/60'
                             )}
                           />
                           {task.priority}
@@ -549,14 +546,14 @@ export function ZenTodosPage() {
 
                         {/* Project Badge */}
                         {col.type !== 'custom' && task.project && (
-                          <span className="px-1.5 py-0.5 rounded bg-surface-container text-outline truncate max-w-[110px]">
+                          <span className="px-2 py-0.5 rounded-md bg-surface-container/50 text-outline/80 text-[11px] truncate max-w-[130px]">
                             {task.project}
                           </span>
                         )}
 
                         {/* Due date Badge */}
                         {task.dueDate && (
-                          <span className="ml-auto text-[10px] text-outline font-medium">
+                          <span className="ml-auto text-[11px] text-outline/75 font-medium">
                             {task.dueDate}
                           </span>
                         )}
@@ -567,12 +564,12 @@ export function ZenTodosPage() {
               </div>
 
               {/* Column Footer: Quick add task trigger */}
-              <div className="shrink-0 p-3 pt-2 border-t border-surface-variant/60">
+              <div className="shrink-0 p-3.5 pt-2.5 border-t border-surface-variant/30">
                 <button
                   onClick={() => setActiveInlineCol(col.id)}
-                  className="w-full py-1.5 px-3 rounded-xl bg-surface-container/50 hover:bg-surface-container text-on-surface-variant hover:text-primary text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-transparent hover:border-surface-variant"
+                  className="w-full py-2 px-3.5 rounded-xl bg-surface-container/40 hover:bg-surface-container/70 text-on-surface-variant/80 hover:text-primary text-xs md:text-sm font-medium flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-surface-variant/30"
                 >
-                  <Plus className="w-3 h-3" /> Add Task
+                  <Plus className="w-3.5 h-3.5" /> Add Task
                 </button>
               </div>
             </section>
@@ -580,40 +577,40 @@ export function ZenTodosPage() {
         })}
 
         {/* Ghost "+ Add New List" Column Card at the far right */}
-        <div className="w-[330px] min-w-[330px] max-w-[330px] shrink-0">
+        <div className="w-[370px] min-w-[370px] max-w-[370px] lg:w-[390px] lg:min-w-[390px] lg:max-w-[390px] shrink-0">
           {isAddingList ? (
-            <div className="bg-surface-container-low p-4 rounded-2xl border border-primary/40 shadow-sm flex flex-col gap-3 animate-in zoom-in-95 duration-150">
+            <div className="bg-surface-container-low/80 p-5 rounded-2xl border border-primary/30 shadow-sm flex flex-col gap-3.5 animate-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-primary uppercase tracking-wider">
+                <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-wider">
                   Create New List
                 </h3>
                 <button
                   onClick={() => setIsAddingList(false)}
-                  className="text-outline hover:text-on-surface text-xs"
+                  className="text-outline/70 hover:text-on-surface text-xs"
                 >
                   ✕
                 </button>
               </div>
-              <form onSubmit={handleCreateList} className="flex flex-col gap-3">
+              <form onSubmit={handleCreateList} className="flex flex-col gap-3.5">
                 <input
                   type="text"
                   autoFocus
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder="e.g. Backlog, Marketing, Ideas..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface focus:outline-none focus:border-primary"
+                  className="w-full px-4 py-2.5 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 placeholder:text-outline/60 focus:outline-none focus:border-primary/60"
                 />
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setIsAddingList(false)}
-                    className="px-3 py-1.5 rounded-xl text-xs text-outline hover:text-on-surface"
+                    className="px-3.5 py-2 rounded-xl text-xs text-outline/70 hover:text-on-surface"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-medium shadow-md hover:opacity-90"
+                    className="px-4.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-medium shadow-sm hover:opacity-90"
                   >
                     Create List
                   </button>
@@ -626,12 +623,12 @@ export function ZenTodosPage() {
                 setIsAddingList(true);
                 scrollToFarRight();
               }}
-              className="w-full h-32 rounded-2xl border-2 border-dashed border-surface-variant hover:border-primary/60 bg-surface-container-low/40 hover:bg-surface-container-low/80 flex flex-col items-center justify-center gap-2 text-outline hover:text-primary transition-all group"
+              className="w-full h-36 rounded-2xl border-2 border-dashed border-surface-variant/40 hover:border-primary/40 bg-surface-container-low/30 hover:bg-surface-container-low/60 flex flex-col items-center justify-center gap-2.5 text-outline/70 hover:text-primary transition-all group"
             >
-              <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4 text-primary" />
+              <div className="w-9 h-9 rounded-full bg-surface-container/60 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-4 h-4 text-primary/90" />
               </div>
-              <span className="text-xs font-medium tracking-wide">+ Add Another List</span>
+              <span className="text-sm font-medium tracking-wide">+ Add Another List</span>
             </button>
           )}
         </div>
@@ -641,44 +638,44 @@ export function ZenTodosPage() {
       {showAddModal && (
         <div
           onClick={() => setShowAddModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
         >
           <div
-            className="w-full max-w-md bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-200"
+            className="w-full max-w-lg bg-surface-container-lowest border border-surface-variant/40 rounded-2xl p-7 shadow-xl flex flex-col gap-6 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-outline-variant pb-3">
-              <h2 className="text-headline-md font-headline-md text-on-surface text-base font-semibold">
+            <div className="flex items-center justify-between border-b border-surface-variant/30 pb-4">
+              <h2 className="text-headline-md font-headline-md text-on-surface/95 text-lg font-semibold">
                 Add New Task
               </h2>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-on-surface-variant hover:text-primary text-sm"
+                className="text-on-surface-variant/70 hover:text-primary text-sm p-1 rounded-lg"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleQuickAdd} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <label className="text-label-md text-on-surface-variant text-xs">Task Title</label>
+            <form onSubmit={handleQuickAdd} className="flex flex-col gap-5">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-label-md text-on-surface-variant/80 text-xs font-medium">Task Title</label>
                 <input
                   type="text"
                   value={quickTitle}
                   onChange={(e) => setQuickTitle(e.target.value)}
                   placeholder="What needs focus?"
                   autoFocus
-                  className="px-3.5 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface focus:outline-none focus:border-primary"
+                  className="px-4 py-2.5 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 placeholder:text-outline/60 focus:outline-none focus:border-primary/60"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5">
-                <div className="flex flex-col gap-1">
-                  <label className="text-label-md text-on-surface-variant text-xs">List / Project</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-label-md text-on-surface-variant/80 text-xs font-medium">List / Project</label>
                   <select
                     value={quickProject}
                     onChange={(e) => setQuickProject(e.target.value)}
-                    className="px-2.5 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface cursor-pointer"
+                    className="px-3 py-2.5 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 cursor-pointer"
                   >
                     <option value="Website Redesign">Website Redesign</option>
                     {customLists.map((name) => (
@@ -690,12 +687,12 @@ export function ZenTodosPage() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-label-md text-on-surface-variant text-xs">Due</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-label-md text-on-surface-variant/80 text-xs font-medium">Due</label>
                   <select
                     value={quickDueDate}
                     onChange={(e) => setQuickDueDate(e.target.value)}
-                    className="px-2.5 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface cursor-pointer"
+                    className="px-3 py-2.5 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 cursor-pointer"
                   >
                     <option value="Today">Today</option>
                     <option value="Tomorrow">Tomorrow</option>
@@ -703,12 +700,12 @@ export function ZenTodosPage() {
                   </select>
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <label className="text-label-md text-on-surface-variant text-xs">Priority</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-label-md text-on-surface-variant/80 text-xs font-medium">Priority</label>
                   <select
                     value={quickPriority}
                     onChange={(e) => setQuickPriority(e.target.value as 'low' | 'medium' | 'high')}
-                    className="px-2.5 py-2 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface cursor-pointer"
+                    className="px-3 py-2.5 rounded-xl bg-surface/80 border border-surface-variant/50 text-sm text-on-surface/90 cursor-pointer"
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -717,17 +714,17 @@ export function ZenTodosPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-outline-variant">
+              <div className="flex justify-end gap-3 pt-4 border-t border-surface-variant/30">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-outline-variant text-on-surface-variant hover:text-on-surface text-xs"
+                  className="px-4 py-2.5 rounded-xl border border-surface-variant/40 text-on-surface-variant/80 hover:text-on-surface text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-medium shadow-md hover:opacity-90"
+                  className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium shadow-sm hover:opacity-90"
                 >
                   Add Task
                 </button>
