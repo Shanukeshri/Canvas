@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Friend } from '@/types';
 import { useApp } from '@/context/AppContext';
-import { useTheme } from '@/context/ThemeContext';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -11,146 +10,305 @@ interface OrbitBubblesProps {
   attachedFriends: Friend[];
 }
 
-// Subdued, gentle ambient palettes for friend timers (less bright, calm & low-distraction)
-const FRIEND_THEMES: Record<string, { primary: string; glow: string; text: string }> = {
-  'friend-1': { primary: '#9d84c8', glow: '#7c3aed', text: '#bfaed8' }, // Muted lavender
-  'friend-2': { primary: '#c97a3e', glow: '#c25e19', text: '#dfa77e' }, // Muted warm amber
-  'friend-3': { primary: '#3ba27e', glow: '#10b981', text: '#7fc9af' }, // Muted soft emerald
-  'friend-4': { primary: '#c75168', glow: '#be123c', text: '#dba0ae' }, // Muted rose
-  'friend-5': { primary: '#458fa8', glow: '#0284c7', text: '#88bed1' }, // Muted cyan
+// Distinct theme color tokens for each friend matching the main timer's aesthetic
+const FRIEND_THEMES: Record<string, { primary: string; glow: string }> = {
+  'friend-1': { primary: '#c084fc', glow: '#a855f7' }, // Sarah Chen: Soft Violet
+  'friend-2': { primary: '#fb923c', glow: '#f97316' }, // David Kim: Warm Amber
+  'friend-3': { primary: '#34d399', glow: '#10b981' }, // Elena Rostova: Emerald
+  'friend-4': { primary: '#f43f5e', glow: '#e11d48' }, // Marcus Vance: Rose
+  'friend-5': { primary: '#38bdf8', glow: '#0ea5e9' }, // Cyan
 };
 
-const DEFAULT_OFFSETS = [
-  { x: -380, y: -190 },
-  { x: 380, y: 190 },
-  { x: 370, y: -190 },
-  { x: -370, y: 190 },
-];
-
-const FLOAT_CLASSES = ['zen-float-0', 'zen-float-1', 'zen-float-2', 'zen-float-3'];
+interface BubblePhysics {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  phase: number;
+  isDragging: boolean;
+}
 
 export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
   const { toggleAttachFriend } = useApp();
-  const { theme } = useTheme();
 
-  // Dragging state for custom freeform placement
-  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
-  const [draggingFriendId, setDraggingFriendId] = useState<string | null>(null);
+  const bubbleDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const physicsRef = useRef<Record<string, BubblePhysics>>({});
+  const activeDragIdRef = useRef<string | null>(null);
+  const dragOffsetRef = useRef<{ startX: number; startY: number; initX: number; initY: number }>({
+    startX: 0,
+    startY: 0,
+    initX: 0,
+    initY: 0,
+  });
 
-  const dragRef = useRef<{
-    friendId: string;
-    startX: number;
-    startY: number;
-    initX: number;
-    initY: number;
-    hasMoved: boolean;
-  } | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // Initialize and synchronize physics state when attached friends change
+  useEffect(() => {
+    const total = attachedFriends.length;
+    attachedFriends.forEach((friend, idx) => {
+      if (!physicsRef.current[friend.id]) {
+        // Distribute initial phase evenly along the infinity lemniscate
+        const phase = (idx / Math.max(1, total)) * Math.PI * 2;
+        const initialX = Math.sin(phase) * 380;
+        const initialY = (Math.sin(2 * phase) / 2) * 190;
+        physicsRef.current[friend.id] = {
+          id: friend.id,
+          x: initialX,
+          y: initialY,
+          vx: 0,
+          vy: 0,
+          phase,
+          isDragging: false,
+        };
+      }
+    });
+
+    // Clean up removed friends
+    Object.keys(physicsRef.current).forEach((id) => {
+      if (!attachedFriends.some((f) => f.id === id)) {
+        delete physicsRef.current[id];
+      }
+    });
+  }, [attachedFriends]);
+
+  // Main 60/120fps physics and avoidance simulation loop
+  useEffect(() => {
+    let animId: number;
+    let lastTime = performance.now();
+
+    const simulate = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.05); // cap dt to prevent huge jumps
+      lastTime = now;
+
+      const w = typeof window !== 'undefined' ? window.innerWidth : 1440;
+      const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+      // Viewport bounds relative to center (0, 0)
+      const halfW = w / 2;
+      const halfH = h / 2;
+      const marginX = 140; // padding so bubbles don't clip viewport
+      const marginY = 140;
+      const minX = -halfW + marginX;
+      const maxX = halfW - marginX;
+      const minY = -halfH + marginY;
+      const maxY = halfH - marginY;
+
+      // Dynamic scale for the infinity path based on screen size
+      const ampX = Math.min(halfW - 180, 420);
+      const ampY = Math.min(halfH - 180, 200);
+
+      // Main timer central obstacle boundary
+      const centerRadius = 230; // Radius around main center timer to avoid
+      const centerAvoidDist = 310; // Influence zone
+
+      // Mutual bubble avoidance distance (bubble diameter ~240px)
+      const bubbleAvoidDist = 260;
+
+      const friendsList = Object.values(physicsRef.current);
+
+      friendsList.forEach((body) => {
+        if (body.isDragging) {
+          // If being dragged, direct position control
+          return;
+        }
+
+        // 1. Infinity Lemniscate Guidance Force
+        // Advance phase slowly (approx 45 seconds for a full loop)
+        body.phase += 0.14 * dt;
+        const targetX = Math.sin(body.phase) * ampX;
+        const targetY = (Math.sin(2 * body.phase) / 2) * ampY;
+
+        // Gentle spring driving force towards infinity path
+        const kDrive = 0.8;
+        const fxDrive = (targetX - body.x) * kDrive;
+        const fyDrive = (targetY - body.y) * kDrive;
+
+        let totalFx = fxDrive;
+        let totalFy = fyDrive;
+
+        // 2. Central Main Timer Avoidance (Repulsion from 0, 0)
+        const distFromCenter = Math.hypot(body.x, body.y);
+        if (distFromCenter < centerAvoidDist) {
+          const overlap = centerAvoidDist - distFromCenter;
+          const nx = distFromCenter > 0 ? body.x / distFromCenter : 1;
+          const ny = distFromCenter > 0 ? body.y / distFromCenter : 0;
+          const pushForce = Math.pow(overlap / (centerAvoidDist - centerRadius + 20), 2) * 800;
+          totalFx += nx * pushForce;
+          totalFy += ny * pushForce;
+        }
+
+        // 3. Mutual Friends Avoidance (Push apart from each other)
+        friendsList.forEach((other) => {
+          if (other.id === body.id) return;
+          const dx = body.x - other.x;
+          const dy = body.y - other.y;
+          const d = Math.hypot(dx, dy);
+          if (d < bubbleAvoidDist && d > 0) {
+            const overlap = bubbleAvoidDist - d;
+            const nx = dx / d;
+            const ny = dy / d;
+            const push = (overlap / bubbleAvoidDist) * 350;
+            totalFx += nx * push;
+            totalFy += ny * push;
+          }
+        });
+
+        // 4. Viewport Edge Boundaries Avoidance (Soft spring walls)
+        if (body.x < minX) {
+          totalFx += (minX - body.x) * 4.0;
+        } else if (body.x > maxX) {
+          totalFx += (maxX - body.x) * 4.0;
+        }
+
+        if (body.y < minY) {
+          totalFy += (minY - body.y) * 4.0;
+        } else if (body.y > maxY) {
+          totalFy += (maxY - body.y) * 4.0;
+        }
+
+        // Integrate acceleration, apply velocity damping (air resistance)
+        const damping = 0.90;
+        body.vx = (body.vx + totalFx * dt) * damping;
+        body.vy = (body.vy + totalFy * dt) * damping;
+
+        // Update position
+        body.x += body.vx * dt;
+        body.y += body.vy * dt;
+
+        // Hard clamp inside viewport
+        body.x = Math.max(minX - 20, Math.min(maxX + 20, body.x));
+        body.y = Math.max(minY - 20, Math.min(maxY + 20, body.y));
+      });
+
+      // Update DOM elements transforms directly for 60/120fps smooth motion
+      friendsList.forEach((body) => {
+        const dom = bubbleDomRefs.current[body.id];
+        if (dom) {
+          dom.style.transform = `translate3d(${body.x}px, ${body.y}px, 0) translate(-50%, -50%)`;
+        }
+      });
+
+      animId = requestAnimationFrame(simulate);
+    };
+
+    animId = requestAnimationFrame(simulate);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  // Global Pointer Event Listeners for smooth dragging & dropping
+  useEffect(() => {
+    const handleGlobalPointerMove = (e: PointerEvent) => {
+      const activeId = activeDragIdRef.current;
+      if (!activeId) return;
+
+      const body = physicsRef.current[activeId];
+      if (!body) return;
+
+      const { startX, startY, initX, initY } = dragOffsetRef.current;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      body.x = initX + deltaX;
+      body.y = initY + deltaY;
+      body.vx = 0;
+      body.vy = 0;
+
+      // Update DOM transform immediately
+      const dom = bubbleDomRefs.current[activeId];
+      if (dom) {
+        dom.style.transform = `translate3d(${body.x}px, ${body.y}px, 0) translate(-50%, -50%)`;
+      }
+    };
+
+    const handleGlobalPointerUp = () => {
+      const activeId = activeDragIdRef.current;
+      if (activeId) {
+        const body = physicsRef.current[activeId];
+        if (body) {
+          body.isDragging = false;
+          // Re-estimate phase from dropped angle so it continues infinity loop naturally
+          const angle = Math.atan2(body.y, body.x);
+          body.phase = angle;
+        }
+        activeDragIdRef.current = null;
+        setActiveDragId(null);
+      }
+    };
+
+    window.addEventListener('pointermove', handleGlobalPointerMove, { passive: true });
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    window.addEventListener('pointercancel', handleGlobalPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handleGlobalPointerMove);
+      window.removeEventListener('pointerup', handleGlobalPointerUp);
+      window.removeEventListener('pointercancel', handleGlobalPointerUp);
+    };
+  }, []);
 
   if (!attachedFriends || attachedFriends.length === 0) return null;
 
-  const handlePointerDown = (friendId: string, idx: number, e: React.PointerEvent<HTMLDivElement>) => {
-    // Only left click / primary pointer
-    if (e.button !== 0) return;
+  const handlePointerDown = (friendId: string, e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
 
-    const currentPos = positions[friendId] || DEFAULT_OFFSETS[idx % DEFAULT_OFFSETS.length];
-    dragRef.current = {
-      friendId,
+    const body = physicsRef.current[friendId];
+    if (!body) return;
+
+    body.isDragging = true;
+    activeDragIdRef.current = friendId;
+    dragOffsetRef.current = {
       startX: e.clientX,
       startY: e.clientY,
-      initX: currentPos.x,
-      initY: currentPos.y,
-      hasMoved: false,
+      initX: body.x,
+      initY: body.y,
     };
-    setDraggingFriendId(friendId);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragRef.current) return;
-    const { friendId, startX, startY, initX, initY } = dragRef.current;
-    const deltaX = e.clientX - startX;
-    const deltaY = e.clientY - startY;
-
-    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
-      dragRef.current.hasMoved = true;
-    }
-
-    setPositions((prev) => ({
-      ...prev,
-      [friendId]: {
-        x: initX + deltaX,
-        y: initY + deltaY,
-      },
-    }));
-  };
-
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current) {
-      try {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch (err) {
-        // ignore
-      }
-      dragRef.current = null;
-    }
-    setDraggingFriendId(null);
+    setActiveDragId(friendId);
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-10">
-      {attachedFriends.map((friend, idx) => {
-        const isDragging = draggingFriendId === friend.id;
-        const customPos = positions[friend.id];
-        const defaultOffset = DEFAULT_OFFSETS[idx % DEFAULT_OFFSETS.length];
-        const floatClass = !customPos && !isDragging ? FLOAT_CLASSES[idx % FLOAT_CLASSES.length] : '';
-
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-20">
+      {attachedFriends.map((friend) => {
+        const isDragging = activeDragId === friend.id;
         const totalSeconds = (friend.timerMinutes || 25) * 60 + (friend.timerSeconds || 0);
         const progressFraction = Math.max(0.15, (totalSeconds % (25 * 60)) / (25 * 60));
         const strokeDashoffset = 301.59 - 301.59 * progressFraction;
 
-        // Distinct harmonious subdued MD3 theme palette for each friend
+        // Distinct harmonious theme palette matching main timer
         const themeTokens = FRIEND_THEMES[friend.id] || {
-          primary: '#9d84c8',
-          glow: '#7c3aed',
-          text: '#bfaed8',
+          primary: friend.color || '#c084fc',
+          glow: friend.color || '#a855f7',
         };
-
-        const currentPos = customPos || defaultOffset;
 
         return (
           <div
             key={friend.id}
-            onPointerDown={(e) => handlePointerDown(friend.id, idx, e)}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
+            ref={(el) => {
+              bubbleDomRefs.current[friend.id] = el;
+            }}
+            onPointerDown={(e) => handlePointerDown(friend.id, e)}
             style={{
               position: 'absolute',
               top: '50%',
               left: '50%',
-              transform: customPos || isDragging
-                ? `translate3d(${currentPos.x}px, ${currentPos.y}px, 0) translate(-50%, -50%)`
-                : undefined,
+              transform: 'translate3d(0, 0, 0) translate(-50%, -50%)',
               willChange: 'transform',
               touchAction: 'none',
+              userSelect: 'none',
             }}
             className={clsx(
-              'pointer-events-auto group select-none transition-shadow',
-              floatClass,
-              isDragging ? 'cursor-grabbing z-40 scale-[1.03]' : 'cursor-grab hover:z-30'
+              'pointer-events-auto group select-none',
+              isDragging ? 'cursor-grabbing z-50 scale-[1.02]' : 'cursor-grab hover:z-40'
             )}
-            title="Drag to reposition friend timer"
+            title="Drag with hand or mouse to reposition • Floats slowly avoiding center and boundaries"
           >
-            {/* Friend Timer: Less bright, ambient, subtle glow */}
-            <div
-              className={clsx(
-                'relative w-[230px] h-[230px] flex flex-col items-center justify-center select-none transition-all duration-300',
-                isDragging ? 'opacity-90' : 'opacity-40 hover:opacity-80'
-              )}
-            >
-              {/* Soft Ambient Glow (Subdued) */}
+            {/* Friend Timer: EXACT Same Look as Main Timer with its own theme color */}
+            <div className="relative w-[240px] h-[240px] lg:w-[270px] lg:h-[270px] flex flex-col items-center justify-center select-none shrink-0">
+              {/* Background Subtle Gradient Radial Glow (Matching Main Timer) */}
               <div
-                className="absolute w-[180px] h-[180px] rounded-full blur-[60px] opacity-10 pointer-events-none transition-opacity duration-500 group-hover:opacity-20"
+                className="absolute w-[320px] h-[320px] rounded-full blur-[90px] opacity-15 pointer-events-none transition-opacity duration-700"
                 style={{ backgroundColor: themeTokens.glow }}
               />
 
@@ -161,14 +319,14 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   e.stopPropagation();
                   toggleAttachFriend(friend.id);
                 }}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-surface-container-high/80 border border-outline-variant/50 hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 shadow-sm cursor-pointer"
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-surface-container-high/80 border border-outline-variant/60 hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 shadow-sm cursor-pointer"
                 title={`Remove ${friend.name} from canvas`}
                 aria-label={`Remove ${friend.name}`}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
 
-              {/* SVG Progress Circle Ring — Subdued Track and Arc */}
+              {/* SVG Progress Circle Ring — Identical Geometry & Stroke Styling to Main Timer */}
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.01]"
                 preserveAspectRatio="xMidYMid meet"
@@ -176,7 +334,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               >
                 {/* Outer track */}
                 <circle
-                  className="text-outline-variant opacity-20"
+                  className="text-outline-variant opacity-40"
                   cx="50"
                   cy="50"
                   fill="none"
@@ -184,9 +342,9 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   stroke="currentColor"
                   strokeWidth="0.75"
                 />
-                {/* Dynamic progress arc in friend's muted color */}
+                {/* Dynamic progress arc in friend's unique color */}
                 <circle
-                  className="transition-all duration-700 ease-out -rotate-90 origin-center opacity-50 group-hover:opacity-75"
+                  className="-rotate-90 origin-center transition-all duration-700 ease-out"
                   cx="50"
                   cy="50"
                   fill="none"
@@ -194,34 +352,34 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   stroke={themeTokens.primary}
                   strokeDasharray="301.59"
                   strokeDashoffset={strokeDashoffset}
-                  strokeWidth="1.25"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                 />
               </svg>
 
-              {/* Inside Content — Subdued Typography */}
-              <div className="flex flex-col items-center justify-center z-10 space-y-sm pointer-events-none">
-                {/* Friend Name Header */}
-                <span className="font-label-md text-[11px] tracking-[0.25em] uppercase text-outline opacity-70 transition-colors group-hover:opacity-100">
+              {/* Center Content — Matches Main Timer Typography & Proportions */}
+              <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
+                {/* Name Header in Place of 'FOCUS' */}
+                <span className="font-label-md text-xs md:text-sm text-outline tracking-[0.25em] uppercase transition-colors group-hover:text-primary">
                   {friend.name}
                 </span>
 
-                {/* Main Countdown Display — Subdued Brightness */}
+                {/* Countdown Numbers in Friend's Theme Color */}
                 <span
-                  className="font-timer-display text-[36px] leading-none tabular-nums tracking-tighter transition-all opacity-70 group-hover:opacity-95"
+                  className="font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light"
                   style={{ color: themeTokens.primary }}
                 >
                   {friend.timerMinutes}:{friend.timerSeconds ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
                 </span>
 
-                {/* Session Indicator Dots */}
-                <div className="flex items-center gap-1.5 pt-1.5 opacity-50 group-hover:opacity-80">
+                {/* Session Indicator Dots matching Main Timer */}
+                <div className="flex items-center gap-1.5 pt-1.5">
                   {[0, 1, 2, 3].map((i) => (
                     <span
                       key={i}
                       className={clsx(
                         'w-1.5 h-1.5 rounded-full transition-all',
-                        i < 2 ? 'scale-105' : 'bg-outline-variant opacity-40'
+                        i < 2 ? 'scale-125' : 'bg-outline-variant'
                       )}
                       style={{
                         backgroundColor: i < 2 ? themeTokens.primary : undefined,
@@ -232,7 +390,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               </div>
 
               {/* Hover Tooltip for Task Details */}
-              <div className="absolute top-full mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-lowest border border-outline-variant/60 px-3 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap shadow-[0_4px_20px_rgba(45,10,10,0.1)] pointer-events-none z-30">
+              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-lowest border border-outline-variant px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shadow-[0_4px_20px_rgba(45,10,10,0.1)] pointer-events-none z-30">
                 <span className="text-on-surface-variant">Task: </span>
                 <span style={{ color: themeTokens.primary }}>{friend.currentTask || 'Focusing quietly'}</span>
               </div>
