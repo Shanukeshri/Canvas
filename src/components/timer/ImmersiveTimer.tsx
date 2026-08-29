@@ -101,21 +101,40 @@ export function ImmersiveTimer() {
       {/* Floating & Repelling Circular Friend Timers Layer (~2/3 size of main timer, zero-CPU CSS floating) */}
       <OrbitBubbles attachedFriends={attachedFriends} />
 
-      {/* Focus Task Heading: Centered midway between upper viewport and top of central timer */}
-      <div className="absolute top-[8vh] lg:top-[9vh] left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none w-full max-w-2xl px-6">
-        <span className="font-body-lg text-sm md:text-base text-outline tracking-wide truncate block">
+      {/* Focus Task Heading: Centered exactly midway between upper viewport and top of central timer */}
+      <div className="absolute top-[calc((50vh-207px)/2)] lg:top-[calc((50vh-265px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none w-full max-w-3xl px-6">
+        <span className="font-body-lg text-base md:text-lg lg:text-xl font-medium md:font-semibold text-on-surface-variant tracking-wide truncate block opacity-90">
           {selectedTask ? selectedTask.title : 'Deep Focus Session'}
         </span>
       </div>
 
-      {/* Center Primary Timer Ring: Exactly centered on screen */}
+      {/* Center Primary Timer Ring: Perfectly balanced size (414px mobile / 530px desktop) */}
       <button
+        id="main-timer-ring"
         type="button"
         onClick={handleTimerClick}
         onDoubleClick={handleTimerDoubleClick}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[340px] h-[340px] lg:w-[440px] lg:h-[440px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[414px] h-[414px] lg:w-[530px] lg:h-[530px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none"
         title="Click to Start/Pause • Double-click to Reset"
       >
+        {/* Outer Ambient Themed Glow Layer */}
+        <div
+          className={clsx(
+            'absolute w-[420px] h-[420px] lg:w-[550px] lg:h-[550px] rounded-full blur-[90px] pointer-events-none transition-all duration-700',
+            timerState === 'running' ? 'opacity-30 scale-105' : 'opacity-18 group-hover:opacity-28'
+          )}
+          style={{ backgroundColor: theme.hex }}
+        />
+
+        {/* Inner Theme Glow inside the main timer */}
+        <div
+          className={clsx(
+            'absolute w-[240px] h-[240px] lg:w-[320px] lg:h-[320px] rounded-full blur-[60px] pointer-events-none transition-all duration-700',
+            timerState === 'running' ? 'opacity-25' : 'opacity-15 group-hover:opacity-22'
+          )}
+          style={{ backgroundColor: theme.hex }}
+        />
+
         {/* SVG Progress Circle Ring */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.01]"
@@ -131,6 +150,22 @@ export function ImmersiveTimer() {
             r="48"
             stroke="currentColor"
             strokeWidth="0.75"
+          />
+          {/* Subtle Outer Themed Glow on Progress Arc */}
+          <circle
+            className="-rotate-90 origin-center transition-all duration-700 ease-out opacity-40"
+            cx="50"
+            cy="50"
+            fill="none"
+            r="48"
+            stroke={theme.hex}
+            strokeDasharray="301.59"
+            strokeDashoffset={strokeDashoffset}
+            strokeWidth="3.0"
+            strokeLinecap="round"
+            style={{
+              filter: `drop-shadow(0 0 10px ${theme.hex})`,
+            }}
           />
           {/* Dynamic progress arc */}
           <circle
@@ -148,26 +183,26 @@ export function ImmersiveTimer() {
         </svg>
 
         {/* Center Content */}
-        <div className="flex flex-col items-center justify-center z-10 space-y-sm pointer-events-none">
-          <span className="font-label-md text-label-md text-outline tracking-[0.25em] uppercase transition-colors group-hover:text-primary">
+        <div className="flex flex-col items-center justify-center z-10 space-y-2 pointer-events-none">
+          <span className="font-label-md text-sm lg:text-base text-outline tracking-[0.28em] uppercase transition-colors group-hover:text-primary">
             {timerState === 'idle' && 'FOCUS'}
             {timerState === 'running' && (isBreakPhase ? 'REST' : 'FOCUS')}
             {timerState === 'paused' && 'PAUSED'}
             {timerState === 'completed' && 'DONE'}
           </span>
 
-          <span className="font-timer-display text-timer-display text-primary tabular-nums tracking-tighter transition-all group-hover:opacity-95">
+          <span className="font-timer-display text-[78px] lg:text-[100px] leading-none text-primary tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light">
             {formatTime(remainingSeconds)}
           </span>
 
           {/* Session Indicator Dots */}
           {timerMode === 'pomodoro' && (
-            <div className="flex items-center gap-1.5 pt-2">
+            <div className="flex items-center gap-2 pt-3">
               {Array.from({ length: targetSessions }).map((_, idx) => (
                 <span
                   key={idx}
                   className={clsx(
-                    'w-1.5 h-1.5 rounded-full transition-all',
+                    'w-2 h-2 rounded-full transition-all',
                     idx < sessionsCompleted ? 'bg-primary scale-125' : 'bg-outline-variant'
                   )}
                 />

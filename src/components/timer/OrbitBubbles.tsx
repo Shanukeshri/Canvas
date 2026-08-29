@@ -85,25 +85,31 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
       const w = typeof window !== 'undefined' ? window.innerWidth : 1440;
       const h = typeof window !== 'undefined' ? window.innerHeight : 800;
 
+      // Dynamically measure the actual rendered radius of the main central timer
+      const mainTimerEl = typeof document !== 'undefined' ? document.getElementById('main-timer-ring') : null;
+      const mainTimerRadius = mainTimerEl ? mainTimerEl.getBoundingClientRect().width / 2 : (w > 1024 ? 295 : 230);
+      const friendRadius = 135; // Bubble radius (~270px diameter)
+
+      // Guaranteed dynamic clearance based on the EXACT size of the main timer:
+      // At any main timer size, the two circles physically cannot overlap.
+      const minCenterDist = mainTimerRadius + friendRadius + 30; // Hard clearance boundary
+      const centerAvoidDist = minCenterDist + 75;                // Repulsion guidance zone
+
       // Viewport bounds relative to center (0, 0)
       const halfW = w / 2;
       const halfH = h / 2;
-      const marginX = 140; // padding so bubbles don't clip viewport
+      const marginX = 140;
       const marginY = 140;
       const minX = -halfW + marginX;
       const maxX = halfW - marginX;
       const minY = -halfH + marginY;
       const maxY = halfH - marginY;
 
-      // Dynamic scale for the infinity path based on screen size
-      const ampX = Math.min(halfW - 180, 480);
-      const ampY = Math.min(halfH - 180, 240);
+      // Dynamic scale for the infinity path adapted to screen and main timer size
+      const ampX = Math.min(halfW - 160, Math.max(minCenterDist + 40, 520));
+      const ampY = Math.min(halfH - 160, Math.max((minCenterDist + 40) * 0.52, 270));
 
-      // Main timer central obstacle boundary (440px diameter timer + 260px diameter bubble = 350px min distance)
-      const centerAvoidDist = 440; // Repulsion field radius around central timer
-      const minCenterDist = 380;   // Hard minimum boundary distance from center
-
-      // Mutual bubble avoidance distance (two ~260px bubbles need >300px clearance)
+      // Mutual bubble avoidance distance (two ~270px bubbles need >300px clearance)
       const bubbleAvoidDist = 340;
       const minBubbleDist = 280;
 
@@ -327,9 +333,9 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           >
             {/* Friend Timer: EXACT Same Look as Main Timer with its own theme color */}
             <div className="relative w-[240px] h-[240px] lg:w-[270px] lg:h-[270px] flex flex-col items-center justify-center select-none shrink-0">
-              {/* Background Subtle Gradient Radial Glow (Matching Main Timer) */}
+              {/* Background Subtle Gradient Radial Glow (Halved spread) */}
               <div
-                className="absolute w-[320px] h-[320px] rounded-full blur-[90px] opacity-15 pointer-events-none transition-opacity duration-700"
+                className="absolute w-[160px] h-[160px] rounded-full blur-[45px] opacity-15 pointer-events-none transition-opacity duration-700"
                 style={{ backgroundColor: themeTokens.glow }}
               />
 
