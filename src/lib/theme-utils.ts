@@ -1,10 +1,11 @@
 import { ThemeColor } from '@/types';
 
 // Central theme mix percentages as defined in theme.txt
+// Tuned for richer user color presence while keeping a minimalist zen aesthetic
 export const THEME_MIX = {
-  primary: 0.05,   // 5% tint on base background / canvas
-  secondary: 0.12, // 12% tint on secondary surfaces / cards / borders
-  accent: 0.25,    // 25% tint on accent / active elements / text
+  primary: 0.08,   // 8% tint on base background / canvas
+  secondary: 0.16, // 16% tint on secondary surfaces / cards / borders
+  accent: 0.45,    // 45% tint on accent / active elements / text
 };
 
 // 23 Predefined Harmonious Themes
@@ -101,7 +102,7 @@ export function mixColor(
 /**
  * Centrally derives all minimalist UI theme variables from base tones (White/Grey/Black)
  * mixed with the user's selected accent color.
- * No heavy glows, completely zen and calm.
+ * No heavy glows, completely zen and calm with rich user theme presence.
  */
 export function generateThemeCssVariables(
   selectedHex: string,
@@ -114,22 +115,24 @@ export function generateThemeCssVariables(
     // Primary Base: Black
     // Secondary Base: Dark Grey
     // Accent Base: Crisp White
-    const baseBlack = { r: 11, g: 11, b: 14 };
-    const baseCard = { r: 18, g: 18, b: 22 };
-    const baseSurfaceHigh = { r: 25, g: 25, b: 30 };
-    const baseBorder = { r: 40, g: 40, b: 46 };
-    const baseOutlineVariant = { r: 52, g: 52, b: 60 };
-    const baseMutedText = { r: 155, g: 155, b: 165 };
-    const baseWhite = { r: 245, g: 245, b: 248 };
+    const baseBlack = { r: 10, g: 10, b: 13 };
+    const baseCard = { r: 18, g: 18, b: 23 };
+    const baseSurfaceHigh = { r: 26, g: 26, b: 32 };
+    const baseBorder = { r: 42, g: 42, b: 50 };
+    const baseOutlineVariant = { r: 58, g: 58, b: 68 };
+    const baseMutedText = { r: 165, g: 165, b: 178 };
+    const baseWhite = { r: 248, g: 248, b: 250 };
 
-    // Subtle mixing
-    const bgTint = mixColor(baseBlack, tint, THEME_MIX.primary); // 5% tint
-    const cardTint = mixColor(baseCard, tint, THEME_MIX.secondary); // 12% tint
-    const hoverTint = mixColor(baseSurfaceHigh, tint, THEME_MIX.secondary);
+    // Richer percentage mixing
+    const bgTint = mixColor(baseBlack, tint, THEME_MIX.primary); // 8% tint
+    const cardTint = mixColor(baseCard, tint, THEME_MIX.secondary); // 16% tint
+    const hoverTint = mixColor(baseSurfaceHigh, tint, THEME_MIX.secondary * 1.2);
     const borderTint = mixColor(baseBorder, tint, THEME_MIX.secondary);
     const outlineVarTint = mixColor(baseOutlineVariant, tint, THEME_MIX.secondary);
-    const mutedTextTint = mixColor(baseMutedText, tint, THEME_MIX.primary * 2);
-    const primaryActiveTint = mixColor(baseWhite, tint, THEME_MIX.accent); // 25% tint
+    const mutedTextTint = mixColor(baseMutedText, tint, THEME_MIX.secondary);
+    const primaryActiveTint = mixColor(baseWhite, tint, THEME_MIX.accent); // 45% tint
+    const timerDigitsTint = mixColor(baseWhite, tint, 0.50); // 50% tint for timer digits
+    const timerSurfaceTint = mixColor(baseCard, tint, 0.22); // 22% tint for timer disc
 
     return {
       '--primary': primaryActiveTint,
@@ -150,7 +153,7 @@ export function generateThemeCssVariables(
       '--on-tertiary-container': primaryActiveTint,
 
       '--surface': bgTint,
-      '--on-surface': baseWhite ? `rgb(${baseWhite.r}, ${baseWhite.g}, ${baseWhite.b})` : '#f5f5f7',
+      '--on-surface': '#f5f5f7',
       '--surface-dim': bgTint,
       '--surface-bright': hoverTint,
       '--surface-container-lowest': bgTint,
@@ -176,31 +179,37 @@ export function generateThemeCssVariables(
       '--zen-text': '#f5f5f7',
       '--zen-text-muted': mutedTextTint,
       '--zen-accent': selectedHex,
-      '--zen-accent-glow': 'transparent', // Glows removed for minimalist zen aesthetic
+      '--zen-accent-glow': 'transparent',
       '--zen-accent-hover': primaryActiveTint,
       '--zen-accent-subtle': cardTint,
       '--zen-ring': primaryActiveTint,
+
+      '--timer-accent': selectedHex,
+      '--timer-digits': timerDigitsTint,
+      '--timer-surface': timerSurfaceTint,
     };
   } else {
     // Base Tones for LIGHT MODE:
     // Primary Base: White
     // Secondary Base: Grey
     // Accent Base: Dark Black
-    const baseWhite = { r: 253, g: 253, b: 254 };
+    const baseWhite = { r: 252, g: 252, b: 254 };
     const baseCard = { r: 255, g: 255, b: 255 };
-    const baseSurfaceLow = { r: 247, g: 247, b: 249 };
-    const baseSurfaceHigh = { r: 238, g: 238, b: 242 };
-    const baseBorder = { r: 226, g: 226, b: 232 };
-    const baseMutedText = { r: 100, g: 100, b: 112 };
-    const baseBlack = { r: 20, g: 20, b: 26 };
+    const baseSurfaceLow = { r: 245, g: 245, b: 248 };
+    const baseSurfaceHigh = { r: 236, g: 236, b: 242 };
+    const baseBorder = { r: 222, g: 222, b: 230 };
+    const baseMutedText = { r: 90, g: 90, b: 105 };
+    const baseBlack = { r: 18, g: 18, b: 24 };
 
-    const bgTint = mixColor(baseWhite, tint, THEME_MIX.primary); // 5% tint
+    const bgTint = mixColor(baseWhite, tint, THEME_MIX.primary); // 8% tint
     const cardTint = baseCard ? '#ffffff' : mixColor(baseCard, tint, THEME_MIX.primary);
-    const surfaceLowTint = mixColor(baseSurfaceLow, tint, THEME_MIX.primary * 1.5);
-    const surfaceHighTint = mixColor(baseSurfaceHigh, tint, THEME_MIX.secondary);
+    const surfaceLowTint = mixColor(baseSurfaceLow, tint, THEME_MIX.secondary);
+    const surfaceHighTint = mixColor(baseSurfaceHigh, tint, THEME_MIX.secondary * 1.2);
     const borderTint = mixColor(baseBorder, tint, THEME_MIX.secondary);
-    const mutedTextTint = mixColor(baseMutedText, tint, THEME_MIX.primary * 2);
-    const primaryActiveTint = mixColor(baseBlack, tint, THEME_MIX.accent); // 25% tint
+    const mutedTextTint = mixColor(baseMutedText, tint, THEME_MIX.secondary);
+    const primaryActiveTint = mixColor(baseBlack, tint, THEME_MIX.accent); // 45% tint
+    const timerDigitsTint = mixColor(baseBlack, tint, 0.55); // 55% tint for timer digits
+    const timerSurfaceTint = mixColor(baseSurfaceLow, tint, 0.20);
 
     return {
       '--primary': primaryActiveTint,
@@ -247,10 +256,14 @@ export function generateThemeCssVariables(
       '--zen-text': '#14141a',
       '--zen-text-muted': mutedTextTint,
       '--zen-accent': selectedHex,
-      '--zen-accent-glow': 'transparent', // Glows removed for minimalist zen aesthetic
+      '--zen-accent-glow': 'transparent',
       '--zen-accent-hover': primaryActiveTint,
       '--zen-accent-subtle': surfaceLowTint,
       '--zen-ring': primaryActiveTint,
+
+      '--timer-accent': selectedHex,
+      '--timer-digits': timerDigitsTint,
+      '--timer-surface': timerSurfaceTint,
     };
   }
 }

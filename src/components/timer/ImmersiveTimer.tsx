@@ -97,12 +97,15 @@ export function ImmersiveTimer() {
 
       {/* Focus Task Heading */}
       <div className="absolute top-[calc((50vh-207px)/2)] lg:top-[calc((50vh-265px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none w-full max-w-3xl px-6">
-        <span className="font-body-lg text-sm md:text-base lg:text-lg font-medium text-on-surface-variant tracking-wide truncate block opacity-80">
+        <span
+          className="font-body-lg text-sm md:text-base lg:text-lg font-medium tracking-wide truncate block"
+          style={{ color: 'var(--primary)' }}
+        >
           {selectedTask ? selectedTask.title : 'Deep Focus Session'}
         </span>
       </div>
 
-      {/* Center Primary Timer Ring: Minimalist Zen Design with Zero Glows */}
+      {/* Center Primary Timer Ring: Minimalist Zen Design with Rich Theme Presence */}
       <button
         id="main-timer-ring"
         type="button"
@@ -111,60 +114,75 @@ export function ImmersiveTimer() {
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[414px] h-[414px] lg:w-[530px] lg:h-[530px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none"
         title="Click to Start/Pause • Double-click to Reset"
       >
-        {/* SVG Progress Circle Ring — Minimalist Precision */}
+        {/* Subtle Tinted Inner Canvas Disc */}
+        <div
+          className="absolute inset-6 rounded-full border border-surface-variant/60 pointer-events-none transition-colors"
+          style={{ backgroundColor: 'var(--timer-surface)' }}
+        />
+
+        {/* SVG Progress Circle Ring — Minimalist Precision with User Theme Color */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.008]"
           preserveAspectRatio="xMidYMid meet"
           viewBox="0 0 100 100"
         >
-          {/* Outer track */}
+          {/* Outer track tinted with user theme color */}
           <circle
-            className="text-outline-variant opacity-30"
             cx="50"
             cy="50"
             fill="none"
             r="48"
-            stroke="currentColor"
-            strokeWidth="0.6"
+            stroke={theme.hex}
+            strokeOpacity={0.22}
+            strokeWidth="0.75"
           />
-          {/* Dynamic progress arc */}
+          {/* Dynamic progress arc in vibrant theme color */}
           <circle
-            className="text-primary -rotate-90 origin-center transition-all duration-700 ease-out"
+            className="-rotate-90 origin-center transition-all duration-700 ease-out"
             cx="50"
             cy="50"
             fill="none"
             r="48"
-            stroke="currentColor"
+            stroke={theme.hex}
             strokeDasharray="301.59"
             strokeDashoffset={strokeDashoffset}
-            strokeWidth="1.2"
+            strokeWidth="1.5"
             strokeLinecap="round"
           />
         </svg>
 
         {/* Center Content */}
         <div className="flex flex-col items-center justify-center z-10 space-y-2 pointer-events-none">
-          <span className="font-label-md text-xs lg:text-sm text-outline tracking-[0.28em] uppercase transition-colors group-hover:text-primary">
+          <span
+            className="font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors"
+            style={{ color: theme.hex }}
+          >
             {timerState === 'idle' && 'FOCUS'}
             {timerState === 'running' && (isBreakPhase ? 'REST' : 'FOCUS')}
             {timerState === 'paused' && 'PAUSED'}
             {timerState === 'completed' && 'DONE'}
           </span>
 
-          <span className="font-timer-display text-[78px] lg:text-[100px] leading-none text-primary tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light">
+          <span
+            className="font-timer-display text-[78px] lg:text-[100px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light"
+            style={{ color: 'var(--timer-digits, var(--primary))' }}
+          >
             {formatTime(remainingSeconds)}
           </span>
 
-          {/* Session Indicator Dots */}
+          {/* Session Indicator Dots in User Theme Color */}
           {timerMode === 'pomodoro' && (
             <div className="flex items-center gap-2 pt-3">
               {Array.from({ length: targetSessions }).map((_, idx) => (
                 <span
                   key={idx}
                   className={clsx(
-                    'w-1.5 h-1.5 rounded-full transition-all',
-                    idx < sessionsCompleted ? 'bg-primary scale-125' : 'bg-outline-variant opacity-40'
+                    'w-2 h-2 rounded-full transition-all',
+                    idx < sessionsCompleted ? 'scale-125' : 'opacity-30'
                   )}
+                  style={{
+                    backgroundColor: idx < sessionsCompleted ? theme.hex : 'var(--outline-variant)',
+                  }}
                 />
               ))}
             </div>
