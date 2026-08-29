@@ -1,66 +1,280 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bell, Check, X, Clock, Users, Award } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  X,
+  Clock,
+  Users,
+  Award,
+  Trash2,
+  Sparkles,
+  ArrowRight,
+  UserPlus,
+  Flame,
+} from 'lucide-react';
 import clsx from 'clsx';
 
 export function NotificationsOverlay() {
-  const { overlay, closeOverlay, notifications, markNotificationRead } = useApp();
+  const {
+    overlay,
+    closeOverlay,
+    notifications,
+    markNotificationRead,
+    setActiveTab,
+    setActiveGroupId,
+    acceptFriendRequest,
+    declineFriendRequest,
+  } = useApp();
+  const { theme } = useTheme();
+
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'invites' | 'milestones'>('all');
 
   if (overlay !== 'notifications') return null;
 
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const filteredNotifications = notifications.filter((notif) => {
+    if (activeFilter === 'unread') return !notif.read;
+    if (activeFilter === 'invites') return notif.type === 'group_invite' || notif.type === 'friend_request';
+    if (activeFilter === 'milestones') return notif.type === 'timer_complete';
+    return true;
+  });
+
+  const getNotifIcon = (type?: string) => {
+    switch (type) {
+      case 'group_invite':
+        return <Users className="w-4 h-4 text-purple-400" />;
+      case 'friend_request':
+        return <UserPlus className="w-4 h-4 text-blue-400" />;
+      case 'timer_complete':
+        return <Flame className="w-4 h-4 text-amber-400" />;
+      default:
+        return <Clock className="w-4 h-4 text-primary" />;
+    }
+  };
+
+  const handleAction = (notif: (typeof notifications)[0]) => {
+    markNotificationRead(notif.id);
+    if (notif.type === 'group_invite') {
+      setActiveTab('groups');
+      closeOverlay();
+    } else if (notif.type === 'friend_request') {
+      acceptFriendRequest('elena-req');
+      closeOverlay();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={closeOverlay}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div
-        className="w-full max-w-md bg-zen-card border border-zen-border rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto"
+        className="w-full max-w-[520px] bg-surface-container-lowest/95 backdrop-blur-xl border border-surface-variant/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zen-border pb-3">
-          <div className="flex items-center gap-2.5">
-            <Bell className="w-5 h-5 text-zen-accent" />
-            <h2 className="text-lg font-semibold text-zen-text">Notifications</h2>
-          </div>
-          <button
-            onClick={closeOverlay}
-            className="p-1 rounded-xl text-zen-text-muted hover:text-zen-text hover:bg-zen-surface transition-all"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* List */}
-        <div className="flex flex-col gap-3">
-          {notifications.map((notif) => (
-            <div
-              key={notif.id}
-              onClick={() => markNotificationRead(notif.id)}
-              className={clsx(
-                'p-4 rounded-2xl border transition-all cursor-pointer flex gap-3.5',
-                notif.read
-                  ? 'border-zen-border bg-zen-surface/40 opacity-70'
-                  : 'border-zen-accent/40 bg-zen-accent-subtle/40 shadow-sm'
-              )}
-            >
-              <div className="p-2 rounded-xl bg-zen-surface border border-zen-border text-zen-accent flex-shrink-0 h-fit">
-                {notif.type === 'group_invite' ? (
-                  <Users className="w-4 h-4" />
-                ) : notif.type === 'timer_complete' ? (
-                  <Award className="w-4 h-4" />
-                ) : (
-                  <Clock className="w-4 h-4" />
-                )}
+        <div className="p-5 pb-4 border-b border-surface-variant/30 flex flex-col gap-3 bg-surface-container-lowest/70">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center border border-surface-variant/40 shadow-sm"
+                style={{ backgroundColor: theme.hex + '15', color: theme.hex }}
+              >
+                <Bell className="w-5 h-5" />
               </div>
-              <div className="flex flex-col gap-1 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-zen-text">{notif.title}</span>
-                  <span className="text-[11px] text-zen-text-muted">{notif.time}</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-on-surface">Notifications</h2>
+                  {unreadCount > 0 && (
+                    <span
+                      className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm"
+                      style={{ backgroundColor: theme.hex }}
+                    >
+                      {unreadCount} new
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-zen-text-muted leading-relaxed">{notif.message}</p>
+                <p className="text-xs text-outline">Presence alerts, invites & focus milestones</p>
               </div>
             </div>
-          ))}
+
+            <div className="flex items-center gap-1">
+              {unreadCount > 0 && (
+                <button
+                  onClick={() => notifications.forEach((n) => markNotificationRead(n.id))}
+                  title="Mark all as read"
+                  className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container-low transition-colors flex items-center gap-1.5 text-xs font-medium"
+                >
+                  <CheckCheck className="w-4 h-4" />
+                  <span className="hidden sm:inline">Mark read</span>
+                </button>
+              )}
+              <button
+                onClick={closeOverlay}
+                className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container-low transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 pt-1 overflow-x-auto no-scrollbar">
+            {(
+              [
+                { id: 'all', label: `All (${notifications.length})` },
+                { id: 'unread', label: `Unread (${unreadCount})` },
+                { id: 'invites', label: 'Invites & Social' },
+                { id: 'milestones', label: 'Milestones' },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id)}
+                className={clsx(
+                  'px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0',
+                  activeFilter === tab.id
+                    ? 'bg-surface-container text-primary font-semibold border border-surface-variant/60 shadow-sm'
+                    : 'text-outline hover:text-on-surface hover:bg-surface-container/50'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notifications List */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+          {filteredNotifications.length === 0 ? (
+            <div className="py-12 px-6 flex flex-col items-center justify-center text-center">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center border border-surface-variant/40 mb-3 shadow-inner"
+                style={{ backgroundColor: theme.hex + '10' }}
+              >
+                <Sparkles className="w-6 h-6" style={{ color: theme.hex }} />
+              </div>
+              <h3 className="text-sm font-semibold text-on-surface">All quiet & peaceful</h3>
+              <p className="text-xs text-outline mt-1 max-w-xs">
+                No notifications in this filter. Time to return to deep flow.
+              </p>
+            </div>
+          ) : (
+            filteredNotifications.map((notif) => {
+              const isUnread = !notif.read;
+              return (
+                <div
+                  key={notif.id}
+                  onClick={() => markNotificationRead(notif.id)}
+                  className={clsx(
+                    'group relative p-3.5 rounded-2xl border transition-all flex gap-3.5 items-start',
+                    isUnread
+                      ? 'bg-surface-container-low/90 border-surface-variant hover:border-primary/50 shadow-sm'
+                      : 'bg-surface-container-lowest/60 border-surface-variant/20 hover:border-surface-variant/50 opacity-80 hover:opacity-100'
+                  )}
+                >
+                  {/* Left Accent indicator for unread */}
+                  {isUnread && (
+                    <div
+                      className="absolute left-0 top-3 bottom-3 w-1 rounded-r-full"
+                      style={{ backgroundColor: theme.hex }}
+                    />
+                  )}
+
+                  {/* Icon Avatar */}
+                  <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center shrink-0 border border-surface-variant/40 mt-0.5">
+                    {getNotifIcon(notif.type)}
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4
+                        className={clsx(
+                          'text-xs font-semibold truncate',
+                          isUnread ? 'text-on-surface' : 'text-on-surface-variant'
+                        )}
+                      >
+                        {notif.title}
+                      </h4>
+                      <span className="text-[10px] text-outline shrink-0 font-mono">{notif.time}</span>
+                    </div>
+                    <p className="text-[11px] text-outline mt-1 leading-relaxed break-words">
+                      {notif.message}
+                    </p>
+
+                    {/* Actionable buttons for invites */}
+                    {notif.type === 'group_invite' && (
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(notif);
+                          }}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: theme.hex }}
+                        >
+                          Join Focus Group <ArrowRight className="w-3 h-3" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            markNotificationRead(notif.id);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
+                    {notif.type === 'friend_request' && (
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(notif);
+                          }}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                          style={{ backgroundColor: theme.hex }}
+                        >
+                          <Check className="w-3 h-3" /> Accept
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            declineFriendRequest('elena-req');
+                            markNotificationRead(notif.id);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-error hover:bg-surface-container transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3.5 border-t border-surface-variant/30 bg-surface-container-lowest/80 flex items-center justify-between text-[11px] text-outline px-5">
+          <span>{notifications.length} total notifications</span>
+          <button
+            onClick={closeOverlay}
+            className="hover:text-primary transition-colors underline underline-offset-2"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

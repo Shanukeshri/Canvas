@@ -2,7 +2,18 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Search, X, Check, Timer, MessageSquare } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import {
+  Search,
+  X,
+  Check,
+  Timer,
+  UserPlus,
+  Users,
+  Sparkles,
+  ArrowRight,
+  Flame,
+} from 'lucide-react';
 import clsx from 'clsx';
 
 export function FriendsOverlay() {
@@ -16,8 +27,11 @@ export function FriendsOverlay() {
     declineFriendRequest,
     setActiveTab,
   } = useApp();
+  const { theme } = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [newFriendHandle, setNewFriendHandle] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
 
   if (overlay !== 'friends') return null;
 
@@ -31,118 +45,188 @@ export function FriendsOverlay() {
   const availableFriends = filteredFriends.filter((f) => f.status !== 'focusing');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-gutter bg-surface-dim/40 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Social Overlay / Modal Container matching friends_management_overlay_crimson */}
+    <div
+      onClick={closeOverlay}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div
-        className="w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.03)] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-50"
+        className="w-full max-w-[520px] bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-50 max-h-[88vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header & Search */}
-        <div className="p-lg border-b border-outline-variant bg-surface-bright">
-          <div className="flex justify-between items-center mb-lg">
-            <h2 className="font-headline-md text-headline-md text-primary tracking-tight">Friends</h2>
-            <button
-              onClick={closeOverlay}
-              className="text-secondary hover:text-primary transition-colors p-sm rounded-full hover:bg-surface-container"
-            >
-              <X className="w-5 h-5" />
-            </button>
+        <div className="p-5 pb-4 border-b border-surface-variant/30 bg-surface-container-lowest/80 flex flex-col gap-3 shrink-0">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center border border-surface-variant/40 shadow-sm"
+                style={{ backgroundColor: theme.hex + '15', color: theme.hex }}
+              >
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-on-surface">Focus Friends</h2>
+                <p className="text-xs text-outline">Shared presence & accountability circles</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                style={showAddForm ? { color: theme.hex } : {}}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add Friend</span>
+              </button>
+              <button
+                onClick={closeOverlay}
+                aria-label="Close"
+                className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+
+          {/* Quick Add Form */}
+          {showAddForm && (
+            <div className="p-3 rounded-2xl bg-surface-container-low/90 border border-surface-variant/40 flex items-center gap-2 animate-in fade-in duration-150">
+              <input
+                type="text"
+                value={newFriendHandle}
+                onChange={(e) => setNewFriendHandle(e.target.value)}
+                placeholder="Enter handle e.g. @sarah_dev..."
+                className="flex-1 bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-outline outline-none focus:border-primary font-mono"
+              />
+              <button
+                onClick={() => {
+                  setNewFriendHandle('');
+                  setShowAddForm(false);
+                }}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: theme.hex }}
+              >
+                Send Invite
+              </button>
+            </div>
+          )}
+
+          {/* Search Input */}
           <div className="relative">
-            <Search className="w-5 h-5 absolute left-md top-1/2 -translate-y-1/2 text-secondary" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-low border-b border-outline-variant border-x-0 border-t-0 focus:border-primary focus:ring-0 pl-xl pr-md py-md font-body-md text-body-md text-primary placeholder-secondary bg-transparent transition-colors outline-none"
-              placeholder="Search username..."
+              className="w-full bg-surface-container-low/70 border border-surface-variant/40 rounded-xl pl-9 pr-4 py-2 text-xs text-on-surface placeholder:text-outline focus:border-primary outline-none transition-colors"
+              placeholder="Search friends by name or handle..."
               type="text"
             />
           </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto max-h-[540px] p-lg flex flex-col gap-xl">
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Incoming Requests */}
-          <section>
-            <h3 className="font-label-md text-label-md text-secondary uppercase tracking-wider mb-md">
+          <section className="space-y-2">
+            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">
               Incoming Requests (1)
-            </h3>
-            <div className="flex items-center justify-between p-md rounded-lg border border-outline-variant bg-surface-container-low">
-              <div className="flex items-center gap-md">
-                <div className="w-10 h-10 rounded-full border border-outline-variant bg-surface-container flex items-center justify-center text-lg">
+            </span>
+            <div className="flex items-center justify-between p-3.5 rounded-2xl border border-surface-variant/40 bg-surface-container-low/70 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-surface-container border border-surface-variant/40 flex items-center justify-center text-lg shadow-sm">
                   👩🏻‍🎨
                 </div>
                 <div>
-                  <p className="font-body-md text-body-md font-medium text-primary">ElenaR</p>
-                  <p className="font-label-md text-label-md text-secondary">Mutuals: David, Sam</p>
+                  <p className="text-xs font-bold text-on-surface">Elena Rostova</p>
+                  <p className="text-[11px] text-outline">Mutuals: David Kim, Sarah Chen</p>
                 </div>
               </div>
-              <div className="flex gap-sm">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => declineFriendRequest('elena-req')}
                   aria-label="Decline"
-                  className="w-8 h-8 rounded-full flex items-center justify-center border border-outline-variant text-secondary hover:bg-surface transition-colors"
+                  className="p-1.5 rounded-xl border border-surface-variant/50 text-outline hover:text-error hover:bg-surface-container transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => acceptFriendRequest('elena-req')}
                   aria-label="Accept"
-                  className="w-8 h-8 rounded-full flex items-center justify-center bg-primary text-on-primary hover:opacity-90 transition-opacity"
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1"
+                  style={{ backgroundColor: theme.hex }}
                 >
-                  <Check className="w-4 h-4" />
+                  <Check className="w-3.5 h-3.5" /> Accept
                 </button>
               </div>
             </div>
           </section>
 
           {/* Active Now (Focusing) */}
-          <section>
-            <h3 className="font-label-md text-label-md text-secondary uppercase tracking-wider mb-md flex items-center gap-xs">
-              <span className="w-2 h-2 rounded-full bg-primary block opacity-70"></span> Focusing Now
-            </h3>
-            <div className="flex flex-col gap-sm">
+          <section className="space-y-2.5">
+            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.hex }} />
+              Focusing Now ({focusingFriends.length})
+            </span>
+
+            <div className="space-y-2">
               {focusingFriends.map((friend) => {
                 const isAttached = attachedFriendIds.includes(friend.id);
                 return (
                   <div
                     key={friend.id}
-                    className="group flex flex-col p-md rounded-lg border border-outline-variant hover:border-primary/30 transition-colors bg-surface-container-lowest"
+                    className="p-3.5 rounded-2xl border border-surface-variant/40 bg-surface-container-low/60 hover:border-primary/40 transition-all flex flex-col gap-2.5 shadow-sm"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-md">
+                      <div className="flex items-center gap-3">
                         <div className="relative">
                           <div
-                            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-base"
-                            style={{ backgroundColor: friend.color + '25' }}
+                            className="w-10 h-10 rounded-2xl border flex items-center justify-center text-lg shadow-sm"
+                            style={{
+                              backgroundColor: friend.color + '20',
+                              borderColor: friend.color + '60',
+                            }}
                           >
                             {friend.avatar}
                           </div>
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-surface-container-lowest rounded-full flex items-center justify-center border border-outline-variant">
-                            <Timer className="w-2.5 h-2.5 text-primary" />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-surface-container-highest rounded-full flex items-center justify-center border border-surface-variant text-[9px]">
+                            <Timer className="w-2.5 h-2.5" style={{ color: theme.hex }} />
                           </div>
                         </div>
                         <div>
-                          <p className="font-body-md text-body-md font-medium text-primary">{friend.name}</p>
-                          <p className="font-label-md text-label-md text-secondary">
-                            {friend.currentTask || 'Deep Work'} • {friend.timerMinutes || 25}m left
+                          <p className="text-xs font-bold text-on-surface">{friend.name}</p>
+                          <p className="text-[11px] text-outline">
+                            {friend.currentTask || 'Deep Flow'} • {friend.timerMinutes || 25}m left
                           </p>
                         </div>
                       </div>
+
                       <button
                         onClick={() => {
                           toggleAttachFriend(friend.id);
                           closeOverlay();
                           setActiveTab('timer');
                         }}
-                        className="font-label-md text-label-md px-3 py-1 border border-outline-variant rounded-lg text-primary hover:bg-surface-container-low transition-colors"
+                        className={clsx(
+                          'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm',
+                          isAttached
+                            ? 'bg-surface-container border border-primary text-primary font-bold'
+                            : 'text-white hover:opacity-90'
+                        )}
+                        style={!isAttached ? { backgroundColor: theme.hex } : { color: theme.hex }}
                       >
-                        {isAttached ? 'On Canvas' : 'Join'}
+                        {isAttached ? 'On Canvas' : 'Attach Orbit'}
                       </button>
                     </div>
-                    {/* Progress bar */}
-                    <div className="w-full h-1 bg-surface-container-high rounded-full mt-md overflow-hidden">
-                      <div className="h-full bg-primary/70 rounded-full w-[65%]"></div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: '65%',
+                          backgroundColor: friend.color || theme.hex,
+                        }}
+                      />
                     </div>
                   </div>
                 );
@@ -151,42 +235,44 @@ export function FriendsOverlay() {
           </section>
 
           {/* Online / Available */}
-          <section>
-            <h3 className="font-label-md text-label-md text-secondary uppercase tracking-wider mb-md">Available</h3>
-            <div className="flex flex-col gap-sm">
+          <section className="space-y-2">
+            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">
+              Available Friends ({availableFriends.length})
+            </span>
+
+            <div className="space-y-1.5">
               {availableFriends.map((friend) => (
                 <div
                   key={friend.id}
-                  className="group flex items-center justify-between p-md rounded-lg border border-transparent hover:border-outline-variant transition-colors hover:bg-surface-container-low cursor-pointer"
+                  className="flex items-center justify-between p-3 rounded-2xl border border-surface-variant/20 hover:border-surface-variant/60 hover:bg-surface-container-low/50 transition-colors"
                 >
-                  <div className="flex items-center gap-md">
+                  <div className="flex items-center gap-3">
                     <div className="relative">
                       <div
-                        className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-base"
-                        style={{ backgroundColor: friend.color + '20' }}
+                        className="w-9 h-9 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-base"
+                        style={{ backgroundColor: friend.color + '15' }}
                       >
                         {friend.avatar}
                       </div>
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-outline rounded-full border border-surface-container-lowest"></div>
+                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-surface-container-lowest" />
                     </div>
                     <div>
-                      <p className="font-body-md text-body-md font-medium text-primary">{friend.name}</p>
-                      <p className="font-label-md text-label-md text-secondary">Online</p>
+                      <p className="text-xs font-semibold text-on-surface">{friend.name}</p>
+                      <p className="text-[10px] text-outline font-mono">{friend.handle}</p>
                     </div>
                   </div>
-                  <div className="flex gap-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => {
-                        toggleAttachFriend(friend.id);
-                        closeOverlay();
-                        setActiveTab('timer');
-                      }}
-                      className="p-1.5 rounded text-secondary hover:text-primary hover:bg-surface-container transition-colors"
-                      title="Invite to Focus"
-                    >
-                      <Timer className="w-4 h-4" />
-                    </button>
-                  </div>
+
+                  <button
+                    onClick={() => {
+                      toggleAttachFriend(friend.id);
+                      closeOverlay();
+                      setActiveTab('timer');
+                    }}
+                    className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container transition-colors"
+                    title="Invite to Canvas Orbit"
+                  >
+                    <Timer className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -194,18 +280,13 @@ export function FriendsOverlay() {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-lg border-t border-outline-variant bg-surface-bright flex justify-between items-center gap-md">
+        <div className="p-4 border-t border-surface-variant/30 bg-surface-container-lowest/80 flex items-center justify-between text-xs text-outline shrink-0">
+          <span>{friends.length} focus connections</span>
           <button
             onClick={closeOverlay}
-            className="flex-1 py-sm px-md rounded-lg border border-outline-variant text-primary font-label-md text-label-md hover:bg-surface-container-low transition-colors text-center"
+            className="hover:text-primary transition-colors underline underline-offset-2"
           >
-            Close
-          </button>
-          <button
-            onClick={closeOverlay}
-            className="flex-1 py-sm px-md rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:opacity-90 transition-opacity text-center"
-          >
-            Find Contacts
+            Done
           </button>
         </div>
       </div>
