@@ -9,6 +9,7 @@ import clsx from 'clsx';
 
 interface OrbitBubblesProps {
   attachedFriends: Friend[];
+  compact?: boolean;
 }
 
 // Distinct theme color tokens for each friend matching the main timer's aesthetic
@@ -30,9 +31,10 @@ interface BubblePhysics {
   isDragging: boolean;
 }
 
-export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
+export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesProps) {
   const { toggleAttachFriend } = useApp();
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const bubbleDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const physicsRef = useRef<Record<string, BubblePhysics>>({});
   const activeDragIdRef = useRef<string | null>(null);
@@ -52,8 +54,8 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
       if (!physicsRef.current[friend.id]) {
         // Distribute initial phase evenly along the infinity lemniscate
         const phase = (idx / Math.max(1, total)) * Math.PI * 2;
-        const initialX = Math.sin(phase) * 380;
-        const initialY = (Math.sin(2 * phase) / 2) * 190;
+        const initialX = Math.sin(phase) * (compact ? 190 : 340);
+        const initialY = (Math.sin(2 * phase) / 2) * (compact ? 110 : 170);
         physicsRef.current[friend.id] = {
           id: friend.id,
           x: initialX,
@@ -72,7 +74,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
         delete physicsRef.current[id];
       }
     });
-  }, [attachedFriends]);
+  }, [attachedFriends, compact]);
 
   // Main 60/120fps physics and avoidance simulation loop
   useEffect(() => {
@@ -83,35 +85,38 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
       const dt = Math.min((now - lastTime) / 1000, 0.05); // cap dt to prevent huge jumps
       lastTime = now;
 
-      const w = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const h = typeof window !== 'undefined' ? window.innerHeight : 800;
+      // Exact container width and height (strictly bounds within the 2/3 container)
+      const containerEl = containerRef.current;
+      const w = containerEl && containerEl.clientWidth > 100 ? containerEl.clientWidth : (typeof window !== 'undefined' ? (compact ? window.innerWidth * 0.6 : window.innerWidth) : 900);
+      const h = containerEl && containerEl.clientHeight > 100 ? containerEl.clientHeight : (typeof window !== 'undefined' ? window.innerHeight * 0.85 : 700);
 
       // Dynamically measure the actual rendered radius of the main central timer
       const mainTimerEl = typeof document !== 'undefined' ? document.getElementById('main-timer-ring') : null;
-      const mainTimerRadius = mainTimerEl ? mainTimerEl.getBoundingClientRect().width / 2 : (w > 1024 ? 295 : 230);
-      const friendRadius = 135; // Bubble radius (~270px diameter)
+      const mainTimerRadius = mainTimerEl ? mainTimerEl.getBoundingClientRect().width / 2 : (compact ? 130 : 180);
+      
+      // Proportional bubble radius for compact/group mode vs full screen
+      const friendRadius = compact ? 75 : 105;
 
-      // Guaranteed dynamic clearance based on the EXACT size of the main timer:
-      // At any main timer size, the two circles physically cannot overlap.
-      const minCenterDist = mainTimerRadius + friendRadius + 30; // Hard clearance boundary
-      const centerAvoidDist = minCenterDist + 75;                // Repulsion guidance zone
+      // Dynamic clearance boundaries
+      const minCenterDist = mainTimerRadius + friendRadius + 16;
+      const centerAvoidDist = minCenterDist + 35;
 
-      // Viewport bounds relative to center (0, 0)
+      // Strict boundaries inside the actual rendered container
       const halfW = w / 2;
       const halfH = h / 2;
-      const marginX = 140;
-      const marginY = 140;
+      const marginX = friendRadius + 18;
+      const marginY = friendRadius + 18;
       const minX = -halfW + marginX;
       const maxX = halfW - marginX;
       const minY = -halfH + marginY;
       const maxY = halfH - marginY;
 
-      // Dynamic scale for the infinity path adapted to screen and main timer size
-      const ampX = Math.min(halfW - 160, Math.max(minCenterDist + 40, 520));
-      const ampY = Math.min(halfH - 160, Math.max((minCenterDist + 40) * 0.52, 270));
+      // Dynamic scale for the infinity path adapted to container bounds
+      const ampX = Math.max(minCenterDist + 10, Math.min(maxX - 10, minCenterDist + 45));
+      const ampY = Math.max((minCenterDist + 10) * 0.42, Math.min(maxY - 10, (minCenterDist + 45) * 0.45));
 
-      // Mutual bubble avoidance distance (two ~270px bubbles need >300px clearance)
-      const bubbleAvoidDist = 340;
+      // Mutual bubble avoidance distance
+      const bubbleAvoidDist = friendRadius * 2 + 18;
 
       const friendsList = Object.values(physicsRef.current);
 
@@ -296,7 +301,10 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-20">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-20"
+    >
       {attachedFriends.map((friend) => {
         const isDragging = activeDragId === friend.id;
         const totalSeconds = (friend.timerMinutes || 25) * 60 + (friend.timerSeconds || 0);
@@ -342,11 +350,18 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
             )}
             title="Drag with hand or mouse to reposition • Floats slowly avoiding center and boundaries"
           >
-            {/* Friend Timer: EXACT Same Look as Main Timer with its own theme color */}
-            <div className="relative w-[240px] h-[240px] lg:w-[270px] lg:h-[270px] flex flex-col items-center justify-center select-none shrink-0">
+            {/* Friend Timer: Scaled appropriately for compact and regular views */}
+            <div
+              className={clsx(
+                'relative flex flex-col items-center justify-center select-none shrink-0 transition-transform',
+                compact
+                  ? 'w-[150px] h-[150px] md:w-[160px] md:h-[160px]'
+                  : 'w-[210px] h-[210px] lg:w-[230px] lg:h-[230px]'
+              )}
+            >
               {/* Subtle Tinted Inner Disc matching Main Timer */}
               <div
-                className="absolute inset-4 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.025]"
+                className="absolute inset-3 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.025]"
                 style={{ backgroundColor: friendColor }}
               />
 
@@ -357,20 +372,23 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   e.stopPropagation();
                   toggleAttachFriend(friend.id);
                 }}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer"
+                className={clsx(
+                  'absolute rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer',
+                  compact ? 'top-1 right-1 w-5 h-5 text-[10px]' : 'top-2 right-2 w-6 h-6'
+                )}
                 title={`Remove ${friend.name} from canvas`}
                 aria-label={`Remove ${friend.name}`}
               >
-                <X className="w-3 h-3" />
+                <X className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
               </button>
 
-              {/* SVG Progress Circle Ring — Identical Geometry & Stroke Styling to Main Timer */}
+              {/* SVG Progress Circle Ring */}
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.008]"
                 preserveAspectRatio="xMidYMid meet"
                 viewBox="0 0 100 100"
               >
-                {/* Outer track: lighter & thinner version of friend's color matching main timer */}
+                {/* Outer track */}
                 <circle
                   cx="50"
                   cy="50"
@@ -380,7 +398,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   strokeOpacity={isInactive ? 0.15 : 0.22}
                   strokeWidth="0.75"
                 />
-                {/* Dynamic progress arc in friend's unique color */}
+                {/* Dynamic progress arc */}
                 <circle
                   className={clsx(
                     "-rotate-90 origin-center transition-all duration-700 ease-out",
@@ -398,12 +416,13 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                 />
               </svg>
 
-              {/* Center Content — Matches Main Timer Typography & Proportions */}
-              <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
+              {/* Center Content */}
+              <div className="flex flex-col items-center justify-center z-10 space-y-0.5 pointer-events-none">
                 {/* Name Header in Friend Theme Accent */}
                 <span
                   className={clsx(
-                    "font-label-md text-xs md:text-sm tracking-[0.25em] uppercase transition-colors font-medium",
+                    "font-label-md uppercase transition-colors font-medium truncate max-w-[110px] text-center",
+                    compact ? "text-[10px] md:text-[11px] tracking-[0.16em]" : "text-xs md:text-sm tracking-[0.25em]",
                     isInactive ? "text-outline" : "group-hover:opacity-90"
                   )}
                   style={{ color: isInactive ? 'var(--outline)' : friendColor }}
@@ -411,10 +430,11 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   {friend.name}
                 </span>
 
-                {/* Countdown Numbers in Theme-Tinted White Version */}
+                {/* Countdown Numbers */}
                 <span
                   className={clsx(
-                    "font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+                    "font-timer-display leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+                    compact ? "text-[28px] md:text-[32px]" : "text-[42px] lg:text-[48px]",
                     isInactive && "opacity-50"
                   )}
                   style={{ color: friendDigitsColor }}
@@ -422,13 +442,14 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   {friend.timerMinutes}:{friend.timerSeconds !== undefined ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
                 </span>
 
-                {/* Session Indicator Dots matching Main Timer */}
-                <div className="flex items-center gap-1.5 pt-1.5">
+                {/* Session Indicator Dots */}
+                <div className={clsx("flex items-center", compact ? "gap-1 pt-0.5" : "gap-1.5 pt-1.5")}>
                   {[0, 1, 2, 3].map((i) => (
                     <span
                       key={i}
                       className={clsx(
-                        'w-1.5 h-1.5 rounded-full transition-all',
+                        'rounded-full transition-all',
+                        compact ? 'w-1 h-1' : 'w-1.5 h-1.5',
                         i < 2 ? 'scale-125' : 'opacity-30'
                       )}
                       style={{
@@ -440,7 +461,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               </div>
 
               {/* Hover Tooltip for Task Details */}
-              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shadow-sm pointer-events-none z-30 flex items-center gap-1.5">
+              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap shadow-sm pointer-events-none z-30 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: friendColor }} />
                 <span className="text-on-surface-variant">
                   {friend.status === 'break' ? 'Break: ' : friend.status === 'focusing' ? 'Focusing: ' : 'Status: '}

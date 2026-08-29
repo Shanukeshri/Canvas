@@ -223,32 +223,32 @@ export function ZenGroupsPage() {
         </header>
 
         {/* Main Immersive Canvas Area */}
-        <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
-          {/* Floating Orbit Member Bubbles Layer */}
-          <OrbitBubbles attachedFriends={groupFriends} />
+        <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4 md:p-6">
+          {/* Floating Orbit Member Bubbles Layer with Compact Scaling & Strict Avoidance */}
+          <OrbitBubbles attachedFriends={groupFriends} compact={true} />
 
           {/* Group Goal / Focus Task Indicator */}
-          <div className="absolute top-10 left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none w-full max-w-xl px-4">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none w-full max-w-xl px-4">
             <span
-              className="font-body-lg text-xs md:text-sm font-medium tracking-wide truncate block opacity-90"
+              className="font-body-lg text-xs font-medium tracking-wide truncate block opacity-90"
               style={{ color: 'var(--primary)' }}
             >
               Shared Presence: {currentGroup.description || 'Focusing Together'}
             </span>
           </div>
 
-          {/* Center Primary Timer Ring */}
+          {/* Center Primary Timer Ring: Proportionally Scaled */}
           <button
             id="main-timer-ring"
             type="button"
             onClick={handleTimerClick}
             onDoubleClick={handleTimerDoubleClick}
-            className="flex flex-col items-center justify-center w-[360px] h-[360px] lg:w-[460px] lg:h-[460px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none relative"
+            className="flex flex-col items-center justify-center w-[230px] h-[230px] md:w-[260px] md:h-[260px] lg:w-[280px] lg:h-[280px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none relative"
             title="Click to Start/Pause • Double-click to Reset"
           >
             {/* Subtle Inner Canvas Disc */}
             <div
-              className="absolute inset-6 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.05]"
+              className="absolute inset-4 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.05]"
               style={{ backgroundColor: theme.hex }}
             />
 
@@ -282,10 +282,10 @@ export function ZenGroupsPage() {
             </svg>
 
             {/* Center Content */}
-            <div className="flex flex-col items-center justify-center z-10 space-y-1.5 pointer-events-none">
+            <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
               <span
                 className={clsx(
-                  'font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors',
+                  'font-label-md text-[10px] md:text-[11px] tracking-[0.24em] uppercase font-medium transition-colors',
                   timerState === 'paused' && 'opacity-70'
                 )}
                 style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
@@ -298,7 +298,7 @@ export function ZenGroupsPage() {
 
               <span
                 className={clsx(
-                  'font-timer-display text-[68px] lg:text-[88px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light',
+                  'font-timer-display text-[48px] md:text-[56px] lg:text-[62px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light',
                   timerState === 'paused' && 'opacity-50'
                 )}
                 style={{ color: timerState === 'paused' ? 'var(--outline)' : 'var(--timer-digits, var(--primary))' }}
@@ -308,12 +308,12 @@ export function ZenGroupsPage() {
 
               {/* Session Indicator Dots */}
               {timerMode === 'pomodoro' && (
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-1.5 pt-1">
                   {Array.from({ length: targetSessions }).map((_, idx) => (
                     <span
                       key={idx}
                       className={clsx(
-                        'w-2 h-2 rounded-full transition-all',
+                        'w-1.5 h-1.5 rounded-full transition-all',
                         idx < sessionsCompleted ? 'scale-125' : 'opacity-30'
                       )}
                       style={{

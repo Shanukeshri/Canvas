@@ -92,25 +92,39 @@ export function ZenTodoListBoard({
   const startXRef = useRef(0);
   const scrollLeftRef = useRef(0);
 
+  // Active column index tracking for compact / single list mode
+  const [activeColIndex, setActiveColIndex] = useState(0);
+
+  const handleBoardScroll = () => {
+    if (!boardRef.current) return;
+    const scrollLeft = boardRef.current.scrollLeft;
+    const width = boardRef.current.clientWidth || 1;
+    const newIdx = Math.round(scrollLeft / width);
+    setActiveColIndex(newIdx);
+  };
+
+  const scrollToIndex = (idx: number) => {
+    if (!boardRef.current) return;
+    const width = boardRef.current.clientWidth;
+    boardRef.current.scrollTo({
+      left: idx * (width + (compactMode ? 12 : 24)),
+      behavior: 'smooth',
+    });
+  };
+
   // Set up wheel scroll listener:
-  // - If mouse is over a todo list card: vertical wheel scrolls that specific todo list vertically.
-  // - If mouse is NOT on any todo list: vertical/horizontal wheel scrolls the board horizontally.
+  // - If mouse is over a todo list card's scrollable list: vertical wheel scrolls that specific todo list vertically.
+  // - If mouse is on board background or column header: vertical/horizontal wheel scrolls horizontally with snap.
   useEffect(() => {
     const container = boardRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
       const target = e.target as HTMLElement | null;
-      const hoveredCard = target?.closest('.todo-column-card');
+      const scrollableList = target?.closest('.todo-list-scrollable') as HTMLElement | null;
 
-      if (hoveredCard) {
-        const scrollableList = hoveredCard.querySelector('.todo-list-scrollable') as HTMLElement | null;
-        if (scrollableList && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-          if (!target?.closest('.todo-list-scrollable')) {
-            scrollableList.scrollTop += e.deltaY;
-            e.preventDefault();
-          }
-        }
+      // If scrolling inside the vertical task list, let it scroll vertically
+      if (scrollableList && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         return;
       }
 
@@ -127,7 +141,7 @@ export function ZenTodoListBoard({
     return () => {
       container.removeEventListener('wheel', handleWheel);
     };
-  }, []);
+  }, [compactMode]);
 
   // Drag to scroll on background
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -424,9 +438,10 @@ export function ZenTodoListBoard({
   const totalActiveTasks = tasks.filter((t) => !t.completed).length;
 
   // Column width classes depending on mode
+  // In compact mode: exactly one list fills the entire panel width with snap-center
   const colWidthClass = compactMode
-    ? 'w-[280px] min-w-[280px] max-w-[280px] xl:w-[310px] xl:min-w-[310px] xl:max-w-[310px]'
-    : 'w-[360px] min-w-[360px] max-w-[360px] lg:w-[380px] lg:min-w-[380px] lg:max-w-[380px]';
+    ? 'w-full min-w-full max-w-full snap-center'
+    : 'w-[360px] min-w-[360px] max-w-[360px] lg:w-[380px] lg:min-w-[380px] lg:max-w-[380px] snap-start';
 
   return (
     <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden select-none animate-in fade-in duration-300">
@@ -434,87 +449,130 @@ export function ZenTodoListBoard({
       {!hideHeader && (
         <header
           className={clsx(
-            'shrink-0 border-b border-surface-variant/30 flex flex-wrap items-center justify-between gap-3',
-            compactMode ? 'px-4 py-3' : 'px-8 pt-7 pb-5'
+            'shrink-0 border-b border-surface-variant/30 flex flex-col gap-2.5 bg-surface-container-lowest/70 backdrop-blur-md',
+            compactMode ? 'px-3.5 py-3' : 'px-8 pt-7 pb-5'
           )}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <h1
-              className={clsx(
-                'font-headline-md text-primary font-semibold tracking-tight truncate',
-                compactMode ? 'text-lg md:text-xl' : 'text-2xl md:text-3xl'
-              )}
-            >
-              {title}
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 shrink-0">
-              {totalActiveTasks} active
-            </span>
-          </div>
-
-          {/* Action Controls & Search */}
-          <div className="flex items-center gap-2">
-            {headerRightContent}
-
-            {/* Search bar */}
-            <div className="relative flex items-center">
-              <Search className="w-3.5 h-3.5 absolute left-3 text-outline/60 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter..."
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1
                 className={clsx(
-                  'h-8 pl-8 pr-3 py-1 rounded-xl bg-surface-container-low/70 border border-surface-variant/40 text-xs text-on-surface placeholder:text-outline/60 focus:outline-none focus:border-primary/50 transition-all',
-                  compactMode ? 'w-28 sm:w-36' : 'w-40 md:w-52 h-9 text-sm'
+                  'font-headline-md text-primary font-semibold tracking-tight truncate',
+                  compactMode ? 'text-base md:text-lg' : 'text-2xl md:text-3xl'
                 )}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 text-outline/60 hover:text-on-surface text-xs"
-                >
-                  ✕
-                </button>
-              )}
+              >
+                {title}
+              </h1>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20 shrink-0">
+                {totalActiveTasks} active
+              </span>
             </div>
 
-            {/* New List Button */}
-            <button
-              onClick={() => {
-                setIsAddingList(true);
-                scrollToFarRight();
-              }}
-              className={clsx(
-                'flex items-center gap-1.5 rounded-xl bg-primary text-on-primary font-medium hover:opacity-90 transition-all shadow-sm shrink-0',
-                compactMode ? 'px-2.5 py-1.5 text-xs h-8' : 'px-3.5 py-2 text-sm h-9'
-              )}
-              title="Create a new todo list/column"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>+ List</span>
-            </button>
+            {/* Action Controls & Search */}
+            <div className="flex items-center gap-1.5">
+              {headerRightContent}
+
+              {/* Search bar */}
+              <div className="relative flex items-center">
+                <Search className="w-3 h-3 absolute left-2.5 text-outline/60 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter..."
+                  className={clsx(
+                    'h-7 pl-7 pr-2 py-1 rounded-xl bg-surface-container-low/70 border border-surface-variant/40 text-xs text-on-surface placeholder:text-outline/60 focus:outline-none focus:border-primary/50 transition-all',
+                    compactMode ? 'w-24 sm:w-28 text-[11px]' : 'w-40 md:w-52 h-9 text-sm pl-8'
+                  )}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 text-outline/60 hover:text-on-surface text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* New List Button */}
+              <button
+                onClick={() => {
+                  setIsAddingList(true);
+                  scrollToFarRight();
+                }}
+                className={clsx(
+                  'flex items-center gap-1 rounded-xl bg-primary text-on-primary font-medium hover:opacity-90 transition-all shadow-sm shrink-0',
+                  compactMode ? 'px-2 py-1 text-[11px] h-7' : 'px-3.5 py-2 text-sm h-9'
+                )}
+                title="Create a new todo list/column"
+              >
+                <Layers className="w-3 h-3" />
+                <span>+ List</span>
+              </button>
+            </div>
           </div>
+
+          {/* Compact Mode List Carousel Indicators (Scroll Breaking Navigation) */}
+          {compactMode && (
+            <div className="flex items-center justify-between pt-1 border-t border-surface-variant/20 text-xs">
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
+                {columns.map((col, idx) => {
+                  const isActive = activeColIndex === idx;
+                  return (
+                    <button
+                      key={col.id}
+                      onClick={() => scrollToIndex(idx)}
+                      className={clsx(
+                        'px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all shrink-0 flex items-center gap-1',
+                        isActive
+                          ? 'bg-primary text-on-primary font-semibold shadow-sm scale-105'
+                          : 'bg-surface-container-low hover:bg-surface-container text-on-surface-variant'
+                      )}
+                    >
+                      <span className="truncate max-w-[110px]">{col.title}</span>
+                      <span
+                        className={clsx(
+                          'text-[9px] px-1.5 py-0.2 rounded-full',
+                          isActive ? 'bg-white/20 text-white' : 'bg-surface/80 text-outline'
+                        )}
+                      >
+                        {getTasksForColumn(col).length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <span className="text-[10px] text-outline shrink-0 ml-2 font-mono">
+                {Math.min(activeColIndex + 1, columns.length)}/{columns.length}
+              </span>
+            </div>
+          )}
         </header>
       )}
 
-      {/* Main Horizontally Scrollable Board Canvas */}
+      {/* Main Horizontally Scrollable Board Canvas with Scroll Breaking */}
       <div
         ref={boardRef}
+        onScroll={handleBoardScroll}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         className={clsx(
           'flex-1 min-h-0 w-full overflow-x-auto overflow-y-hidden flex flex-row items-start cursor-default',
-          compactMode ? 'px-4 py-4 gap-4' : 'px-8 py-6 gap-6'
+          compactMode
+            ? 'px-3 py-3 gap-3.5 snap-x snap-mandatory scroll-smooth'
+            : 'px-8 py-6 gap-6'
         )}
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: 'var(--outline-variant) transparent',
+          scrollSnapType: compactMode ? 'x mandatory' : undefined,
         }}
       >
-        {columns.map((col) => {
+        {columns.map((col, colIdx) => {
           const colTasks = getTasksForColumn(col);
           const isInlineActive = activeInlineCol === col.id;
           const isColumnDragOver = dragOverColId === col.id;
@@ -531,10 +589,14 @@ export function ZenTodoListBoard({
                 if (dragOverColId === col.id) setDragOverColId(null);
               }}
               onDrop={(e) => handleDropOnColumn(e, col)}
+              style={{
+                scrollSnapAlign: compactMode ? 'center' : undefined,
+                scrollSnapStop: compactMode ? 'always' : undefined,
+              }}
               className={clsx(
-                'todo-column-card shrink-0 bg-surface-container-low/70 backdrop-blur-md rounded-2xl border flex flex-col shadow-sm transition-all',
+                'todo-column-card shrink-0 bg-surface-container-low/80 backdrop-blur-md rounded-2xl border flex flex-col shadow-sm transition-all',
                 colWidthClass,
-                compactMode ? 'max-h-[calc(100vh-140px)]' : 'max-h-[calc(100vh-175px)]',
+                compactMode ? 'max-h-[calc(100vh-145px)] h-[calc(100vh-145px)]' : 'max-h-[calc(100vh-175px)]',
                 isColumnDragOver
                   ? 'border-primary/60 bg-surface-container-low/90 ring-1 ring-primary/40'
                   : 'border-surface-variant/40 hover:border-surface-variant/70'
@@ -765,7 +827,12 @@ export function ZenTodoListBoard({
         })}
 
         {/* Ghost "+ Add New List" Column Card at the far right */}
-        <div className={clsx('shrink-0', colWidthClass)}>
+        <div
+          style={{
+            scrollSnapAlign: compactMode ? 'center' : undefined,
+          }}
+          className={clsx('shrink-0', colWidthClass)}
+        >
           {isAddingList ? (
             <div className="bg-surface-container-low/80 p-4 rounded-2xl border border-primary/30 shadow-sm flex flex-col gap-3 animate-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between">
