@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Friend } from '@/types';
 import { useApp } from '@/context/AppContext';
+import { hexToRgb, mixColor } from '@/lib/theme-utils';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -314,6 +315,10 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
         const isInactive = !isFriendFocusing && !isFriendBreak;
 
         const friendColor = isFriendBreak ? '#34d399' : themeTokens.primary;
+        // Theme-tinted white for countdown digits matching main timer's --timer-digits aesthetic
+        const friendDigitsColor = isInactive
+          ? 'var(--outline)'
+          : mixColor({ r: 248, g: 248, b: 252 }, hexToRgb(friendColor), 0.48);
 
         return (
           <div
@@ -339,6 +344,12 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           >
             {/* Friend Timer: EXACT Same Look as Main Timer with its own theme color */}
             <div className="relative w-[240px] h-[240px] lg:w-[270px] lg:h-[270px] flex flex-col items-center justify-center select-none shrink-0">
+              {/* Subtle Tinted Inner Disc matching Main Timer */}
+              <div
+                className="absolute inset-4 rounded-full border border-surface-variant/20 pointer-events-none transition-colors opacity-[0.025]"
+                style={{ backgroundColor: friendColor }}
+              />
+
               {/* Close 'X' Button on Top Right inside circle on hover */}
               <button
                 onPointerDown={(e) => e.stopPropagation()}
@@ -359,15 +370,15 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                 preserveAspectRatio="xMidYMid meet"
                 viewBox="0 0 100 100"
               >
-                {/* Outer track */}
+                {/* Outer track: lighter & thinner version of friend's color matching main timer */}
                 <circle
-                  className="text-outline-variant opacity-30"
                   cx="50"
                   cy="50"
                   fill="none"
                   r="48"
-                  stroke="currentColor"
-                  strokeWidth="0.6"
+                  stroke={isInactive ? 'var(--outline)' : friendColor}
+                  strokeOpacity={isInactive ? 0.15 : 0.22}
+                  strokeWidth="0.75"
                 />
                 {/* Dynamic progress arc in friend's unique color */}
                 <circle
@@ -382,14 +393,14 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   stroke={isInactive ? 'var(--outline)' : friendColor}
                   strokeDasharray="301.59"
                   strokeDashoffset={strokeDashoffset}
-                  strokeWidth="1.2"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                 />
               </svg>
 
               {/* Center Content — Matches Main Timer Typography & Proportions */}
               <div className="flex flex-col items-center justify-center z-10 space-y-1 pointer-events-none">
-                {/* Name Header */}
+                {/* Name Header in Friend Theme Accent */}
                 <span
                   className={clsx(
                     "font-label-md text-xs md:text-sm tracking-[0.25em] uppercase transition-colors font-medium",
@@ -400,13 +411,13 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   {friend.name}
                 </span>
 
-                {/* Countdown Numbers in Friend's Theme Color */}
+                {/* Countdown Numbers in Theme-Tinted White Version */}
                 <span
                   className={clsx(
                     "font-timer-display text-[46px] lg:text-[52px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
                     isInactive && "opacity-50"
                   )}
-                  style={{ color: isInactive ? 'var(--outline)' : friendColor }}
+                  style={{ color: friendDigitsColor }}
                 >
                   {friend.timerMinutes}:{friend.timerSeconds !== undefined ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
                 </span>
