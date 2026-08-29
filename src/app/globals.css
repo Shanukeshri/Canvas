@@ -148,7 +148,7 @@
   --zen-text: #1f1b1b;
   --zen-text-muted: #514342;
   --zen-accent: #34100f;
-  --zen-accent-glow: rgba(52, 16, 15, 0.25);
+  --zen-accent-glow: transparent;
   --zen-accent-hover: #1A0505;
   --zen-accent-subtle: #eae0e0;
   --zen-ring: #34100f;
@@ -208,7 +208,7 @@
   --zen-text: #f8eeee;
   --zen-text-muted: #d6c2c0;
   --zen-accent: #f8b6b2;
-  --zen-accent-glow: rgba(248, 182, 178, 0.35);
+  --zen-accent-glow: transparent;
   --zen-accent-hover: #ffdad7;
   --zen-accent-subtle: #34100f;
   --zen-ring: #f8b6b2;

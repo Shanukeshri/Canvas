@@ -30,7 +30,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       root.classList.remove('dark');
     }
 
-    const cssVars = generateThemeCssVariables(theme.hsl, isDarkMode);
+    const cssVars = generateThemeCssVariables(theme.hex, isDarkMode);
     Object.entries(cssVars).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });

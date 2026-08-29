@@ -30,15 +30,15 @@ export function ImmersiveTimer() {
 
   const { theme } = useTheme();
 
-  // Trigger confetti burst on completion
+  // Trigger subtle celebration burst on session completion
   useEffect(() => {
     if (timerState === 'completed') {
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 60,
+          spread: 60,
           origin: { y: 0.6 },
-          colors: [theme.hex, '#ffffff', '#ffd700'],
+          colors: [theme.hex, '#ffffff', '#e2e8f0'],
         });
       } catch (e) {
         console.log('Confetti trigger', e);
@@ -92,23 +92,17 @@ export function ImmersiveTimer() {
 
   return (
     <main className="flex-1 h-screen w-full relative bg-surface select-none overflow-hidden flex items-center justify-center p-6 md:p-8">
-      {/* Background Subtle Gradient Radial Glow */}
-      <div
-        className="absolute w-[560px] h-[560px] rounded-full blur-[140px] opacity-15 pointer-events-none transition-all duration-1000 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-        style={{ backgroundColor: theme.hex }}
-      />
-
-      {/* Floating & Repelling Circular Friend Timers Layer (~2/3 size of main timer, zero-CPU CSS floating) */}
+      {/* Floating & Repelling Circular Friend Timers Layer (Zen Minimalist) */}
       <OrbitBubbles attachedFriends={attachedFriends} />
 
-      {/* Focus Task Heading: Centered exactly midway between upper viewport and top of central timer */}
+      {/* Focus Task Heading */}
       <div className="absolute top-[calc((50vh-207px)/2)] lg:top-[calc((50vh-265px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none w-full max-w-3xl px-6">
-        <span className="font-body-lg text-base md:text-lg lg:text-xl font-medium md:font-semibold text-on-surface-variant tracking-wide truncate block opacity-90">
+        <span className="font-body-lg text-sm md:text-base lg:text-lg font-medium text-on-surface-variant tracking-wide truncate block opacity-80">
           {selectedTask ? selectedTask.title : 'Deep Focus Session'}
         </span>
       </div>
 
-      {/* Center Primary Timer Ring: Perfectly balanced size (414px mobile / 530px desktop) */}
+      {/* Center Primary Timer Ring: Minimalist Zen Design with Zero Glows */}
       <button
         id="main-timer-ring"
         type="button"
@@ -117,55 +111,21 @@ export function ImmersiveTimer() {
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[414px] h-[414px] lg:w-[530px] lg:h-[530px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none"
         title="Click to Start/Pause • Double-click to Reset"
       >
-        {/* Outer Ambient Themed Glow Layer */}
-        <div
-          className={clsx(
-            'absolute w-[420px] h-[420px] lg:w-[550px] lg:h-[550px] rounded-full blur-[90px] pointer-events-none transition-all duration-700',
-            timerState === 'running' ? 'opacity-30 scale-105' : 'opacity-18 group-hover:opacity-28'
-          )}
-          style={{ backgroundColor: theme.hex }}
-        />
-
-        {/* Inner Theme Glow inside the main timer */}
-        <div
-          className={clsx(
-            'absolute w-[240px] h-[240px] lg:w-[320px] lg:h-[320px] rounded-full blur-[60px] pointer-events-none transition-all duration-700',
-            timerState === 'running' ? 'opacity-25' : 'opacity-15 group-hover:opacity-22'
-          )}
-          style={{ backgroundColor: theme.hex }}
-        />
-
-        {/* SVG Progress Circle Ring */}
+        {/* SVG Progress Circle Ring — Minimalist Precision */}
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.01]"
+          className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.008]"
           preserveAspectRatio="xMidYMid meet"
           viewBox="0 0 100 100"
         >
           {/* Outer track */}
           <circle
-            className="text-outline-variant opacity-40"
+            className="text-outline-variant opacity-30"
             cx="50"
             cy="50"
             fill="none"
             r="48"
             stroke="currentColor"
-            strokeWidth="0.75"
-          />
-          {/* Subtle Outer Themed Glow on Progress Arc */}
-          <circle
-            className="-rotate-90 origin-center transition-all duration-700 ease-out opacity-40"
-            cx="50"
-            cy="50"
-            fill="none"
-            r="48"
-            stroke={theme.hex}
-            strokeDasharray="301.59"
-            strokeDashoffset={strokeDashoffset}
-            strokeWidth="3.0"
-            strokeLinecap="round"
-            style={{
-              filter: `drop-shadow(0 0 10px ${theme.hex})`,
-            }}
+            strokeWidth="0.6"
           />
           {/* Dynamic progress arc */}
           <circle
@@ -177,14 +137,14 @@ export function ImmersiveTimer() {
             stroke="currentColor"
             strokeDasharray="301.59"
             strokeDashoffset={strokeDashoffset}
-            strokeWidth="1.5"
+            strokeWidth="1.2"
             strokeLinecap="round"
           />
         </svg>
 
         {/* Center Content */}
         <div className="flex flex-col items-center justify-center z-10 space-y-2 pointer-events-none">
-          <span className="font-label-md text-sm lg:text-base text-outline tracking-[0.28em] uppercase transition-colors group-hover:text-primary">
+          <span className="font-label-md text-xs lg:text-sm text-outline tracking-[0.28em] uppercase transition-colors group-hover:text-primary">
             {timerState === 'idle' && 'FOCUS'}
             {timerState === 'running' && (isBreakPhase ? 'REST' : 'FOCUS')}
             {timerState === 'paused' && 'PAUSED'}
@@ -202,8 +162,8 @@ export function ImmersiveTimer() {
                 <span
                   key={idx}
                   className={clsx(
-                    'w-2 h-2 rounded-full transition-all',
-                    idx < sessionsCompleted ? 'bg-primary scale-125' : 'bg-outline-variant'
+                    'w-1.5 h-1.5 rounded-full transition-all',
+                    idx < sessionsCompleted ? 'bg-primary scale-125' : 'bg-outline-variant opacity-40'
                   )}
                 />
               ))}
@@ -216,10 +176,10 @@ export function ImmersiveTimer() {
       <button
         onClick={() => setOverlay('friends')}
         aria-label="Invite Friends & Add to Window"
-        className="fixed bottom-7 right-7 w-12 h-12 rounded-full bg-surface-container-lowest/90 border border-outline-variant/80 backdrop-blur-md flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-[0_4px_20px_rgba(45,10,10,0.08)] z-30 group cursor-pointer"
+        className="fixed bottom-7 right-7 w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm z-30 group cursor-pointer"
         title="Invite friends & add to canvas"
       >
-        <Plus className="w-5 h-5 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300 text-primary" />
+        <Plus className="w-4 h-4 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300 text-primary" />
       </button>
     </main>
   );

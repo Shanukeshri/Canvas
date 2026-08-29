@@ -333,12 +333,6 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           >
             {/* Friend Timer: EXACT Same Look as Main Timer with its own theme color */}
             <div className="relative w-[240px] h-[240px] lg:w-[270px] lg:h-[270px] flex flex-col items-center justify-center select-none shrink-0">
-              {/* Background Subtle Gradient Radial Glow (Halved spread) */}
-              <div
-                className="absolute w-[160px] h-[160px] rounded-full blur-[45px] opacity-15 pointer-events-none transition-opacity duration-700"
-                style={{ backgroundColor: themeTokens.glow }}
-              />
-
               {/* Close 'X' Button on Top Right inside circle on hover */}
               <button
                 onPointerDown={(e) => e.stopPropagation()}
@@ -346,28 +340,28 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   e.stopPropagation();
                   toggleAttachFriend(friend.id);
                 }}
-                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-surface-container-high/80 border border-outline-variant/60 hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 shadow-sm cursor-pointer"
+                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer"
                 title={`Remove ${friend.name} from canvas`}
                 aria-label={`Remove ${friend.name}`}
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
 
               {/* SVG Progress Circle Ring — Identical Geometry & Stroke Styling to Main Timer */}
               <svg
-                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.01]"
+                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 group-hover:scale-[1.008]"
                 preserveAspectRatio="xMidYMid meet"
                 viewBox="0 0 100 100"
               >
                 {/* Outer track */}
                 <circle
-                  className="text-outline-variant opacity-40"
+                  className="text-outline-variant opacity-30"
                   cx="50"
                   cy="50"
                   fill="none"
                   r="48"
                   stroke="currentColor"
-                  strokeWidth="0.75"
+                  strokeWidth="0.6"
                 />
                 {/* Dynamic progress arc in friend's unique color */}
                 <circle
@@ -379,7 +373,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
                   stroke={themeTokens.primary}
                   strokeDasharray="301.59"
                   strokeDashoffset={strokeDashoffset}
-                  strokeWidth="1.5"
+                  strokeWidth="1.2"
                   strokeLinecap="round"
                 />
               </svg>
@@ -417,7 +411,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
               </div>
 
               {/* Hover Tooltip for Task Details */}
-              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-lowest border border-outline-variant px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shadow-[0_4px_20px_rgba(45,10,10,0.1)] pointer-events-none z-30">
+              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap shadow-sm pointer-events-none z-30">
                 <span className="text-on-surface-variant">Task: </span>
                 <span style={{ color: themeTokens.primary }}>{friend.currentTask || 'Focusing quietly'}</span>
               </div>

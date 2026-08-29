@@ -338,7 +338,7 @@ export function ZenTodosPage() {
           {/* Add Task Button */}
           <button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-medium hover:opacity-90 transition-opacity shadow-[0_4px_20px_rgba(52,16,15,0.25)]"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-on-primary font-label-md text-xs font-medium hover:opacity-90 transition-opacity shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Add Task</span>
@@ -366,7 +366,7 @@ export function ZenTodosPage() {
           return (
             <section
               key={col.id}
-              className="todo-column-card w-[330px] min-w-[330px] max-w-[330px] shrink-0 bg-surface-container-low/90 backdrop-blur-sm rounded-2xl border border-surface-variant flex flex-col max-h-[calc(100vh-170px)] shadow-lg hover:border-outline-variant/60 transition-all"
+              className="todo-column-card w-[330px] min-w-[330px] max-w-[330px] shrink-0 bg-surface-container-low/90 backdrop-blur-sm rounded-2xl border border-surface-variant flex flex-col max-h-[calc(100vh-170px)] shadow-sm hover:border-outline-variant/60 transition-all"
             >
               {/* Column Header */}
               <div className="shrink-0 p-4 pb-3 border-b border-surface-variant flex items-center justify-between">
@@ -459,7 +459,7 @@ export function ZenTodosPage() {
                     <div
                       key={task.id}
                       className={clsx(
-                        'group relative bg-surface p-3 rounded-xl border border-surface-variant hover:border-outline-variant transition-all hover:shadow-md flex flex-col gap-2',
+                        'group relative bg-surface p-3 rounded-xl border border-surface-variant hover:border-outline-variant transition-all shadow-sm flex flex-col gap-2',
                         task.completed && 'opacity-65'
                       )}
                     >
@@ -582,7 +582,7 @@ export function ZenTodosPage() {
         {/* Ghost "+ Add New List" Column Card at the far right */}
         <div className="w-[330px] min-w-[330px] max-w-[330px] shrink-0">
           {isAddingList ? (
-            <div className="bg-surface-container-low p-4 rounded-2xl border border-primary/40 shadow-xl flex flex-col gap-3 animate-in zoom-in-95 duration-150">
+            <div className="bg-surface-container-low p-4 rounded-2xl border border-primary/40 shadow-sm flex flex-col gap-3 animate-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-primary uppercase tracking-wider">
                   Create New List
