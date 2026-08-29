@@ -96,15 +96,16 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
       const maxY = halfH - marginY;
 
       // Dynamic scale for the infinity path based on screen size
-      const ampX = Math.min(halfW - 180, 420);
-      const ampY = Math.min(halfH - 180, 200);
+      const ampX = Math.min(halfW - 180, 480);
+      const ampY = Math.min(halfH - 180, 240);
 
-      // Main timer central obstacle boundary
-      const centerRadius = 230; // Radius around main center timer to avoid
-      const centerAvoidDist = 310; // Influence zone
+      // Main timer central obstacle boundary (440px diameter timer + 260px diameter bubble = 350px min distance)
+      const centerAvoidDist = 440; // Repulsion field radius around central timer
+      const minCenterDist = 380;   // Hard minimum boundary distance from center
 
-      // Mutual bubble avoidance distance (bubble diameter ~240px)
-      const bubbleAvoidDist = 260;
+      // Mutual bubble avoidance distance (two ~260px bubbles need >300px clearance)
+      const bubbleAvoidDist = 340;
+      const minBubbleDist = 280;
 
       const friendsList = Object.values(physicsRef.current);
 
@@ -114,32 +115,32 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
           return;
         }
 
-        // 1. Infinity Lemniscate Guidance Force
-        // Advance phase slowly (approx 45 seconds for a full loop)
-        body.phase += 0.14 * dt;
+        // 1. Infinity Lemniscate Guidance Force (Very slow, serene pace ~60s loop)
+        body.phase += 0.07 * dt;
         const targetX = Math.sin(body.phase) * ampX;
         const targetY = (Math.sin(2 * body.phase) / 2) * ampY;
 
         // Gentle spring driving force towards infinity path
-        const kDrive = 0.8;
+        const kDrive = 0.45;
         const fxDrive = (targetX - body.x) * kDrive;
         const fyDrive = (targetY - body.y) * kDrive;
 
         let totalFx = fxDrive;
         let totalFy = fyDrive;
 
-        // 2. Central Main Timer Avoidance (Repulsion from 0, 0)
+        // 2. Strong Central Main Timer Avoidance (Repulsion from 0, 0)
         const distFromCenter = Math.hypot(body.x, body.y);
         if (distFromCenter < centerAvoidDist) {
           const overlap = centerAvoidDist - distFromCenter;
           const nx = distFromCenter > 0 ? body.x / distFromCenter : 1;
           const ny = distFromCenter > 0 ? body.y / distFromCenter : 0;
-          const pushForce = Math.pow(overlap / (centerAvoidDist - centerRadius + 20), 2) * 800;
+          // Smooth progressive repulsion pushing strongly away from center
+          const pushForce = (overlap / (centerAvoidDist - minCenterDist + 30)) * 650;
           totalFx += nx * pushForce;
           totalFy += ny * pushForce;
         }
 
-        // 3. Mutual Friends Avoidance (Push apart from each other)
+        // 3. Mutual Friends Avoidance (Push away from each other)
         friendsList.forEach((other) => {
           if (other.id === body.id) return;
           const dx = body.x - other.x;
@@ -149,7 +150,7 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
             const overlap = bubbleAvoidDist - d;
             const nx = dx / d;
             const ny = dy / d;
-            const push = (overlap / bubbleAvoidDist) * 350;
+            const push = (overlap / bubbleAvoidDist) * 450;
             totalFx += nx * push;
             totalFy += ny * push;
           }
@@ -157,29 +158,49 @@ export function OrbitBubbles({ attachedFriends }: OrbitBubblesProps) {
 
         // 4. Viewport Edge Boundaries Avoidance (Soft spring walls)
         if (body.x < minX) {
-          totalFx += (minX - body.x) * 4.0;
+          totalFx += (minX - body.x) * 3.5;
         } else if (body.x > maxX) {
-          totalFx += (maxX - body.x) * 4.0;
+          totalFx += (maxX - body.x) * 3.5;
         }
 
         if (body.y < minY) {
-          totalFy += (minY - body.y) * 4.0;
+          totalFy += (minY - body.y) * 3.5;
         } else if (body.y > maxY) {
-          totalFy += (maxY - body.y) * 4.0;
+          totalFy += (maxY - body.y) * 3.5;
         }
 
-        // Integrate acceleration, apply velocity damping (air resistance)
-        const damping = 0.90;
+        // Integrate acceleration, apply smooth velocity damping for calm motion
+        const damping = 0.92;
         body.vx = (body.vx + totalFx * dt) * damping;
         body.vy = (body.vy + totalFy * dt) * damping;
+
+        // Cap maximum velocity for slow, peaceful drift
+        const currentSpeed = Math.hypot(body.vx, body.vy);
+        const maxSpeed = 70; // pixels per second cap
+        if (currentSpeed > maxSpeed) {
+          body.vx = (body.vx / currentSpeed) * maxSpeed;
+          body.vy = (body.vy / currentSpeed) * maxSpeed;
+        }
 
         // Update position
         body.x += body.vx * dt;
         body.y += body.vy * dt;
 
+        // Hard minimum distance constraint from center
+        const newDistFromCenter = Math.hypot(body.x, body.y);
+        if (newDistFromCenter < minCenterDist && newDistFromCenter > 0) {
+          const nx = body.x / newDistFromCenter;
+          const ny = body.y / newDistFromCenter;
+          body.x = nx * minCenterDist;
+          body.y = ny * minCenterDist;
+          // Deflect tangential velocity around center
+          body.vx += -ny * 15;
+          body.vy += nx * 15;
+        }
+
         // Hard clamp inside viewport
-        body.x = Math.max(minX - 20, Math.min(maxX + 20, body.x));
-        body.y = Math.max(minY - 20, Math.min(maxY + 20, body.y));
+        body.x = Math.max(minX, Math.min(maxX, body.x));
+        body.y = Math.max(minY, Math.min(maxY, body.y));
       });
 
       // Update DOM elements transforms directly for 60/120fps smooth motion
