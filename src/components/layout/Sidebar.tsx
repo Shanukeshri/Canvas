@@ -119,19 +119,19 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             <button
               onClick={() => {
                 setActiveTab('groups');
-                setOverlay(null);
+                setOverlay(overlay === 'groups' ? null : 'groups');
               }}
-              aria-current={activeTab === 'groups' && overlay === null ? 'page' : undefined}
+              aria-current={activeTab === 'groups' ? 'page' : undefined}
               aria-label="Focus Groups"
               className={clsx(
                 'relative w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-200',
-                activeTab === 'groups' && overlay === null
+                activeTab === 'groups' || overlay === 'groups'
                   ? 'bg-surface-container-high text-primary font-semibold shadow-sm'
                   : 'text-outline hover:text-primary hover:bg-surface-container-low'
               )}
             >
               <LayoutGrid className="w-5 h-5" />
-              {activeTab === 'groups' && overlay === null && (
+              {activeTab === 'groups' && (
                 <div
                   className="absolute -right-[8px] top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-l-full"
                   style={{ backgroundColor: theme.hex }}

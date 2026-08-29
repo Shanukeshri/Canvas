@@ -76,6 +76,17 @@ interface AppContextType {
   activeGroupId: string;
   setActiveGroupId: (id: string) => void;
   addGroupTask: (groupId: string, taskTitle: string) => void;
+  addGroupTaskFull: (groupId: string, task: Omit<Task, 'id'>) => void;
+  toggleGroupTaskComplete: (groupId: string, taskId: string) => void;
+  deleteGroupTask: (groupId: string, taskId: string) => void;
+  updateGroupTask: (groupId: string, task: Task) => void;
+  reorderGroupTasks: (groupId: string, tasks: Task[]) => void;
+  addGroupCustomList: (groupId: string, listName: string) => void;
+  deleteGroupCustomList: (groupId: string, listName: string) => void;
+  createGroup: (data: { name: string; description?: string; category?: string; code?: string }) => Group;
+  leaveGroup: (groupId: string) => void;
+  joinGroup: (code: string) => boolean;
+  generateGroupCode: () => string;
 
   // Sound Mixer State
   sounds: SoundTrack[];
@@ -334,6 +345,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFriends((prev) => prev.filter((f) => f.id !== friendId));
   };
 
+  // Group ASCII Code Generator Helper
+  const generateGroupCode = () => {
+    const specialChars = '#!$&*?~^%@-_+=';
+    const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const all = specialChars + letters + numbers;
+    
+    // Pick at least 1 special char, 1 number, and fill up to 8 chars
+    let code = '';
+    code += specialChars[Math.floor(Math.random() * specialChars.length)];
+    code += letters[Math.floor(Math.random() * letters.length)];
+    code += letters[Math.floor(Math.random() * letters.length)].toUpperCase();
+    code += numbers[Math.floor(Math.random() * numbers.length)];
+    code += specialChars[Math.floor(Math.random() * specialChars.length)];
+    code += letters[Math.floor(Math.random() * letters.length)];
+    code += numbers[Math.floor(Math.random() * numbers.length)];
+    code += specialChars[Math.floor(Math.random() * specialChars.length)];
+    return code;
+  };
+
   // Group Actions
   const addGroupTask = (groupId: string, taskTitle: string) => {
     setGroups((prev) =>
@@ -342,7 +373,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           const newGTask: Task = {
             id: `gtask-${Date.now()}`,
             title: taskTitle,
-            project: g.name,
+            project: g.customLists?.[0] || 'General',
             priority: 'medium',
             dueDate: 'Today',
             completed: false,
@@ -353,6 +384,155 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return g;
       })
     );
+  };
+
+  const addGroupTaskFull = (groupId: string, taskData: Omit<Task, 'id'>) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          const newGTask: Task = {
+            ...taskData,
+            id: `gtask-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          };
+          return { ...g, tasks: [newGTask, ...g.tasks] };
+        }
+        return g;
+      })
+    );
+  };
+
+  const toggleGroupTaskComplete = (groupId: string, taskId: string) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            tasks: g.tasks.map((t) =>
+              t.id === taskId
+                ? { ...t, completed: !t.completed, completedAt: !t.completed ? 'Just now' : undefined }
+                : t
+            ),
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  const deleteGroupTask = (groupId: string, taskId: string) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            tasks: g.tasks.filter((t) => t.id !== taskId),
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  const updateGroupTask = (groupId: string, updatedTask: Task) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            tasks: g.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  const reorderGroupTasks = (groupId: string, newTasks: Task[]) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return { ...g, tasks: newTasks };
+        }
+        return g;
+      })
+    );
+  };
+
+  const addGroupCustomList = (groupId: string, listName: string) => {
+    const trimmed = listName.trim();
+    if (!trimmed) return;
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          const current = g.customLists || [];
+          if (!current.includes(trimmed)) {
+            return { ...g, customLists: [...current, trimmed] };
+          }
+        }
+        return g;
+      })
+    );
+  };
+
+  const deleteGroupCustomList = (groupId: string, listName: string) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId && g.customLists) {
+          return { ...g, customLists: g.customLists.filter((name) => name !== listName) };
+        }
+        return g;
+      })
+    );
+  };
+
+  const createGroup = (data: { name: string; description?: string; category?: string; code?: string }): Group => {
+    const newGroup: Group = {
+      id: `group-${Date.now()}`,
+      name: data.name.trim(),
+      code: data.code?.trim() || generateGroupCode(),
+      description: data.description?.trim() || 'Collaborative focus group with independent timers and shared board.',
+      category: data.category?.trim() || 'Productivity',
+      activeCount: 1,
+      customLists: ['Backlog', 'In Progress', 'Done'],
+      members: [
+        {
+          id: 'user-self',
+          name: 'Alex Johnson',
+          handle: '@alexdev',
+          avatar: '🦊',
+          color: '#E63946',
+          status: 'focusing',
+          timerTime: '25:00',
+          currentTask: 'Focusing in room',
+          isUser: true,
+        },
+      ],
+      tasks: [],
+    };
+
+    setGroups((prev) => [newGroup, ...prev]);
+    setActiveGroupId(newGroup.id);
+    return newGroup;
+  };
+
+  const leaveGroup = (groupId: string) => {
+    setGroups((prev) => {
+      const remaining = prev.filter((g) => g.id !== groupId);
+      if (activeGroupId === groupId && remaining.length > 0) {
+        setActiveGroupId(remaining[0].id);
+      }
+      return remaining;
+    });
+  };
+
+  const joinGroup = (code: string): boolean => {
+    const normalized = code.trim().toLowerCase();
+    const existing = groups.find((g) => g.code.toLowerCase() === normalized);
+    if (existing) {
+      setActiveGroupId(existing.id);
+      return true;
+    }
+    return false;
   };
 
   // Sound Actions
@@ -429,6 +609,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         activeGroupId,
         setActiveGroupId,
         addGroupTask,
+        addGroupTaskFull,
+        toggleGroupTaskComplete,
+        deleteGroupTask,
+        updateGroupTask,
+        reorderGroupTasks,
+        addGroupCustomList,
+        deleteGroupCustomList,
+        createGroup,
+        leaveGroup,
+        joinGroup,
+        generateGroupCode,
         sounds,
         setSoundVolume,
         toggleSoundPlay,

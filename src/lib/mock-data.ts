@@ -130,9 +130,11 @@ export const INITIAL_GROUPS: Group[] = [
   {
     id: 'group-1',
     name: 'Next.js Architecture Study',
+    code: '#NX8$2!k',
     description: 'Deep dive into App Router, React Server Components, and Edge functions.',
     category: 'Engineering',
     activeCount: 4,
+    customLists: ['Architecture', 'Route Handlers', 'Actions & Caching'],
     members: [
       {
         id: 'user-self',
@@ -180,38 +182,43 @@ export const INITIAL_GROUPS: Group[] = [
       {
         id: 'gtask-1',
         title: 'Learn Server Actions & Mutations',
-        project: 'Next.js Study',
+        project: 'Architecture',
         priority: 'high',
         dueDate: 'Today',
         completed: false,
         assignedTo: 'Alex Johnson',
+        description: 'Implement optimistic updates with server mutation response handling.',
       },
       {
         id: 'gtask-2',
         title: 'Implement Route Handler authentication',
-        project: 'Next.js Study',
+        project: 'Route Handlers',
         priority: 'medium',
         dueDate: 'Today',
         completed: false,
         assignedTo: 'Sarah Chen',
+        description: 'Verify JWT and user permissions in Next.js edge route handlers.',
       },
       {
         id: 'gtask-3',
         title: 'Review cache tag revalidation docs',
-        project: 'Next.js Study',
+        project: 'Actions & Caching',
         priority: 'low',
         dueDate: 'Tomorrow',
         completed: true,
         assignedTo: 'Elena Rostova',
+        description: 'Check revalidateTag() vs revalidatePath() behavior.',
       },
     ],
   },
   {
     id: 'group-2',
     name: 'TypeScript Mastery',
+    code: '&TS9*mQ?',
     description: 'Advanced types, template literals, conditional types, and performance.',
     category: 'Learning',
     activeCount: 2,
+    customLists: ['Generics', 'Type Utilities'],
     members: [
       {
         id: 'user-self',
@@ -239,20 +246,23 @@ export const INITIAL_GROUPS: Group[] = [
       {
         id: 'gtask-4',
         title: 'Master infer keyword in conditional types',
-        project: 'TypeScript',
+        project: 'Type Utilities',
         priority: 'high',
         dueDate: 'Today',
         completed: false,
         assignedTo: 'Marcus Vance',
+        description: 'Write type definitions extracting return types of nested Promise callbacks.',
       },
     ],
   },
   {
     id: 'group-3',
     name: 'Zen Design System',
+    code: '^DS4#vR!',
     description: 'Building ultra-minimalist, quiet user interfaces with maximum aesthetic power.',
     category: 'Design',
     activeCount: 3,
+    customLists: ['Tokens', 'Components'],
     members: [
       {
         id: 'user-self',
@@ -276,7 +286,18 @@ export const INITIAL_GROUPS: Group[] = [
         currentTask: 'Typography hierarchy',
       },
     ],
-    tasks: [],
+    tasks: [
+      {
+        id: 'gtask-5',
+        title: 'Refine fluid font-size scaling curves',
+        project: 'Tokens',
+        priority: 'medium',
+        dueDate: 'Today',
+        completed: false,
+        assignedTo: 'David Kim',
+        description: 'Ensure smooth clamp() interpolations across mobile and 4K displays.',
+      },
+    ],
   },
 ];
 

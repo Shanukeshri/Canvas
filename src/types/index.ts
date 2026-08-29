@@ -11,6 +11,7 @@ export type OverlayType =
   | 'task-detail' 
   | 'friends' 
   | 'notifications' 
+  | 'groups'
   | 'command-k';
 
 export interface Task {
@@ -54,10 +55,12 @@ export interface GroupMember {
 export interface Group {
   id: string;
   name: string;
+  code: string;
   description: string;
   category: string;
   members: GroupMember[];
   tasks: Task[];
+  customLists?: string[];
   activeCount: number;
 }
 

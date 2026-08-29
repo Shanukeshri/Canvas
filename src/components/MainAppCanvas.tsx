@@ -17,6 +17,7 @@ import { ProfileOverlay } from '@/components/overlays/ProfileOverlay';
 import { FriendsOverlay } from '@/components/overlays/FriendsOverlay';
 import { NotificationsOverlay } from '@/components/overlays/NotificationsOverlay';
 import { TaskDetailOverlay } from '@/components/overlays/TaskDetailOverlay';
+import { FocusGroupsOverlay } from '@/components/overlays/FocusGroupsOverlay';
 
 export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () => void }) {
   const { activeTab } = useApp();
@@ -44,6 +45,7 @@ export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () =>
       <FriendsOverlay />
       <NotificationsOverlay />
       <TaskDetailOverlay />
+      <FocusGroupsOverlay />
     </div>
   );
 }
