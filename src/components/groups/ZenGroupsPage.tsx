@@ -390,11 +390,11 @@ export function ZenGroupsPage() {
             headerRightContent={
               <button
                 onClick={() => setIsTodoListOpen(false)}
-                className="p-1 text-outline hover:text-primary rounded-lg hover:bg-surface-container transition-colors shrink-0"
-                title="Collapse Tasks Panel"
-                aria-label="Collapse Tasks Panel"
+                className="w-7 h-7 flex items-center justify-center text-outline hover:text-primary rounded-xl hover:bg-surface-container-high border border-transparent hover:border-outline-variant transition-all shrink-0"
+                title="Collapse Tasks Sidebar"
+                aria-label="Collapse Tasks Sidebar"
               >
-                <PanelRightClose className="w-3.5 h-3.5" />
+                <PanelRightClose className="w-4 h-4 text-outline hover:text-primary" />
               </button>
             }
           />
