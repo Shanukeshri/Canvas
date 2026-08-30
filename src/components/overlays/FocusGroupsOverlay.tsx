@@ -148,12 +148,9 @@ export function FocusGroupsOverlay() {
                 <Users className="w-5 h-5" />
               </div>
               <h2 className="text-2xl font-bold font-display text-primary tracking-tight">
-                Focus Groups
+                Groups
               </h2>
             </div>
-            <p className="text-xs text-on-surface-variant mt-1.5">
-              Select a group room to join its live session and shared task board.
-            </p>
           </div>
 
           {/* Header Action Buttons */}
