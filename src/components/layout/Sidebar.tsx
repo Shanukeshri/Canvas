@@ -22,7 +22,16 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onOpenProductPage }: SidebarProps) {
-  const { activeTab, setActiveTab, overlay, setOverlay, notifications, userAvatar } = useApp();
+  const {
+    activeTab,
+    setActiveTab,
+    overlay,
+    setOverlay,
+    notifications,
+    userAvatar,
+    isAuthenticated,
+    currentUser,
+  } = useApp();
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
 
   const unreadNotifCount = notifications.filter((n) => !n.read).length;
@@ -257,7 +266,7 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             {userAvatar}
           </button>
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
-            Profile & 24 Themes
+            {isAuthenticated ? `${currentUser?.name || 'Profile'} & Themes` : 'Sign In & Themes'}
           </div>
         </div>
       </div>

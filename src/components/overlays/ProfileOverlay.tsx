@@ -11,6 +11,8 @@ import {
   Pipette,
   Smile,
   Sparkles,
+  LogOut,
+  LogIn,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -22,13 +24,32 @@ const EMOJI_OPTIONS = [
 ];
 
 export function ProfileOverlay() {
-  const { overlay, closeOverlay, totalFocusMinutesToday, userAvatar, setUserAvatar } = useApp();
+  const {
+    overlay,
+    closeOverlay,
+    userAvatar,
+    setUserAvatar,
+    currentUser,
+    setCurrentUser,
+    isAuthenticated,
+    logout,
+    openAuthModal,
+  } = useApp();
   const { theme, setTheme, setCustomColor, customHex, presetThemes } = useTheme();
 
-  const [displayName, setDisplayName] = useState('Alex Serene');
-  const [username, setUsername] = useState('@alex_s');
+  const [displayName, setDisplayName] = useState(currentUser?.name || 'Alex Serene');
+  const [username, setUsername] = useState(currentUser?.handle || '@alex_s');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Sync with currentUser
+  useEffect(() => {
+    if (currentUser) {
+      setDisplayName(currentUser.name);
+      setUsername(currentUser.handle);
+    }
+  }, [currentUser]);
 
   // Close emoji tooltip when clicking outside
   useEffect(() => {
@@ -238,23 +259,145 @@ export function ProfileOverlay() {
               </label>
             </div>
           </div>
+
+          {/* Account Status & Authentication Section */}
+          <div className="p-4 rounded-2xl bg-surface-container-low/70 border border-surface-variant/40 flex items-center justify-between shadow-sm">
+            {isAuthenticated && currentUser ? (
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center border border-surface-variant shadow-xs shrink-0"
+                  style={{ backgroundColor: theme.hex + '15', color: theme.hex }}
+                >
+                  {currentUser.provider === 'google' ? (
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                  ) : (
+                    <User className="w-4 h-4" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-on-surface">
+                      {currentUser.provider === 'google' ? 'Google Account' : 'Zen Account'}
+                    </span>
+                    <span
+                      className="px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold"
+                      style={{ backgroundColor: theme.hex + '20', color: theme.hex }}
+                    >
+                      Active
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-outline font-mono truncate max-w-[210px]">
+                    {currentUser.email}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-surface-container flex items-center justify-center text-outline">
+                  <User className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-on-surface">Guest Mode</span>
+                  <span className="text-[11px] text-outline">Session not synced to cloud</span>
+                </div>
+              </div>
+            )}
+
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (showLogoutConfirm) {
+                    logout();
+                    setShowLogoutConfirm(false);
+                  } else {
+                    setShowLogoutConfirm(true);
+                  }
+                }}
+                className={clsx(
+                  'px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border',
+                  showLogoutConfirm
+                    ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
+                    : 'text-outline hover:text-rose-400 hover:bg-rose-500/10 border-surface-variant/60'
+                )}
+                title="Log out of current account"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{showLogoutConfirm ? 'Confirm Logout?' : 'Logout'}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openAuthModal('login')}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm hover:opacity-90 transition-all flex items-center gap-1.5 cursor-pointer"
+                style={{ backgroundColor: theme.hex }}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In / Register</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
-          <button
-            onClick={closeOverlay}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-outline hover:text-on-surface border border-surface-variant hover:bg-surface-container transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={closeOverlay}
-            className="px-6 py-2 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: theme.hex }}
-          >
-            Save Profile
-          </button>
+        <div className="flex items-center justify-between px-6 py-4 border-t border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
+          <div>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  logout();
+                  openAuthModal('login');
+                }}
+                className="text-xs font-medium text-outline hover:text-on-surface transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span>Switch Account</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={closeOverlay}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-outline hover:text-on-surface border border-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (currentUser) {
+                  setCurrentUser({
+                    ...currentUser,
+                    name: displayName,
+                    handle: username,
+                    avatar: userAvatar,
+                  });
+                }
+                closeOverlay();
+              }}
+              className="px-6 py-2 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
+              style={{ backgroundColor: theme.hex }}
+            >
+              Save Profile
+            </button>
+          </div>
         </div>
       </div>
     </div>

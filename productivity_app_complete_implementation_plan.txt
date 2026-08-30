@@ -1,0 +1,1915 @@
+COMPLETE FULL-STACK IMPLEMENTATION PLAN
+=========================================
+
+This project should be treated as a full-stack implementation project whose UI is already locked. The goal is not merely to make the prototype functional; it should deliberately exercise a broad range of Next.js, TypeScript, authentication, database, realtime, caching, testing, performance, and deployment concepts.
+
+The previously agreed product rules are authoritative. The current UI prototype remains authoritative for everything else, without redesigning it.
+
+1. FINAL ARCHITECTURE
+---------------------
+
+Browser
+  |
+  v
+Next.js App Router
+  |
+  +-------------------+------------------+
+  |                   |                  |
+  v                   v                  v
+PostgreSQL           Redis              Vercel Blob
+Prisma               realtime           assets
+  |
+  +-------------------+
+  |
+  v
+MongoDB Atlas (only if a genuinely useful document-oriented workload remains)
+
+Realtime:
+Browser -> Socket.IO -> separate persistent Node-compatible Socket.IO service -> Redis
+
+Hosting:
+Vercel for Next.js.
+No AWS is required.
+
+2. DATABASE RESPONSIBILITIES
+----------------------------
+
+PostgreSQL + Prisma should be the primary relational database.
+
+Use PostgreSQL for:
+- User
+- application account/session-related data as appropriate
+- FriendRequest
+- Friendship
+- Group
+- GroupMembership
+- GroupInvitation
+- Project
+- Task
+- FocusSession
+- TimerState
+- TimerPreset
+- SoundMix
+- SoundMixItem
+- Notification
+- relevant persistent activity
+
+Redis should be used for ephemeral/high-speed state:
+- Socket.IO presence
+- online/offline state
+- active Group presence
+- temporary realtime state
+- Socket.IO Redis adapter
+- rate limiting
+- short-lived caches
+- distributed locks only where genuinely necessary
+
+MongoDB is optional. If retained, use it for genuinely document-oriented activity/event history such as ActivityEvent. PostgreSQL remains the source of truth for anything affecting application correctness.
+
+Vercel Blob replaces AWS S3 for audio/assets.
+
+3. NEXT.JS FOUNDATION
+---------------------
+
+Use:
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Radix UI
+- Lucide
+- clsx
+- tailwind-merge
+
+Use the App Router with:
+- layout.tsx
+- page.tsx
+- loading.tsx
+- error.tsx
+- not-found.tsx
+- route groups
+- nested layouts
+- dynamic routes
+
+Suggested route architecture:
+
+app/
+  (marketing)/
+    page.tsx
+
+  (auth)/
+    login/
+    signup/
+
+  (app)/
+    layout.tsx
+    timer/
+    todos/
+    groups/
+      page.tsx
+      [groupId]/
+
+  api/
+
+Use Route Groups to keep URLs clean while allowing different layouts.
+
+4. ROOT LAYOUT
+--------------
+
+Implement app/layout.tsx for:
+- global fonts
+- metadata
+- theme provider
+- global styles
+- accessibility defaults
+- application-level providers where needed
+
+Use the Metadata API and generateMetadata() where appropriate.
+
+5. SERVER COMPONENTS VS CLIENT COMPONENTS
+------------------------------------------
+
+Default to Server Components.
+
+Use Server Components for:
+- initial Group data
+- initial Todo data
+- statistics initial data
+- profile information
+- friends
+- server-rendered page shells
+- task lists
+- Group membership information
+
+Use Client Components for:
+- timer
+- timer animation
+- audio mixer
+- physics bubbles
+- Socket.IO
+- drag/drop
+- interactive forms
+- charts where interaction is required
+- theme controls
+- command palette
+
+Use "use client" only where client interactivity is actually required.
+
+6. AUTHENTICATION
+-----------------
+
+Use Auth.js.
+
+Implement:
+- credentials authentication
+- Google OAuth
+- session management
+- logout
+- account information
+- protected routes
+
+The existing login/signup/social-auth UI remains unchanged; connect it to real Auth.js behavior.
+
+Authentication architecture:
+
+Auth.js
+  ->
+session
+  ->
+current user
+  ->
+server authorization
+
+7. AUTHORIZATION
+----------------
+
+Implement authorization on the server.
+
+Personal resources:
+- users can access only their own tasks
+- timer state
+- statistics
+- sound mixes
+- presets
+- profile preferences
+
+Group resources:
+- verify Group membership before accessing Group data
+
+Owner operations:
+- verify Group ownership for owner-only operations such as deleting a Group
+
+Task deletion:
+- a member may delete only their own task
+- a member may not delete another person's task
+
+Do not rely on UI visibility for authorization.
+
+8. MIDDLEWARE
+-------------
+
+Use Next.js Middleware for authentication-related route protection and redirects where appropriate.
+
+Protect application routes such as:
+- /app/*
+or the equivalent authenticated route structure.
+
+Middleware is a first boundary. Server Actions and Route Handlers must independently enforce authorization.
+
+9. POSTGRESQL + PRISMA
+----------------------
+
+Set up:
+- PostgreSQL
+- Prisma
+- Prisma Client
+- Prisma migrations
+
+Create the relational schema for:
+- User
+- Friendship
+- FriendRequest
+- Group
+- GroupMembership
+- GroupInvitation
+- Project
+- Task
+- FocusSession
+- TimerState
+- TimerPreset
+- SoundMix
+- SoundMixItem
+- Notification
+
+Centralize Prisma client creation.
+
+Use a dedicated data-access layer rather than placing Prisma queries inside UI components.
+
+Architecture:
+
+UI
+  ->
+Server Action / Server Component / Route Handler
+  ->
+data access
+  ->
+Prisma
+  ->
+PostgreSQL
+
+10. ZOD VALIDATION
+------------------
+
+Use Zod at every user-input boundary.
+
+Schemas should include:
+- CreateTaskSchema
+- UpdateTaskSchema
+- CreateGroupSchema
+- FriendRequestSchema
+- GroupInvitationSchema
+- TimerPresetSchema
+- SoundMixSchema
+- ProfileSchema
+- relevant Route Handler query/body schemas
+
+Validate:
+- Server Action input
+- Route Handler input
+- query parameters
+- form data
+
+Do not rely on TypeScript types alone for runtime/user input validation.
+
+11. REACT HOOK FORM
+-------------------
+
+Use React Hook Form for:
+- login/signup where useful
+- create task
+- edit task
+- create Group
+- Group settings
+- profile settings
+- timer customization
+- sound mix creation
+
+Flow:
+
+React Hook Form
+  ->
+Zod resolver
+  ->
+Server Action
+  ->
+server-side Zod validation
+  ->
+database
+
+12. SERVER ACTIONS
+------------------
+
+Use Server Actions for application mutations.
+
+Examples:
+- createTask()
+- updateTask()
+- completeTask()
+- deleteTask()
+- createProject()
+- updateProject()
+- createGroup()
+- renameGroup()
+- deleteGroup()
+- sendFriendRequest()
+- acceptFriendRequest()
+- declineFriendRequest()
+- removeFriend()
+- inviteToGroup()
+- acceptGroupInvitation()
+- leaveGroup()
+- saveTimerPreset()
+- saveSoundMix()
+- updateProfile()
+- updateTheme()
+
+Use useActionState and useFormStatus where appropriate.
+
+Use optimistic UI where it genuinely improves UX.
+
+13. ROUTE HANDLERS
+------------------
+
+Use Route Handlers for API-style operations.
+
+Examples:
+- /api/users/search
+- /api/statistics
+- /api/sounds
+- /api/groups/[id]
+- /api/uploads
+
+Use appropriate:
+- GET
+- POST
+- PATCH
+- DELETE
+
+Do not force every operation into either Server Actions or Route Handlers; use each where appropriate.
+
+14. USER SEARCH
+---------------
+
+Implement user search using:
+- PostgreSQL
+- Prisma
+- indexed username/searchable fields
+- debounced client search
+
+Possible endpoint:
+GET /api/users/search?q=...
+
+Redis can be used later for rate limiting if necessary.
+
+15. FRIEND SYSTEM
+-----------------
+
+Entities:
+- FriendRequest
+- Friendship
+
+Flow:
+
+search
+  ->
+send request
+  ->
+receiver notification
+  ->
+accept
+  ->
+Friendship created
+
+Use database constraints to prevent duplicate friendships and duplicate/conflicting requests.
+
+Use Socket.IO for live notifications:
+- friend request received
+- friend request accepted
+- friend removed
+
+16. GROUPS
+----------
+
+Entities:
+- Group
+- GroupMembership
+- GroupInvitation
+
+Group creation:
+- validate input
+- create Group
+- create owner membership
+- revalidate/invalidate relevant data
+
+Group access:
+- authenticate
+- check membership
+- return Group data
+
+Groups persist permanently until manually deleted. Socket.IO presence is temporary and must never be treated as Group membership.
+
+17. GROUP INVITATIONS
+---------------------
+
+Only friends can be invited.
+
+Any Group member can invite their friends.
+
+Flow:
+
+member
+  ->
+select friend
+  ->
+Server Action
+  ->
+verify friendship
+  ->
+verify inviter membership
+  ->
+create invitation
+  ->
+Socket.IO notification
+
+Accept:
+- verify invitation
+- create GroupMembership
+- mark invitation accepted
+- emit realtime event
+
+Use database transactions where multiple relational changes must succeed together.
+
+18. GROUP JOIN CODE
+-------------------
+
+The existing UI contains a Group join-code flow. The previously agreed friend-only invitation rule is authoritative.
+
+Therefore the join-code behavior must not bypass the friend restriction unless explicitly changed later.
+
+If the code is retained, server-side authorization must enforce the final product rule.
+
+19. GROUP TASKS
+--------------
+
+Support:
+- flat task lists
+- projects/categories
+- completed tasks
+- task assignments
+- existing Kanban/scroll behavior
+
+The current UI remains unchanged.
+
+Completed tasks are persisted and remain accessible, Google Tasks-style.
+
+Task deletion:
+- own task: allowed
+- another person's task: forbidden
+
+20. TASK COMPLETION
+-------------------
+
+Completing a task means:
+
+status = COMPLETED
+completedAt = timestamp
+
+It does not mean deleting the task.
+
+Completed tasks remain in PostgreSQL and can be displayed in the Completed section.
+
+21. DRAG AND DROP
+-----------------
+
+Preserve the current UI's Kanban/drag behavior.
+
+Persist ordering using a position/order field or another ordering strategy suitable for frequent movement.
+
+Use optimistic client updates where appropriate:
+
+client optimistic update
+  ->
+Server Action
+  ->
+database
+  ->
+revalidation/query update
+
+22. TIMER ARCHITECTURE
+----------------------
+
+The timer must be timestamp-driven.
+
+Do not make setInterval(() => remainingSeconds--) the source of truth.
+
+Use a dedicated typed Timer Engine.
+
+Store/calculate in milliseconds:
+- startedAtMs
+- pausedAtMs where applicable
+- resumedAtMs where applicable
+- durationMs
+- elapsedDurationMs
+- relevant session timestamps
+
+The displayed timer may show only seconds.
+
+The underlying model remains millisecond precise.
+
+23. TIMER STATE MACHINE
+-----------------------
+
+Use strongly typed states:
+
+Timer status:
+- IDLE
+- RUNNING
+- PAUSED
+- COMPLETED
+
+Timer mode:
+- POMODORO
+- STOPWATCH
+
+Pomodoro phase:
+- FOCUS
+- SHORT_BREAK
+- LONG_BREAK
+- NONE
+
+Use discriminated unions for TimerState.
+
+24. TIMER COMPLETION RULE
+-------------------------
+
+When the current timer reaches zero:
+
+RUNNING
+  ->
+COMPLETED
+
+It stays COMPLETED.
+
+It does NOT automatically start:
+- a short break
+- a long break
+- the next focus session
+- any next phase
+
+The user must manually initiate the next timer.
+
+25. TIMER PERSISTENCE
+---------------------
+
+Persist current timer state so:
+- page refresh
+- tab close
+- browser restart
+
+do not incorrectly reset a running timer.
+
+On reopening:
+
+load timer state
+  ->
+calculate current elapsed time using timestamps
+  ->
+if elapsed >= duration:
+       COMPLETED
+else:
+       RUNNING
+
+Never use remainingSeconds alone as authoritative state.
+
+26. STOPWATCH
+-------------
+
+Implement Stopwatch as a separate timer mode.
+
+Stopwatch has:
+- no Pomodoro phases
+- no breaks
+- no automatic transitions
+
+It creates a FocusSession and contributes to statistics.
+
+27. FOCUS SESSION
+-----------------
+
+Every actual timing session creates a historical FocusSession.
+
+Fields conceptually:
+- userId
+- type
+- taskId optional
+- groupId optional
+- startedAtMs
+- endedAtMs
+- elapsedDurationMs
+- status
+- createdAt
+
+A session may be:
+- completed Pomodoro
+- interrupted Pomodoro
+- Stopwatch
+
+All actual elapsed time counts toward statistics.
+
+28. TIMER STATISTICS
+--------------------
+
+Statistics are based on actual elapsed duration, not merely completed timers.
+
+Example:
+25-minute configured timer
+12m 37s worked
+restart
+
+Statistics += 12m 37s
+
+Stopwatch duration also contributes.
+
+29. TIMER CHECKPOINTING
+-----------------------
+
+Update/persist session information:
+- every 5 seconds
+- every minute
+- on start
+- on pause
+- on resume
+- on stop
+- on restart
+- on disconnect
+- on reconnect
+- on completion
+- other meaningful timer events
+
+Do not create an enormous historical database row every five seconds. Use checkpoints to maintain current session state efficiently while keeping the historical FocusSession as the authoritative record.
+
+30. SOLO FRIEND FOCUS
+---------------------
+
+The solo Pomodoro page has a small plus icon.
+
+Clicking it allows inviting a friend.
+
+This is NOT a Group.
+
+The invited friend's independent timer appears as a localized floating bubble around the central timer.
+
+The user's own timer remains central.
+
+The main timer becomes slightly smaller when additional timers are present.
+
+31. GROUP TIMERS
+---------------
+
+Group members' Pomodoro timers are independent.
+
+The Group shares their current timer state/presence only.
+
+One user's timer finishing must not start or affect another user's timer.
+
+When a member's timer reaches completion:
+- their timer becomes COMPLETED
+- no automatic break starts
+- no other member is affected
+
+32. FLOATING TIMER LAYOUT
+-------------------------
+
+Preserve the prototype's localized floating bubble design.
+
+The bubbles should:
+- stay near a central point
+- not move across the entire viewport
+- use controlled physics/positioning
+- dynamically recalculate size and localized positions when participants join/leave
+- preserve the user's central timer
+- make additional timers smaller as needed
+
+33. PHYSICS IMPLEMENTATION
+--------------------------
+
+The existing UI calls for:
+- requestAnimationFrame
+- collision avoidance
+- spring forces
+- edge boundaries
+- dragging
+- localized floating motion
+
+Implement the physics outside React render state.
+
+React should own:
+- participant list
+- timer configuration/state
+- bubble configuration
+
+The animation layer should own:
+- x/y
+- velocity
+- spring calculations
+- collisions
+- frame-by-frame movement
+
+Cancel requestAnimationFrame appropriately.
+
+Respect reduced-motion preferences.
+
+34. SOCKET.IO
+-------------
+
+Use Socket.IO for realtime communication.
+
+Events include:
+
+Timer:
+- timer_started
+- timer_paused
+- timer_resumed
+- timer_stopped
+- timer_completed
+
+Group:
+- member_joined
+- member_left
+
+Tasks:
+- task_created
+- task_updated
+- task_completed
+- task_deleted
+
+Friends:
+- friend_request
+- friend_accepted
+
+Notifications:
+- notification events
+
+Presence:
+- online
+- offline
+
+35. TIMER SOCKET EVENTS
+-----------------------
+
+Every timer event should include:
+- userId
+- sessionId
+- eventType
+- timestampMs
+
+Potentially include:
+- durationMs
+- timer mode
+- phase
+- eventId
+- sequence/version
+
+Do not broadcast a countdown every second.
+
+The receiving client reconstructs the timer from the event timestamp and authoritative state.
+
+36. EVENT ORDERING
+------------------
+
+Use event IDs and/or timestamps/versions to prevent stale realtime events from overwriting newer state.
+
+Example:
+pause at T1
+resume at T2
+
+If pause arrives after resume because of network ordering, the client must not regress to the stale state.
+
+37. REDIS + SOCKET.IO
+---------------------
+
+Use Redis with the Socket.IO adapter for scalable realtime communication.
+
+Architecture:
+
+Socket.IO
+  ->
+Redis adapter
+  ->
+multiple Socket.IO instances
+
+Use Redis for:
+- presence
+- temporary realtime state
+- adapter/pub-sub
+- rate limiting
+- short-lived state
+- distributed coordination where necessary
+
+38. PRESENCE
+------------
+
+Presence is ephemeral.
+
+Use Redis with TTL/heartbeat-style behavior so crashed clients do not remain permanently online.
+
+Connect:
+- update Redis
+- emit online
+
+Disconnect:
+- remove/update Redis
+- emit offline
+
+Do not use presence as proof of Group membership.
+
+39. RECONNECTION
+---------------
+
+On Socket.IO reconnect:
+
+authenticate socket
+  ->
+restore subscriptions
+  ->
+rejoin Groups
+  ->
+fetch authoritative state
+  ->
+reconcile client
+
+Do not assume every event sent while disconnected was received.
+
+40. OFFLINE TIMER
+-----------------
+
+The timer continues locally because it is timestamp-driven.
+
+On reconnect:
+- compare/reconcile local state with authoritative server state
+- server state wins on conflict
+
+41. OFFLINE GROUP EDITING
+-------------------------
+
+Initially, keep offline Group mutations disabled unless a later requirement justifies a full offline conflict-resolution system.
+
+The user can still view cached/readable data where appropriate.
+
+Personal timer remains operational offline.
+
+42. TANSTACK QUERY
+-----------------
+
+Use TanStack Query for server state where client-side querying, caching and invalidation are valuable.
+
+Use it for:
+- friends
+- friend requests
+- Groups
+- Group tasks
+- notifications
+- sound catalog
+- statistics
+
+Practice:
+- useQuery
+- useMutation
+- queryKey
+- queryFn
+- staleTime
+- gcTime
+- invalidateQueries
+- setQueryData
+- prefetchQuery
+- optimistic updates
+
+Do not duplicate all TanStack Query state into Zustand.
+
+43. ZUSTAND
+-----------
+
+Use Zustand for client-side interaction/UI state.
+
+Good candidates:
+- sidebar state
+- active overlay
+- command palette
+- timer UI state
+- sound mixer UI state
+- theme UI state
+- floating bubble layout
+- dragging state
+
+Do not use Zustand as the primary database/server-state layer.
+
+44. THEME SYSTEM
+----------------
+
+Preserve the 24-theme system:
+- 23 predefined colors
+- 1 custom color wheel
+
+The user's chosen profile color is:
+- their profile accent color
+- their identity color in Groups
+- the foundation of their UI theme
+- their Pomodoro bubble color
+- their shared-task/presence identifier
+
+Generate semantic CSS variables:
+- background
+- surface
+- surface-muted
+- text
+- text-muted
+- border
+- accent
+- accent-soft
+- accent-strong
+
+The centralized tint/mix percentages remain easy to modify.
+
+Store the selected theme/profile color in PostgreSQL and use client state for immediate visual changes.
+
+45. AUDIO
+---------
+
+Use Web Audio API for:
+- sound mixing
+- independent volume controls
+- white noise
+- pink noise
+- brown noise
+
+Use Vercel Blob for stored audio assets.
+
+Architecture:
+
+Vercel Blob
+  ->
+audio URL
+  ->
+Audio element / Web Audio API
+  ->
+AudioContext
+  ->
+GainNodes
+  ->
+mixer
+
+Generated noise can be created with Web Audio API without storing separate files.
+
+Sounds are personal and are NOT synchronized between Group members.
+
+46. VERCEL BLOB
+--------------
+
+Use Vercel Blob instead of AWS S3.
+
+Store actual audio/assets in Vercel Blob.
+
+Store metadata/references in PostgreSQL.
+
+Where appropriate, use presigned/direct-upload mechanisms so large files do not unnecessarily pass through the Next.js server.
+
+47. MONGODB
+-----------
+
+MongoDB is optional.
+
+If retained, use MongoDB Atlas for genuinely document-oriented activity/event history.
+
+Example:
+ActivityEvent
+- groupId
+- actorId
+- type
+- payload
+- timestamp
+- metadata
+
+Possible event types:
+- TASK_CREATED
+- TASK_COMPLETED
+- MEMBER_JOINED
+- MEMBER_LEFT
+- FOCUS_STARTED
+- FOCUS_PAUSED
+- FOCUS_COMPLETED
+
+Do not duplicate relational application truth in MongoDB.
+
+48. NOTIFICATIONS
+-----------------
+
+Persist important notifications in PostgreSQL.
+
+Conceptually:
+Notification
+- userId
+- type
+- payload
+- readAt
+- createdAt
+
+Socket.IO delivers notifications immediately when online.
+
+If offline, the notification remains in the database and appears later.
+
+Redis may assist with unread counters but PostgreSQL remains authoritative.
+
+49. CACHING
+-----------
+
+Use Next.js caching deliberately.
+
+Good candidates:
+- sound catalog
+- public marketing content
+- static configuration
+- some statistics
+
+Avoid caching highly dynamic:
+- current timer
+- presence
+- active Group state
+- pending invitations
+
+Use appropriate:
+- fetch caching
+- revalidation
+- cache tags
+- revalidatePath
+- revalidateTag
+- no-store
+- force-cache
+
+50. SUSPENSE AND STREAMING
+--------------------------
+
+Use:
+- Suspense
+- loading.tsx
+- streaming
+
+where they improve perceived performance.
+
+For example, render the Todo/Group shell immediately while slower secondary statistics or data loads separately.
+
+Do not add Suspense artificially.
+
+51. RENDERING STRATEGY
+----------------------
+
+Use different rendering strategies intentionally.
+
+Static/cached:
+- marketing page
+
+Dynamic server-rendered:
+- authenticated Group/Todo initial data
+
+Client-rendered:
+- timer
+- realtime
+- audio
+- physics
+
+Streaming:
+- secondary asynchronous sections
+
+52. IMAGE/FONT/METADATA
+-----------------------
+
+Use:
+- next/image
+- next/font
+- Metadata API
+- generateMetadata()
+
+where appropriate.
+
+Use metadata/Open Graph information for the product page.
+
+53. ERROR HANDLING
+------------------
+
+Implement:
+- loading.tsx
+- error.tsx
+- global-error.tsx where needed
+- not-found.tsx
+
+Handle:
+- database unavailable
+- Group not found
+- unauthorized
+- network disconnected
+- Socket disconnected
+- audio unavailable
+- unexpected server errors
+
+Never expose raw database/internal errors to users.
+
+54. TYPESCRIPT ARCHITECTURE
+---------------------------
+
+Use strict TypeScript.
+
+Deliberately demonstrate:
+- literal unions
+- discriminated unions
+- interfaces where useful
+- generics
+- utility types
+- type guards
+- typed API contracts
+- typed Socket.IO events
+- strongly typed state
+
+Important unions:
+- TimerMode
+- TimerStatus
+- TaskStatus
+- GroupRole
+- FriendRequestStatus
+
+Discriminated unions:
+- TimerState
+- SocketEvent
+- Notification
+- ActivityEvent
+
+Use z.infer<typeof Schema> to derive TypeScript types from Zod schemas where appropriate.
+
+Avoid unnecessary any.
+
+55. TYPED SOCKET.IO CONTRACT
+----------------------------
+
+Define strongly typed:
+- Client -> Server events
+- Server -> Client events
+
+Make event payloads compile-time checked.
+
+Cover:
+- timer
+- Group
+- task
+- presence
+- friends
+- notifications
+
+56. API RESPONSE CONVENTIONS
+----------------------------
+
+Establish a consistent typed response structure for Route Handlers, such as:
+- success
+- data
+- error
+
+Use consistent error categories.
+
+57. FEATURE-BASED ARCHITECTURE
+------------------------------
+
+Use a feature-oriented structure approximately:
+
+src/
+  app/
+  features/
+    auth/
+    users/
+    friends/
+    groups/
+    tasks/
+    timer/
+    sounds/
+    statistics/
+    activity/
+  components/
+    ui/
+    layout/
+    animation/
+  lib/
+    db/
+    auth/
+    socket/
+    redis/
+    blob/
+    validation/
+    utils/
+  types/
+
+Each feature can contain:
+- components
+- actions
+- queries
+- schemas
+- types
+- utilities
+
+58. PRODUCT PAGE
+----------------
+
+Keep the existing product-page design.
+
+Implement storytelling with:
+- GSAP
+- ScrollTrigger
+- Lenis
+- CSS
+- Server Components
+- dynamic imports where appropriate
+
+Do not turn the entire landing page into one giant Client Component.
+
+Use large, deliberate movements instead of excessive animation.
+
+59. ANIMATION ARCHITECTURE
+--------------------------
+
+CSS:
+- hover
+- focus
+- opacity
+- simple transforms
+- simple transitions
+
+GSAP:
+- complex timelines
+- scroll choreography
+- pinning
+- scaling
+- controlled movement
+
+ScrollTrigger:
+- scroll-linked animations
+
+Lenis:
+- smooth scrolling
+
+Keep React out of per-frame animation state where possible.
+
+60. APPLICATION ANIMATION
+--------------------------
+
+Preserve the prototype.
+
+Use subtle animation for:
+- task completion
+- task insertion/removal
+- friend request transitions
+- Group membership changes
+- timer bubble resizing/repositioning
+- sound controls
+- statistics entering view
+- navigation/overlay transitions
+
+Do not redesign the UI.
+
+61. MULTI-TAB TIMER
+-------------------
+
+Test and support multiple tabs.
+
+Potential architecture:
+
+Tab A
+  ↕
+BroadcastChannel
+  ↕
+Tab B
+
+plus server authoritative state.
+
+Use BroadcastChannel for local browser synchronization where useful.
+
+62. DATABASE PERFORMANCE
+------------------------
+
+Create indexes for high-frequency queries:
+- username/search fields
+- friendship user IDs
+- friend request sender/receiver
+- Group membership user/group
+- Group tasks
+- task assignee
+- task project
+- FocusSession user/date
+- notifications user/read state
+
+Use Prisma select/include carefully.
+
+Do not retrieve entire objects unnecessarily.
+
+63. DATABASE TRANSACTIONS
+-------------------------
+
+Use Prisma transactions for multi-step operations such as:
+- accepting a Group invitation
+- accepting a friendship
+- deleting a Group
+- any operation that must update multiple relational records atomically
+
+64. CONCURRENCY
+--------------
+
+Handle:
+- multiple browser tabs
+- simultaneous task editing
+- simultaneous task completion
+- duplicate friend requests
+- simultaneous invitation acceptance
+- timer events arriving out of order
+- reconnects
+
+Use:
+- database constraints
+- transactions
+- timestamps
+- event IDs
+- versions
+- server-side validation
+
+65. SECURITY
+------------
+
+Implement:
+- authentication
+- authorization
+- runtime validation
+- secure cookies
+- rate limiting
+- environment secrets
+- Blob access controls
+- safe server mutation patterns
+
+Use Redis for rate limiting where appropriate:
+- login attempts
+- friend-request spam
+- Group-invitation spam
+- user search abuse
+- API abuse
+
+Never expose server secrets to the browser.
+
+66. ENVIRONMENT CONFIGURATION
+-----------------------------
+
+Maintain separate development/test/production configuration.
+
+Potential variables:
+- DATABASE_URL
+- DIRECT_URL where needed
+- REDIS_URL
+- AUTH_SECRET
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- BLOB-related credentials/configuration
+- SOCKET_URL
+- MongoDB connection string if MongoDB is retained
+
+Validate required environment variables at startup.
+
+67. TESTING WITH VITEST
+-----------------------
+
+Write unit/integration tests for:
+
+Timer:
+- start
+- pause
+- resume
+- completion
+- restart
+- stopwatch
+- timestamp calculations
+- millisecond precision
+- closed-tab calculations
+
+Statistics:
+- partial sessions
+- completed sessions
+- stopwatch
+- aggregation
+- checkpoint logic
+
+Permissions:
+- Group membership
+- Group owner
+- task ownership
+- friendship requirement
+
+Validation:
+- all Zod schemas
+
+Realtime:
+- event serialization
+- event ordering
+- state reconciliation
+
+68. TESTING WITH PLAYWRIGHT
+---------------------------
+
+Authentication:
+- signup
+- login
+- logout
+- Google login where testable
+- protected routes
+
+Timer:
+- start
+- reload
+- verify persistence
+- pause
+- reload
+- resume
+- completion
+- restart
+
+Stopwatch:
+- start
+- stop
+- statistics update
+
+Friends:
+- search
+- send request
+- accept
+- remove
+
+Groups:
+- create
+- invite
+- accept
+- join
+- leave
+- return
+- verify persistence
+
+Tasks:
+- create
+- assign
+- complete
+- view completed
+
+69. REALTIME E2E TESTING
+------------------------
+
+Use two Playwright browser contexts.
+
+Test:
+- Browser A creates Group
+- Browser B joins
+- A starts timer
+- B sees A timer
+- B starts independent timer
+- A sees B timer
+- A pauses
+- B sees A paused
+- reconnect and reconcile
+
+70. PERFORMANCE
+---------------
+
+Pay attention to:
+- bundle size
+- hydration
+- client component boundaries
+- image optimization
+- font loading
+- animation frame rate
+- Socket.IO traffic
+- database queries
+
+Use:
+- React DevTools
+- Next.js build analysis
+- Lighthouse
+- Web Vitals
+- profiling tools
+
+71. DYNAMIC IMPORTS
+-------------------
+
+Use dynamic imports where justified for:
+- statistics charts
+- advanced physics system
+- product animation modules
+- audio subsystem
+- large command palette functionality
+
+Use bundle analysis to justify lazy loading rather than adding it everywhere.
+
+72. DEPLOYMENT
+-------------
+
+Recommended architecture without AWS:
+
+Vercel
+  ->
+Next.js application
+
+Separate persistent Node-compatible host
+  ->
+Socket.IO server
+
+Upstash
+  ->
+Redis
+
+Managed PostgreSQL provider such as Neon or another suitable provider
+  ->
+PostgreSQL
+
+Vercel Blob
+  ->
+audio/assets
+
+MongoDB Atlas
+  ->
+optional activity/event documents
+
+AWS is not required.
+
+73. SOCKET.IO HOSTING NOTE
+--------------------------
+
+Do not assume a standard Vercel serverless function is suitable for persistent Socket.IO connections.
+
+Use a persistent Node-compatible Socket.IO service.
+
+If the Next.js application and Socket.IO service are separated:
+- Vercel handles the web app
+- persistent service handles realtime
+- Redis connects realtime instances
+- PostgreSQL remains application truth
+
+74. CI/CD
+---------
+
+CI should run:
+- lint
+- TypeScript typecheck
+- Vitest
+- production build
+- Playwright
+
+Pipeline:
+
+push
+  ->
+lint
+  ->
+typecheck
+  ->
+Vitest
+  ->
+build
+  ->
+Playwright
+  ->
+deploy
+
+Do not deploy when core tests fail.
+
+75. LOGGING/OBSERVABILITY
+-------------------------
+
+Use structured logging for:
+- authentication failures
+- database errors
+- Socket.IO errors
+- reconnects
+- Group mutations
+- timer events
+- Blob failures
+- unexpected server errors
+
+Do not log sensitive data.
+
+76. IMPLEMENTATION PHASES
+--------------------------
+
+PHASE 1 — Next.js foundation
+- App Router
+- route groups
+- layouts
+- Server Components
+- Client Components
+- loading/error/not-found
+- metadata
+- Tailwind
+- shadcn
+- theme engine
+
+PHASE 2 — Auth
+- Auth.js
+- signup/login
+- Google OAuth
+- sessions
+- protected routes
+- authorization helpers
+- Middleware
+
+PHASE 3 — PostgreSQL
+- Prisma
+- migrations
+- User
+- Tasks
+- Projects
+- TimerState
+- FocusSession
+- TimerPreset
+- SoundMix
+- Groups
+- friendships
+- invitations
+- notifications
+
+PHASE 4 — Personal tasks
+- Todo CRUD
+- Projects
+- categories/lists
+- completion
+- completed history
+- Server Actions
+- Zod
+- React Hook Form
+- TanStack Query where useful
+
+PHASE 5 — Timer engine
+- Pomodoro
+- Stopwatch
+- timestamp-based calculation
+- millisecond precision
+- pause/resume
+- completion
+- persistence
+- session tracking
+- statistics checkpointing
+- Vitest coverage
+
+PHASE 6 — Statistics
+- focus aggregation
+- stopwatch aggregation
+- partial sessions
+- daily/weekly/monthly statistics
+- Recharts
+- statistics overlay
+
+PHASE 7 — Audio/Blob
+- sound catalog
+- Vercel Blob
+- Web Audio API
+- mixer
+- saved mixes
+- white/pink/brown noise
+
+PHASE 8 — Friends
+- search
+- requests
+- friendship
+- notifications
+- friend management
+
+PHASE 9 — Groups
+- Group CRUD
+- memberships
+- invitations
+- projects
+- tasks
+- completed tasks
+- permissions
+- persistent Group behavior
+
+PHASE 10 — Socket.IO + Redis
+- connection
+- authentication
+- presence
+- Group subscriptions
+- timer events
+- task events
+- friend events
+- notifications
+- Redis adapter
+- reconnection
+- reconciliation
+
+PHASE 11 — Friend focus bubbles
+- friend invitation from Timer
+- independent timer states
+- localized floating bubbles
+- physics
+- dynamic positioning
+- resizing
+- joining/leaving animations
+
+PHASE 12 — Advanced Next.js
+- Suspense
+- streaming
+- caching
+- revalidation
+- revalidatePath
+- revalidateTag
+- dynamic imports
+- advanced loading/error states
+- metadata
+- performance optimization
+
+PHASE 13 — MongoDB
+If retained:
+- ActivityEvent
+- document-oriented event history
+
+PHASE 14 — Product page
+- GSAP
+- ScrollTrigger
+- Lenis
+- CSS
+- Server Components
+- dynamic imports
+
+PHASE 15 — Testing
+- Vitest
+- Playwright
+- two-browser realtime tests
+- persistence tests
+- authentication tests
+- authorization tests
+
+PHASE 16 — Production hardening
+- security
+- rate limiting
+- Redis TTLs
+- indexes
+- query optimization
+- bundle analysis
+- caching
+- error handling
+- logging
+- environment validation
+- CI/CD
+- deployment
+
+77. TECHNOLOGY-TO-FEATURE MAP
+-----------------------------
+
+Application routing -> Next.js App Router
+Layout system -> Nested layouts / Route Groups
+Initial data -> Server Components
+Interactive UI -> Client Components
+Mutations -> Server Actions
+APIs -> Route Handlers
+Authentication -> Auth.js
+Route protection -> Middleware
+Authorization -> Server-side authorization helpers
+Relational DB -> PostgreSQL
+ORM -> Prisma
+Runtime validation -> Zod
+Forms -> React Hook Form
+Server state -> TanStack Query
+Client state -> Zustand
+Realtime -> Socket.IO
+Distributed realtime -> Redis + Socket.IO adapter
+Presence -> Redis
+Rate limiting -> Redis
+Activity documents -> MongoDB Atlas (optional)
+Audio storage -> Vercel Blob
+Audio processing -> Web Audio API
+Noise generation -> Web Audio API
+Timer -> typed state machine + timestamps
+Timer precision -> milliseconds
+Statistics -> FocusSession aggregation
+Charts -> Recharts
+UI -> Tailwind + shadcn + Radix
+Icons -> Lucide
+Product animation -> GSAP + ScrollTrigger
+Smooth scrolling -> Lenis
+Bubble physics -> requestAnimationFrame
+Unit testing -> Vitest
+E2E testing -> Playwright
+Performance -> Next.js optimization + Web Vitals
+Deployment -> Vercel + managed PostgreSQL + Upstash Redis + persistent Socket.IO host + Vercel Blob
+
+78. COMPLETE NEXT.JS COVERAGE TARGET
+------------------------------------
+
+The project should deliberately demonstrate:
+- App Router
+- Route Groups
+- Nested Layouts
+- Dynamic Routes
+- Server Components
+- Client Components
+- "use client"
+- Server Actions
+- useActionState
+- useFormStatus
+- Route Handlers
+- Middleware
+- Authentication
+- Authorization
+- loading UI
+- error UI
+- not-found
+- Suspense
+- Streaming
+- Metadata
+- generateMetadata
+- next/image
+- next/font
+- caching
+- revalidation
+- revalidatePath
+- revalidateTag
+- dynamic rendering
+- static rendering
+- client-side data fetching
+- parallel data fetching
+- dynamic imports
+- performance optimization
+
+79. CORE ARCHITECTURAL RULE
+---------------------------
+
+Maintain this separation:
+
+USER INTERFACE
+  |
+  +----------------+----------------+----------------+
+  |                |                |
+Server          Client          Realtime
+Components      Components       Socket.IO
+  |                |                |
+Server Actions   Zustand         Redis
+  |              TanStack
+  |               Query
+  +----------------+----------------+
+                   |
+              DOMAIN LOGIC
+                   |
+        +----------+----------+----------+
+        |                     |          |
+    PostgreSQL             MongoDB     Blob
+      Prisma               Activity    Assets
+
+Authority hierarchy:
+
+PostgreSQL
+= permanent application truth
+
+MongoDB
+= document/activity history
+
+Redis
+= temporary/realtime state
+
+Socket.IO
+= event delivery
+
+Client
+= rendering + interaction
+
+80. FINAL HOSTING DECISION
+--------------------------
+
+AWS is completely removed from the architecture.
+
+Use:
+
+Vercel
+- Next.js hosting
+
+Managed PostgreSQL
+- relational application database
+
+Upstash Redis
+- Redis/realtime/rate limiting
+
+Persistent Node-compatible host
+- Socket.IO
+
+Vercel Blob
+- audio/assets
+
+MongoDB Atlas
+- optional document-oriented activity/event history
+
+No AWS EC2, S3, RDS, ElastiCache, etc. are required.
+
+Do Not Stop Until Completed

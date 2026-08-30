@@ -12,6 +12,7 @@ import {
   SoundTrack,
   NotificationItem,
   StatDayData,
+  User,
 } from '@/types';
 import {
   INITIAL_TASKS,
@@ -21,6 +22,16 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_STATS_WEEK,
 } from '@/lib/mock-data';
+
+const DEFAULT_USER: User = {
+  id: 'user-default',
+  name: 'Alex Serene',
+  email: 'alex.serene@zenfocus.app',
+  handle: '@alex_s',
+  avatar: '🦊',
+  provider: 'google',
+  createdAt: 'August 2026',
+};
 
 interface AppContextType {
   // Navigation & Overlays
@@ -100,9 +111,18 @@ interface AppContextType {
   markNotificationRead: (id: string) => void;
   removeNotification: (id: string) => void;
 
-  // User Profile
+  // User Profile & Prototype Authentication
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  isAuthenticated: boolean;
   userAvatar: string;
   setUserAvatar: (avatar: string) => void;
+  authModalMode: 'login' | 'register';
+  openAuthModal: (mode?: 'login' | 'register') => void;
+  loginWithGoogle: () => void;
+  login: (email: string, password?: string) => void;
+  register: (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => void;
+  logout: () => void;
 
   // Stats
   weeklyStats: StatDayData[];
@@ -116,6 +136,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>('timer');
   const [overlay, setOverlay] = useState<OverlayType>(null);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<Task | null>(null);
+
+  // Authentication State
+  const [currentUser, setCurrentUser] = useState<User | null>(DEFAULT_USER);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
 
   // Tasks
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
@@ -574,6 +599,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  // Prototype Authentication Actions
+  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+    setAuthModalMode(mode);
+    setOverlay('auth');
+  };
+
+  const loginWithGoogle = () => {
+    const googleUser: User = {
+      id: `user-google-${Date.now()}`,
+      name: 'Alex Serene',
+      email: 'alex.serene@gmail.com',
+      handle: '@alex_s',
+      avatar: userAvatar || '🦊',
+      provider: 'google',
+      createdAt: 'Today',
+    };
+    setCurrentUser(googleUser);
+    setIsAuthenticated(true);
+    closeOverlay();
+  };
+
+  const login = (email: string, _password?: string) => {
+    const nameFromEmail = email.split('@')[0] || 'Alex Serene';
+    const cleanName = nameFromEmail
+      .split(/[._-]/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    const loggedInUser: User = {
+      id: `user-${Date.now()}`,
+      name: cleanName,
+      email,
+      handle: `@${nameFromEmail.toLowerCase()}`,
+      avatar: userAvatar || '🦊',
+      provider: 'email',
+      createdAt: 'Today',
+    };
+    setCurrentUser(loggedInUser);
+    setIsAuthenticated(true);
+    closeOverlay();
+  };
+
+  const register = (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => {
+    const registeredUser: User = {
+      id: `user-${Date.now()}`,
+      name: data.name.trim() || 'Alex Serene',
+      email: data.email.trim(),
+      handle: data.handle?.trim() || `@${data.name.trim().toLowerCase().replace(/\s+/g, '_') || 'alex_s'}`,
+      avatar: data.avatar || userAvatar || '🦊',
+      provider: 'email',
+      createdAt: 'Today',
+    };
+    if (data.avatar) {
+      setUserAvatar(data.avatar);
+    }
+    setCurrentUser(registeredUser);
+    setIsAuthenticated(true);
+    closeOverlay();
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -640,8 +729,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notifications,
         markNotificationRead,
         removeNotification,
+        currentUser,
+        setCurrentUser,
+        isAuthenticated,
         userAvatar,
         setUserAvatar,
+        authModalMode,
+        openAuthModal,
+        loginWithGoogle,
+        login,
+        register,
+        logout,
         weeklyStats,
         totalFocusMinutesToday,
       }}

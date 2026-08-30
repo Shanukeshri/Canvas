@@ -12,7 +12,18 @@ export type OverlayType =
   | 'friends' 
   | 'notifications' 
   | 'groups'
-  | 'command-k';
+  | 'command-k'
+  | 'auth';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  handle: string;
+  avatar: string;
+  provider: 'email' | 'google' | 'guest';
+  createdAt?: string;
+}
 
 export interface Task {
   id: string;

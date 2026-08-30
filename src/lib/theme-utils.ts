@@ -8,8 +8,14 @@ export const THEME_MIX = {
   accent: 0.45, // 45% tint on accent / active elements / text
 };
 
-// 23 Predefined Harmonious Themes
+// 24 Predefined Harmonious Themes
 export const PRESET_THEMES: ThemeColor[] = [
+  {
+    id: "ethereal-aqua",
+    name: "Ethereal Aqua",
+    hex: "#0D9488",
+    hsl: { h: 175, s: 84, l: 32 },
+  },
   {
     id: "crimson",
     name: "Crimson",

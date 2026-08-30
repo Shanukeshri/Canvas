@@ -18,6 +18,7 @@ import { FriendsOverlay } from '@/components/overlays/FriendsOverlay';
 import { NotificationsOverlay } from '@/components/overlays/NotificationsOverlay';
 import { TaskDetailOverlay } from '@/components/overlays/TaskDetailOverlay';
 import { FocusGroupsOverlay } from '@/components/overlays/FocusGroupsOverlay';
+import { AuthModal } from '@/components/auth/AuthModal';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 
 export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () => void }) {
@@ -48,6 +49,7 @@ export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () =>
       <NotificationsOverlay />
       <TaskDetailOverlay />
       <FocusGroupsOverlay />
+      <AuthModal />
     </div>
   );
 }

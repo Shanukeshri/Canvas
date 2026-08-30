@@ -13,6 +13,9 @@ import {
   Play,
   Pause,
   RotateCcw,
+  User,
+  LogIn,
+  LogOut,
   X,
 } from 'lucide-react';
 
@@ -29,6 +32,9 @@ export function CommandPalette() {
     tasks,
     groups,
     setSelectedTask,
+    isAuthenticated,
+    logout,
+    openAuthModal,
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -115,6 +121,39 @@ export function CommandPalette() {
         setOverlay('settings');
       },
     },
+    {
+      id: 'overlay-profile',
+      title: 'Open Profile & Themes',
+      category: 'Account & Aesthetics',
+      icon: User,
+      run: () => {
+        setOverlay('profile');
+      },
+    },
+    ...(isAuthenticated
+      ? [
+          {
+            id: 'act-logout',
+            title: 'Log Out of Account',
+            category: 'Account & Aesthetics',
+            icon: LogOut,
+            run: () => {
+              logout();
+              closeOverlay();
+            },
+          },
+        ]
+      : [
+          {
+            id: 'act-login',
+            title: 'Sign In / Register',
+            category: 'Account & Aesthetics',
+            icon: LogIn,
+            run: () => {
+              openAuthModal('login');
+            },
+          },
+        ]),
   ];
 
   const filteredTasks = tasks.filter((t) =>

@@ -16,13 +16,16 @@ import {
   Check,
   Flame,
   LayoutGrid,
+  LogIn,
 } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
   const { theme } = useTheme();
+  const { openAuthModal, isAuthenticated, currentUser } = useApp();
   const heroRef = useRef<HTMLDivElement>(null);
   const chaosRef = useRef<HTMLDivElement>(null);
   const typographyRef = useRef<HTMLDivElement>(null);
@@ -127,13 +130,23 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
           </span>
         </div>
 
-        <button
-          onClick={onEnterApp}
-          className="px-6 py-2.5 rounded-full text-white text-xs font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-2"
-          style={{ backgroundColor: theme.hex }}
-        >
-          Enter Focus Workspace <ArrowRight className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => openAuthModal('login')}
+            className="px-4 py-2 rounded-full text-xs font-semibold text-outline hover:text-on-surface hover:bg-surface-container transition-colors flex items-center gap-1.5 cursor-pointer"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span>{isAuthenticated ? (currentUser?.name || 'Account') : 'Sign In'}</span>
+          </button>
+
+          <button
+            onClick={onEnterApp}
+            className="px-6 py-2.5 rounded-full text-white text-xs font-bold shadow-lg hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer"
+            style={{ backgroundColor: theme.hex }}
+          >
+            Enter Focus Workspace <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
       </nav>
 
       {/* 1. HERO — "Everything can wait." */}
@@ -358,12 +371,15 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
         <button
           onClick={onEnterApp}
-          className="px-10 py-4 rounded-full text-white text-base font-extrabold shadow-2xl hover:opacity-90 hover:scale-105 transition-all flex items-center gap-3"
+          className="px-10 py-4 rounded-full text-white text-base font-extrabold shadow-2xl hover:opacity-90 hover:scale-105 transition-all flex items-center gap-3 cursor-pointer"
           style={{ backgroundColor: theme.hex }}
         >
           Launch Interactive Prototype <ArrowRight className="w-5 h-5" />
         </button>
       </section>
+
+      {/* Auth Modal for landing page */}
+      <AuthModal />
     </div>
   );
 }
