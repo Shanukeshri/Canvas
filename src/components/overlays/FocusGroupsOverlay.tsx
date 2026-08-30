@@ -402,20 +402,7 @@ export function FocusGroupsOverlay() {
                           <span className="text-primary font-semibold">Members:</span>
                           <span className="truncate max-w-[240px]">{memberNamesFormatted}</span>
                         </div>
-
-                        {isActive && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-primary text-on-primary shadow-sm">
-                            Active Room
-                          </span>
-                        )}
                       </div>
-
-                      {/* Description */}
-                      {group.description && (
-                        <p className="text-xs text-on-surface-variant line-clamp-1 mt-1">
-                          {group.description}
-                        </p>
-                      )}
                     </div>
 
                     {/* Right action: Leave Option */}

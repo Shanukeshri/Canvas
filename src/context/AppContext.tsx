@@ -98,6 +98,11 @@ interface AppContextType {
   // Notifications
   notifications: NotificationItem[];
   markNotificationRead: (id: string) => void;
+  removeNotification: (id: string) => void;
+
+  // User Profile
+  userAvatar: string;
+  setUserAvatar: (avatar: string) => void;
 
   // Stats
   weeklyStats: StatDayData[];
@@ -139,6 +144,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [weeklyStats, setWeeklyStats] = useState<StatDayData[]>(INITIAL_STATS_WEEK);
   const [totalFocusMinutesToday, setTotalFocusMinutesToday] = useState<number>(222);
+
+  // User Profile
+  const [userAvatar, setUserAvatar] = useState<string>('🦊');
 
   // Sounds
   const [sounds, setSounds] = useState<SoundTrack[]>(INITIAL_SOUNDS);
@@ -562,6 +570,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const removeNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -627,6 +639,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleMasterMute,
         notifications,
         markNotificationRead,
+        removeNotification,
+        userAvatar,
+        setUserAvatar,
         weeklyStats,
         totalFocusMinutesToday,
       }}

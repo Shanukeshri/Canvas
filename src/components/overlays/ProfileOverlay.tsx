@@ -1,34 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
   X,
-  Camera,
+  User,
+  Flame,
   Check,
   Pipette,
-  User,
+  Smile,
   Sparkles,
-  Flame,
-  Award,
-  Download,
-  Shield,
 } from 'lucide-react';
 import clsx from 'clsx';
 
+const EMOJI_OPTIONS = [
+  '🦊', '🐱', '🐼', '🦁', '🦉', '🐺', '🐸', '🐨',
+  '👩🏻‍💻', '👨🏻‍🎨', '👩🏼‍🔬', '👨🏽‍💻', '🧙‍♂️', '🥷', '🧑‍🚀', '🧘',
+  '⚡', '🌌', '🔥', '✨', '🚀', '🎯', '🌿', '🪐',
+  '🌊', '💎', '☕', '🎧', '🔮', '💡', '🌈', '🍀',
+];
+
 export function ProfileOverlay() {
-  const { overlay, closeOverlay, totalFocusMinutesToday } = useApp();
-  const { theme, setTheme, setCustomColor, customHex, presetThemes, isDarkMode } = useTheme();
+  const { overlay, closeOverlay, totalFocusMinutesToday, userAvatar, setUserAvatar } = useApp();
+  const { theme, setTheme, setCustomColor, customHex, presetThemes } = useTheme();
 
   const [displayName, setDisplayName] = useState('Alex Serene');
   const [username, setUsername] = useState('@alex_s');
-  const [avatar, setAvatar] = useState('🦊');
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close emoji tooltip when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setIsEmojiPickerOpen(false);
+      }
+    }
+    if (isEmojiPickerOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEmojiPickerOpen]);
 
   if (overlay !== 'profile') return null;
-
-  const hoursToday = Math.floor(totalFocusMinutesToday / 60);
-  const minutesToday = totalFocusMinutesToday % 60;
 
   return (
     <div
@@ -64,38 +81,68 @@ export function ProfileOverlay() {
 
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          {/* Avatar Section & Badge */}
-          <div className="p-5 rounded-3xl bg-surface-container-low/70 border border-surface-variant/40 flex flex-col items-center gap-3 shadow-sm">
-            <div className="relative group cursor-pointer">
-              <div
-                className="w-20 h-20 rounded-3xl border-2 flex items-center justify-center text-4xl shadow-md transition-transform group-hover:scale-105"
+          {/* Avatar Section: Click avatar to open emoji tooltip */}
+          <div className="p-5 rounded-3xl bg-surface-container-low/70 border border-surface-variant/40 flex flex-col items-center gap-3 shadow-sm relative">
+            <div className="relative" ref={emojiPickerRef}>
+              <button
+                type="button"
+                onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                className="w-20 h-20 rounded-3xl border-2 flex items-center justify-center text-4xl shadow-md transition-all hover:scale-105 active:scale-95 group relative cursor-pointer"
                 style={{ backgroundColor: theme.hex + '20', borderColor: theme.hex }}
+                title="Click to choose new profile icon"
               >
-                {avatar}
-              </div>
+                <span>{userAvatar}</span>
+                {/* Small subtle badge on avatar */}
+                <div
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center bg-surface border border-surface-variant shadow-sm text-xs opacity-90 group-hover:scale-110 transition-transform"
+                  style={{ color: theme.hex }}
+                >
+                  <Smile className="w-3.5 h-3.5" />
+                </div>
+              </button>
+
+              {/* Emoji Selection Tooltip / Popover */}
+              {isEmojiPickerOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-3 z-50 w-72 p-3 bg-surface-container-highest/98 backdrop-blur-2xl border border-surface-variant rounded-2xl shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col gap-2">
+                  <div className="flex items-center justify-between px-1 pb-1 border-b border-surface-variant/40">
+                    <span className="text-[11px] font-bold text-on-surface flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" style={{ color: theme.hex }} /> Choose Profile Icon
+                    </span>
+                    <span className="text-[10px] text-outline font-mono">32 Emojis</span>
+                  </div>
+
+                  <div className="grid grid-cols-8 gap-1.5 max-h-48 overflow-y-auto p-1 no-scrollbar">
+                    {EMOJI_OPTIONS.map((emoji) => {
+                      const isSelected = userAvatar === emoji;
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            setUserAvatar(emoji);
+                            setIsEmojiPickerOpen(false);
+                          }}
+                          className={clsx(
+                            'w-7 h-7 rounded-lg text-base flex items-center justify-center transition-all hover:scale-125 cursor-pointer',
+                            isSelected
+                              ? 'bg-surface-container-low ring-2 ring-primary scale-110 shadow-xs'
+                              : 'hover:bg-surface-container-low/80'
+                          )}
+                          title={`Choose ${emoji}`}
+                        >
+                          {emoji}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Avatar Emojis */}
-            <div className="flex items-center gap-2">
-              {['🦊', '👩🏻‍💻', '👨🏻‍🎨', '👩🏼‍🔬', '👨🏽‍💻', '⚡', '🌌', '🧘'].map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => setAvatar(emoji)}
-                  className={clsx(
-                    'w-8 h-8 rounded-xl text-base flex items-center justify-center transition-all',
-                    avatar === emoji
-                      ? 'bg-surface-container-high border-2 scale-110 shadow-sm'
-                      : 'hover:bg-surface-container/60 opacity-80 hover:opacity-100'
-                  )}
-                  style={avatar === emoji ? { borderColor: theme.hex } : {}}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
+            <span className="text-xs text-outline font-medium">Click icon to choose avatar</span>
 
             {/* User Stats Pill */}
-            <div className="mt-1 flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-variant/50 text-[11px] font-semibold text-outline">
+            <div className="mt-0.5 flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-variant/50 text-[11px] font-semibold text-outline">
               <span className="flex items-center gap-1 text-amber-400">
                 <Flame className="w-3.5 h-3.5 fill-amber-400" /> 14 Day Streak
               </span>

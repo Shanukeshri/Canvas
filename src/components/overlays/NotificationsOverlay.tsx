@@ -6,12 +6,9 @@ import { useTheme } from '@/context/ThemeContext';
 import {
   Bell,
   Check,
-  CheckCheck,
   X,
   Clock,
   Users,
-  Award,
-  Trash2,
   Sparkles,
   ArrowRight,
   UserPlus,
@@ -25,8 +22,8 @@ export function NotificationsOverlay() {
     closeOverlay,
     notifications,
     markNotificationRead,
+    removeNotification,
     setActiveTab,
-    setActiveGroupId,
     acceptFriendRequest,
     declineFriendRequest,
   } = useApp();
@@ -78,7 +75,7 @@ export function NotificationsOverlay() {
         className="w-full max-w-[520px] bg-surface-container-lowest/95 backdrop-blur-xl border border-surface-variant/40 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
+        {/* Header (No sub-heading, no Mark Read button) */}
         <div className="p-5 pb-4 border-b border-surface-variant/30 flex flex-col gap-3 bg-surface-container-lowest/70">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -100,21 +97,10 @@ export function NotificationsOverlay() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-outline">Presence alerts, invites & focus milestones</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1">
-              {unreadCount > 0 && (
-                <button
-                  onClick={() => notifications.forEach((n) => markNotificationRead(n.id))}
-                  title="Mark all as read"
-                  className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container-low transition-colors flex items-center gap-1.5 text-xs font-medium"
-                >
-                  <CheckCheck className="w-4 h-4" />
-                  <span className="hidden sm:inline">Mark read</span>
-                </button>
-              )}
               <button
                 onClick={closeOverlay}
                 className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container-low transition-colors"
@@ -174,7 +160,7 @@ export function NotificationsOverlay() {
                   key={notif.id}
                   onClick={() => markNotificationRead(notif.id)}
                   className={clsx(
-                    'group relative p-3.5 rounded-2xl border transition-all flex gap-3.5 items-start',
+                    'group relative p-3.5 rounded-2xl border transition-all flex gap-3 items-center justify-between',
                     isUnread
                       ? 'bg-surface-container-low/90 border-surface-variant hover:border-primary/50 shadow-sm'
                       : 'bg-surface-container-lowest/60 border-surface-variant/20 hover:border-surface-variant/50 opacity-80 hover:opacity-100'
@@ -189,7 +175,7 @@ export function NotificationsOverlay() {
                   )}
 
                   {/* Icon Avatar */}
-                  <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center shrink-0 border border-surface-variant/40 mt-0.5">
+                  <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center shrink-0 border border-surface-variant/40">
                     {getNotifIcon(notif.type)}
                   </div>
 
@@ -206,13 +192,13 @@ export function NotificationsOverlay() {
                       </h4>
                       <span className="text-[10px] text-outline shrink-0 font-mono">{notif.time}</span>
                     </div>
-                    <p className="text-[11px] text-outline mt-1 leading-relaxed break-words">
+                    <p className="text-[11px] text-outline mt-0.5 leading-relaxed break-words">
                       {notif.message}
                     </p>
 
                     {/* Actionable buttons for invites */}
                     {notif.type === 'group_invite' && (
-                      <div className="mt-2.5 flex items-center gap-2">
+                      <div className="mt-2 flex items-center gap-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -226,7 +212,7 @@ export function NotificationsOverlay() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            markNotificationRead(notif.id);
+                            removeNotification(notif.id);
                           }}
                           className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
                         >
@@ -236,7 +222,7 @@ export function NotificationsOverlay() {
                     )}
 
                     {notif.type === 'friend_request' && (
-                      <div className="mt-2.5 flex items-center gap-2">
+                      <div className="mt-2 flex items-center gap-2">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -251,7 +237,7 @@ export function NotificationsOverlay() {
                           onClick={(e) => {
                             e.stopPropagation();
                             declineFriendRequest('elena-req');
-                            markNotificationRead(notif.id);
+                            removeNotification(notif.id);
                           }}
                           className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-error hover:bg-surface-container transition-colors"
                         >
@@ -260,6 +246,19 @@ export function NotificationsOverlay() {
                       </div>
                     )}
                   </div>
+
+                  {/* Tick/Check button at right edge to read and remove notification */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeNotification(notif.id);
+                    }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-outline/60 hover:text-emerald-500 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30 transition-all shrink-0 self-center group/tick"
+                    title="Mark read & remove"
+                    aria-label="Mark read and remove notification"
+                  >
+                    <Check className="w-4 h-4 group-hover/tick:scale-110 transition-transform" />
+                  </button>
                 </div>
               );
             })

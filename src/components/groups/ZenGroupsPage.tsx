@@ -8,15 +8,7 @@ import { ZenTodoListBoard } from '@/components/todos/ZenTodoListBoard';
 import { Friend } from '@/types';
 import {
   Users,
-  Copy,
-  Check,
-  KeyRound,
-  Layers,
   ArrowLeftRight,
-  Plus,
-  Play,
-  Pause,
-  RotateCcw,
   PanelRightClose,
   PanelRightOpen,
 } from 'lucide-react';
@@ -27,7 +19,6 @@ export function ZenGroupsPage() {
   const {
     groups,
     activeGroupId,
-    setActiveGroupId,
     setOverlay,
     addGroupTaskFull,
     toggleGroupTaskComplete,
@@ -56,9 +47,6 @@ export function ZenGroupsPage() {
 
   // Find active group or default to first group
   const currentGroup = groups.find((g) => g.id === activeGroupId) || groups[0];
-
-  // Copied code feedback state
-  const [copiedCode, setCopiedCode] = useState(false);
 
   // Trigger subtle celebration burst on session completion
   useEffect(() => {
@@ -116,16 +104,6 @@ export function ZenGroupsPage() {
     resetTimer();
   };
 
-  const handleCopyCode = (code: string) => {
-    try {
-      navigator.clipboard.writeText(code);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy', err);
-    }
-  };
-
   if (!currentGroup) {
     return (
       <div className="flex-1 h-screen flex flex-col items-center justify-center p-8 bg-zen-bg select-none animate-in fade-in duration-300 text-center gap-4">
@@ -175,92 +153,44 @@ export function ZenGroupsPage() {
 
   return (
     <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
-      {/* ================= PART 1: TIMER PART ================= */}
+      {/* ================= PART 1: TIMER PART (Clean, No Top Heading) ================= */}
       <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
-        {/* Top Header Bar for Group */}
-        <header className="shrink-0 z-20 px-6 py-4 border-b border-surface-variant/30 flex flex-wrap items-center justify-between gap-3 bg-surface/80 backdrop-blur-md">
-          {/* Left: Group Name + ASCII Group Code Badge */}
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-lg md:text-xl font-bold font-display text-primary tracking-tight truncate">
-                  {currentGroup.name}
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 shrink-0">
-                  {currentGroup.category}
-                </span>
-              </div>
+        {/* Floating Quick Action: Switch Group (Top Left) */}
+        <div className="absolute top-5 left-6 z-30">
+          <button
+            onClick={() => setOverlay('groups')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container backdrop-blur-md border border-outline-variant text-xs font-semibold text-primary transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="Switch Focus Group"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
+            <span>Switch Group</span>
+          </button>
+        </div>
 
-              {/* ASCII Group Code badge directly below group name */}
-              <div className="flex items-center gap-2 mt-1">
-                <button
-                  onClick={() => handleCopyCode(currentGroup.code)}
-                  className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-surface-container border border-outline-variant hover:border-primary text-xs font-mono font-bold text-primary transition-all group/badge"
-                  title="Click to copy ASCII group code"
-                >
-                  <KeyRound className="w-3 h-3 text-primary" />
-                  <span>Code: {currentGroup.code}</span>
-                  {copiedCode ? (
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-sans font-semibold ml-1">
-                      <Check className="w-3 h-3" /> Copied
-                    </span>
-                  ) : (
-                    <Copy className="w-2.5 h-2.5 text-outline group-hover/badge:text-primary transition-colors ml-0.5" />
-                  )}
-                </button>
-
-                <span className="text-xs text-on-surface-variant">
-                  {currentGroup.members.length} members ({currentGroup.activeCount} online)
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Switch Group + Single Toggle Icon when collapsed */}
-          <div className="flex items-center gap-2">
+        {/* Floating Quick Action: Open Sidebar (Top Right, when collapsed) */}
+        {!isTodoListOpen && (
+          <div className="absolute top-5 right-6 z-30">
             <button
-              onClick={() => setOverlay('groups')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container border border-outline-variant text-xs font-semibold text-primary transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
-              title="Open Focus Groups overlay to switch or create groups"
+              onClick={() => setIsTodoListOpen(true)}
+              className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-surface-container-high/80 hover:bg-surface-container backdrop-blur-md border border-outline-variant text-primary hover:scale-105 active:scale-95 transition-all shadow-sm"
+              title="Open Group Tasks"
+              aria-label="Open Group Tasks"
             >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
-              <span>Switch Group</span>
+              <PanelRightOpen className="w-4 h-4 text-primary" />
+              {uncompletedTasksCount > 0 && (
+                <span
+                  className="absolute top-2 right-2 w-2 h-2 rounded-full"
+                  style={{ backgroundColor: theme.hex }}
+                />
+              )}
             </button>
-
-            {/* Single Icon when Collapsed (No minimized sidebar strip) */}
-            {!isTodoListOpen && (
-              <button
-                onClick={() => setIsTodoListOpen(true)}
-                className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-surface-container-high hover:bg-surface-container border border-outline-variant text-primary hover:scale-105 active:scale-95 transition-all shadow-sm"
-                title="Open Group Tasks"
-                aria-label="Open Group Tasks"
-              >
-                <PanelRightOpen className="w-4 h-4 text-primary" />
-                {uncompletedTasksCount > 0 && (
-                  <span
-                    className="absolute top-2 right-2 w-2 h-2 rounded-full"
-                    style={{ backgroundColor: theme.hex }}
-                  />
-                )}
-              </button>
-            )}
           </div>
-        </header>
+        )}
 
         {/* Main Immersive Canvas Area */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4 md:p-6">
-          {/* Floating Orbit Member Bubbles Layer with Compact Scaling & Strict Avoidance */}
+          {/* Floating Orbit Member Bubbles Layer */}
           <OrbitBubbles attachedFriends={groupFriends} compact={isTodoListOpen} />
-
-          {/* Group Goal / Focus Task Indicator */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 text-center z-10 pointer-events-none w-full max-w-xl px-4">
-            <span
-              className="font-body-lg text-xs font-medium tracking-wide truncate block opacity-90"
-              style={{ color: 'var(--primary)' }}
-            >
-              Shared Presence: {currentGroup.description || 'Focusing Together'}
-            </span>
-          </div>
 
           {/* Center Primary Timer Ring: Proportionally Scaled */}
           <button
