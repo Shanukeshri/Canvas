@@ -154,7 +154,7 @@ export function ZenGroupsPage() {
   return (
     <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
       {/* ================= PART 1: TIMER PART (Clean, No Top Heading) ================= */}
-      <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
+      <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
         {/* Floating Quick Action: Switch Group (Top Left) */}
         <div className="absolute top-5 left-6 z-30">
           <button
@@ -297,7 +297,7 @@ export function ZenGroupsPage() {
       <section
         className={clsx(
           'h-full flex flex-col bg-surface-container-lowest/50 backdrop-blur-sm overflow-hidden shrink-0',
-          'transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]',
+          'transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]',
           isTodoListOpen
             ? 'w-full lg:w-[360px] xl:w-[400px] 2xl:w-[440px] opacity-100 border-t lg:border-t-0 lg:border-l border-surface-variant/40 translate-x-0'
             : 'w-0 min-w-0 max-w-0 opacity-0 border-none pointer-events-none translate-x-8'
