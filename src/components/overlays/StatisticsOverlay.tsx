@@ -113,10 +113,10 @@ export function StatisticsOverlay() {
     setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
-  // Straight line graph SVG calculations: Compact height
-  const svgWidth = 480;
-  const svgHeight = 85;
-  const padX = 20;
+  // Straight line graph SVG calculations
+  const svgWidth = 330;
+  const svgHeight = 90;
+  const padX = 18;
   const padYTop = 8;
   const padYBottom = 14;
   const maxVal = Math.max(...trendData.map((d) => d.val), 6.0);
@@ -148,10 +148,10 @@ export function StatisticsOverlay() {
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-150"
     >
       <div
-        className="w-full max-w-4xl xl:max-w-5xl bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl p-4 sm:p-5 select-none animate-in zoom-in-95 duration-150 relative flex flex-col gap-2.5 overflow-hidden"
+        className="w-full max-w-5xl xl:max-w-6xl bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl p-4 sm:p-5 select-none animate-in zoom-in-95 duration-150 relative flex flex-col gap-2.5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header: Compact height */}
+        {/* Header: Title + Streak on Left, Close on Right (5% scaled down) */}
         <div className="flex items-center justify-between border-b border-surface-variant/30 pb-2.5 shrink-0">
           <div className="flex items-center gap-2.5">
             <div
@@ -192,10 +192,10 @@ export function StatisticsOverlay() {
           </button>
         </div>
 
-        {/* Top Visualizations Row: Calendar Map & Straight-Line Focus Trend (Vertically Compact) */}
+        {/* Top & Middle Grid: Consistency Calendar on Left (5 cols) & [Line Graph + 4 Stacked Squares] on Right (7 cols) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 shrink-0">
-          {/* 1. Consistency Calendar (7 Columns starting from Monday) */}
-          <div className="lg:col-span-7 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs relative">
+          {/* 1. Consistency Calendar (7 Columns starting from Monday) - lg:col-span-6 */}
+          <div className="lg:col-span-6 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs relative">
             {/* Calendar Header with Month & Year and Nav Controls */}
             <div className="flex items-center justify-between mb-1.5 border-b border-surface-variant/20 pb-1.5">
               <div className="flex items-center gap-1.5">
@@ -241,7 +241,7 @@ export function StatisticsOverlay() {
               ))}
             </div>
 
-            {/* Calendar Days Grid: Scaled down height */}
+            {/* Calendar Days Grid */}
             <div className="grid grid-cols-7 gap-1 px-0.5 my-auto">
               {calendarCells.map((cell, idx) => {
                 if (cell.isPadding) {
@@ -336,260 +336,264 @@ export function StatisticsOverlay() {
             </div>
           </div>
 
-          {/* 2. Focus Trend Straight-Line Graph with Time Range Selector (Vertically Compact) */}
-          <div className="lg:col-span-5 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs">
-            {/* Header: Title + Selector */}
-            <div className="flex items-center justify-between mb-1 gap-2">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <TrendingUp className="w-3.5 h-3.5 shrink-0" style={{ color: theme.hex }} />
-                <span className="text-xs font-semibold text-on-surface tracking-wide truncate">
-                  Focus Trend
-                </span>
+          {/* 2. Right Side: Line Graph & 4 Vertically Stacked Squares - lg:col-span-6 */}
+          <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            {/* Line Chart (sm:col-span-8) */}
+            <div className="sm:col-span-8 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs">
+              {/* Header: Title + Time Range Selector */}
+              <div className="flex items-center justify-between mb-1 gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" style={{ color: theme.hex }} />
+                  <span className="text-xs font-semibold text-on-surface tracking-wide truncate">
+                    Focus Trend
+                  </span>
+                </div>
+
+                {/* Time Range Selector */}
+                <div className="flex items-center gap-0.5 p-0.5 bg-surface-container rounded-lg border border-surface-variant/40 shrink-0">
+                  {(
+                    [
+                      { id: 'today', label: 'Today' },
+                      { id: 'week', label: 'Week' },
+                      { id: 'month', label: 'Month' },
+                      { id: 'all', label: 'All' },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setTimeRange(tab.id)}
+                      className={clsx(
+                        'px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all',
+                        timeRange === tab.id
+                          ? 'bg-surface-container-highest font-semibold shadow-xs'
+                          : 'text-outline hover:text-on-surface'
+                      )}
+                      style={timeRange === tab.id ? { color: theme.hex } : {}}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Time Range Selector embedded in Line Chart */}
-              <div className="flex items-center gap-0.5 p-0.5 bg-surface-container rounded-lg border border-surface-variant/40 shrink-0">
-                {(
-                  [
-                    { id: 'today', label: 'Today' },
-                    { id: 'week', label: 'Week' },
-                    { id: 'month', label: 'Month' },
-                    { id: 'all', label: 'All' },
-                  ] as const
-                ).map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setTimeRange(tab.id)}
-                    className={clsx(
-                      'px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all',
-                      timeRange === tab.id
-                        ? 'bg-surface-container-highest font-semibold shadow-xs'
-                        : 'text-outline hover:text-on-surface'
-                    )}
-                    style={timeRange === tab.id ? { color: theme.hex } : {}}
+              {/* Metric Summary */}
+              <div className="flex items-center justify-between mb-0.5 px-0.5">
+                <span className="text-[10px] text-outline">Total Focus:</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-mono font-bold text-on-surface">
+                    {timeRange === 'today' ? `${hoursToday}h ${minutesToday}m` : '22h 42m'}
+                  </span>
+                  <span className="text-[8.5px] font-semibold text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded-full font-mono">
+                    +18%
+                  </span>
+                </div>
+              </div>
+
+              {/* Straight-Line Graph SVG */}
+              <div className="relative w-full h-[95px] my-auto">
+                <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
+                  <defs>
+                    <linearGradient id="straightLineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={theme.hex} stopOpacity="0.32" />
+                      <stop offset="80%" stopColor={theme.hex} stopOpacity="0.05" />
+                      <stop offset="100%" stopColor={theme.hex} stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Guide lines */}
+                  {[0.25, 0.55, 0.85].map((fraction, i) => {
+                    const y = svgHeight - padYBottom - fraction * (svgHeight - padYTop - padYBottom);
+                    return (
+                      <line
+                        key={i}
+                        x1={padX}
+                        y1={y}
+                        x2={svgWidth - padX}
+                        y2={y}
+                        stroke="var(--surface-variant)"
+                        strokeOpacity="0.35"
+                        strokeDasharray="3 3"
+                      />
+                    );
+                  })}
+
+                  {/* Area fill */}
+                  <path d={areaPath} fill="url(#straightLineGrad)" />
+
+                  {/* Line */}
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke={theme.hex}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Points */}
+                  {points.map((p, i) => {
+                    const isHovered = hoveredPoint === i;
+                    return (
+                      <g key={i}>
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r="10"
+                          fill="transparent"
+                          className="cursor-pointer"
+                          onMouseEnter={() => setHoveredPoint(i)}
+                          onMouseLeave={() => setHoveredPoint(null)}
+                        />
+
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isHovered ? 4.5 : p.active ? 3.5 : 2.5}
+                          fill={isHovered || p.active ? theme.hex : 'var(--surface-container-high)'}
+                          stroke={isHovered || p.active ? 'var(--surface)' : theme.hex}
+                          strokeWidth="1.5"
+                          className="transition-all duration-150 pointer-events-none"
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Floating Tooltip */}
+                {hoveredPoint !== null && (
+                  <div
+                    className="absolute pointer-events-none bg-surface-container-highest px-2 py-0.5 rounded-md text-[9px] font-semibold text-on-surface shadow-xl border border-surface-variant -translate-x-1/2 -translate-y-full transition-all z-30"
+                    style={{
+                      left: `${(points[hoveredPoint].x / svgWidth) * 100}%`,
+                      top: `${(points[hoveredPoint].y / svgHeight) * 100 - 6}%`,
+                    }}
                   >
-                    {tab.label}
-                  </button>
+                    <span style={{ color: theme.hex }}>{trendData[hoveredPoint].day}</span>: {trendData[hoveredPoint].hours}
+                  </div>
+                )}
+              </div>
+
+              {/* X Axis Labels */}
+              <div className="flex items-center justify-between px-1 pt-1 border-t border-surface-variant/20 text-[9px] text-outline">
+                {trendData.map((d, i) => (
+                  <span
+                    key={i}
+                    className={clsx(
+                      'font-medium transition-colors',
+                      d.active ? 'font-bold' : 'hover:text-on-surface'
+                    )}
+                    style={d.active ? { color: theme.hex } : {}}
+                  >
+                    {d.day}
+                  </span>
                 ))}
               </div>
             </div>
 
-            {/* Metric Summary */}
-            <div className="flex items-center justify-between mb-0.5 px-0.5">
-              <span className="text-[10px] text-outline">Total Focus:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-mono font-bold text-on-surface">
-                  {timeRange === 'today' ? `${hoursToday}h ${minutesToday}m` : '22h 42m'}
-                </span>
-                <span className="text-[8.5px] font-semibold text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded-full font-mono">
-                  +18%
-                </span>
-              </div>
-            </div>
-
-            {/* Compact Straight-Line Graph SVG */}
-            <div className="relative w-full h-[85px] my-auto">
-              <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="straightLineGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={theme.hex} stopOpacity="0.32" />
-                    <stop offset="80%" stopColor={theme.hex} stopOpacity="0.05" />
-                    <stop offset="100%" stopColor={theme.hex} stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Subtle horizontal dashed guide lines */}
-                {[0.25, 0.55, 0.85].map((fraction, i) => {
-                  const y = svgHeight - padYBottom - fraction * (svgHeight - padYTop - padYBottom);
-                  return (
-                    <line
-                      key={i}
-                      x1={padX}
-                      y1={y}
-                      x2={svgWidth - padX}
-                      y2={y}
-                      stroke="var(--surface-variant)"
-                      strokeOpacity="0.35"
-                      strokeDasharray="3 3"
-                    />
-                  );
-                })}
-
-                {/* Straight Polygon Area Fill */}
-                <path d={areaPath} fill="url(#straightLineGrad)" />
-
-                {/* Straight Line Path */}
-                <path
-                  d={linePath}
-                  fill="none"
-                  stroke={theme.hex}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-
-                {/* Interactive Points */}
-                {points.map((p, i) => {
-                  const isHovered = hoveredPoint === i;
-                  return (
-                    <g key={i}>
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r="10"
-                        fill="transparent"
-                        className="cursor-pointer"
-                        onMouseEnter={() => setHoveredPoint(i)}
-                        onMouseLeave={() => setHoveredPoint(null)}
-                      />
-
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r={isHovered ? 4.5 : p.active ? 3.5 : 2.5}
-                        fill={isHovered || p.active ? theme.hex : 'var(--surface-container-high)'}
-                        stroke={isHovered || p.active ? 'var(--surface)' : theme.hex}
-                        strokeWidth="1.5"
-                        className="transition-all duration-150 pointer-events-none"
-                      />
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Floating Tooltip for Line Graph */}
-              {hoveredPoint !== null && (
-                <div
-                  className="absolute pointer-events-none bg-surface-container-highest px-2 py-0.5 rounded-md text-[9px] font-semibold text-on-surface shadow-xl border border-surface-variant -translate-x-1/2 -translate-y-full transition-all z-30"
-                  style={{
-                    left: `${(points[hoveredPoint].x / svgWidth) * 100}%`,
-                    top: `${(points[hoveredPoint].y / svgHeight) * 100 - 6}%`,
-                  }}
-                >
-                  <span style={{ color: theme.hex }}>{trendData[hoveredPoint].day}</span>: {trendData[hoveredPoint].hours}
+            {/* 4 Vertically Stacked Squares (sm:col-span-4) */}
+            <div className="sm:col-span-4 flex flex-col justify-between gap-1.5">
+              {/* 1. Sessions */}
+              <div className="flex-1 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex items-center justify-between shadow-2xs">
+                <div className="flex flex-col">
+                  <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
+                    Sessions
+                  </span>
+                  <span className="text-sm font-bold text-on-surface font-mono leading-tight">48</span>
                 </div>
-              )}
-            </div>
+                <div className="flex flex-col items-end">
+                  <Clock className="w-3 h-3 text-outline/70 mb-0.5" />
+                  <span className="text-[8.5px] text-emerald-400 font-medium font-mono">96%</span>
+                </div>
+              </div>
 
-            {/* X Axis Labels */}
-            <div className="flex items-center justify-between px-1 pt-1 border-t border-surface-variant/20 text-[9px] text-outline">
-              {trendData.map((d, i) => (
-                <span
-                  key={i}
-                  className={clsx(
-                    'font-medium transition-colors',
-                    d.active ? 'font-bold' : 'hover:text-on-surface'
-                  )}
-                  style={d.active ? { color: theme.hex } : {}}
-                >
-                  {d.day}
-                </span>
-              ))}
+              {/* 2. Tasks */}
+              <div className="flex-1 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex items-center justify-between shadow-2xs">
+                <div className="flex flex-col">
+                  <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
+                    Tasks
+                  </span>
+                  <span className="text-sm font-bold text-on-surface font-mono leading-tight">31</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <CheckCircle2 className="w-3 h-3 text-outline/70 mb-0.5" />
+                  <span className="text-[8.5px] font-medium font-mono" style={{ color: theme.hex }}>
+                    +9 wk
+                  </span>
+                </div>
+              </div>
+
+              {/* 3. Avg Focus */}
+              <div className="flex-1 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex items-center justify-between shadow-2xs">
+                <div className="flex flex-col">
+                  <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
+                    Avg Focus
+                  </span>
+                  <span className="text-sm font-bold text-on-surface font-mono leading-tight">28m</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <Zap className="w-3 h-3 text-outline/70 mb-0.5" />
+                  <span className="text-[8.5px] text-outline font-mono">optimal</span>
+                </div>
+              </div>
+
+              {/* 4. Peak Flow */}
+              <div className="flex-1 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex items-center justify-between shadow-2xs">
+                <div className="flex flex-col">
+                  <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
+                    Peak Flow
+                  </span>
+                  <span className="text-sm font-bold text-on-surface font-mono leading-tight">10 AM</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <Target className="w-3 h-3 text-outline/70 mb-0.5" />
+                  <span className="text-[8.5px] text-outline font-mono">morning</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom Row: 4 Metric Badges & Project Distribution (Compact Sizing) */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 shrink-0">
-          {/* 4 Compact Stat Badges (Col 5) */}
-          <div className="md:col-span-5 grid grid-cols-2 gap-2">
-            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
-                  Sessions
-                </span>
-                <Clock className="w-3 h-3 text-outline/70" />
-              </div>
-              <div className="my-0.5">
-                <span className="text-lg font-bold text-on-surface font-mono">48</span>
-              </div>
-              <span className="text-[9px] text-emerald-400 font-medium font-mono">96% done</span>
-            </div>
-
-            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
-                  Tasks
-                </span>
-                <CheckCircle2 className="w-3 h-3 text-outline/70" />
-              </div>
-              <div className="my-0.5">
-                <span className="text-lg font-bold text-on-surface font-mono">31</span>
-              </div>
-              <span className="text-[9px] font-medium font-mono" style={{ color: theme.hex }}>
-                +9 week
+        {/* Bottom Row: Project Focus Distribution Stretched Full Width (Horizontally Wide, Vertically Compact) */}
+        <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-2xs shrink-0">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5" style={{ color: theme.hex }} />
+              <span className="text-xs font-semibold text-on-surface tracking-wide">
+                Project Focus Distribution
               </span>
             </div>
-
-            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
-                  Avg Focus
-                </span>
-                <Zap className="w-3 h-3 text-outline/70" />
-              </div>
-              <div className="my-0.5">
-                <span className="text-lg font-bold text-on-surface font-mono">28m</span>
-              </div>
-              <span className="text-[9px] text-outline font-mono">optimal</span>
-            </div>
-
-            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
-                  Peak Flow
-                </span>
-                <Target className="w-3 h-3 text-outline/70" />
-              </div>
-              <div className="my-0.5">
-                <span className="text-lg font-bold text-on-surface font-mono">10 AM</span>
-              </div>
-              <span className="text-[9px] text-outline font-mono">morning</span>
-            </div>
+            <span className="text-[9.5px] text-outline font-mono">4 projects • 14h 20m total</span>
           </div>
 
-          {/* Project Distribution (Col Span 7) */}
-          <div className="md:col-span-7 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-2xs">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" style={{ color: theme.hex }} />
-                <span className="text-xs font-semibold text-on-surface tracking-wide">
-                  Project Focus Distribution
-                </span>
-              </div>
-              <span className="text-[9.5px] text-outline font-mono">4 projects</span>
-            </div>
+          {/* Segmented Distribution Bar (Full Width) */}
+          <div className="w-full h-2 rounded-full overflow-hidden flex bg-surface-container mb-2 shadow-inner">
+            {projectDistribution.map((p, idx) => (
+              <div
+                key={idx}
+                className="h-full transition-opacity hover:opacity-85 cursor-pointer"
+                style={{ width: `${p.percent}%`, backgroundColor: p.color }}
+                title={`${p.name}: ${p.percent}% (${p.time})`}
+              />
+            ))}
+          </div>
 
-            {/* Segmented Distribution Bar */}
-            <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-surface-container mb-2 shadow-inner">
-              {projectDistribution.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="h-full transition-opacity hover:opacity-85"
-                  style={{ width: `${p.percent}%`, backgroundColor: p.color }}
-                  title={`${p.name}: ${p.percent}% (${p.time})`}
-                />
-              ))}
-            </div>
-
-            {/* Project List Chips */}
-            <div className="grid grid-cols-2 gap-1.5">
-              {projectDistribution.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="px-2 py-1 rounded-lg bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[10px] font-medium text-on-surface truncate">{p.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 font-mono text-[9.5px]">
-                    <span className="text-on-surface font-semibold">{p.time}</span>
-                    <span className="text-outline">({p.percent}%)</span>
-                  </div>
+          {/* 4 Project Chips Stretched Horizontally (1x4 grid) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {projectDistribution.map((p, idx) => (
+              <div
+                key={idx}
+                className="px-2.5 py-1.5 rounded-xl bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between shadow-2xs"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                  <span className="text-[10.5px] font-medium text-on-surface truncate">{p.name}</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-1 shrink-0 font-mono text-[9.5px]">
+                  <span className="text-on-surface font-semibold">{p.time}</span>
+                  <span className="text-outline">({p.percent}%)</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
