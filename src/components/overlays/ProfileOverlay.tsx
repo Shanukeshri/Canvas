@@ -50,111 +50,118 @@ export function ProfileOverlay() {
   return (
     <div
       onClick={closeOverlay}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        className="bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl w-full max-w-[520px] flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 z-50 overflow-hidden"
+        className="bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl w-full max-w-[480px] flex flex-col z-50 overflow-hidden select-none animate-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
+          <div className="flex items-center gap-2.5">
             <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center border border-surface-variant/40 shadow-sm"
+              className="w-8 h-8 rounded-xl flex items-center justify-center border border-surface-variant/40 shadow-sm"
               style={{ backgroundColor: theme.hex + '15', color: theme.hex }}
             >
-              <User className="w-5 h-5" />
+              <User className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-on-surface">Profile & 24 Color Themes</h2>
-              <p className="text-xs text-outline">Your personal identity & dynamic canvas aesthetics</p>
+              <h2 className="text-sm font-bold text-on-surface">Profile & Color Themes</h2>
+              <p className="text-[11px] text-outline">Personal identity & canvas aesthetics</p>
             </div>
           </div>
           <button
             onClick={closeOverlay}
             aria-label="Close modal"
-            className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+            className="p-1.5 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
-          {/* Avatar Section: Click avatar to open emoji tooltip */}
-          <div className="p-5 rounded-3xl bg-surface-container-low/70 border border-surface-variant/40 flex flex-col items-center gap-3 shadow-sm relative">
-            <div className="relative" ref={emojiPickerRef}>
-              <button
-                type="button"
-                onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className="w-20 h-20 rounded-3xl border-2 flex items-center justify-center text-4xl shadow-md transition-all hover:scale-105 active:scale-95 group relative cursor-pointer"
-                style={{ backgroundColor: theme.hex + '20', borderColor: theme.hex }}
-                title="Click to choose new profile icon"
-              >
-                <span>{userAvatar}</span>
-                {/* Small subtle badge on avatar */}
-                <div
-                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center bg-surface border border-surface-variant shadow-sm text-xs opacity-90 group-hover:scale-110 transition-transform"
-                  style={{ color: theme.hex }}
+        {/* Compact Unscrollable Content Area */}
+        <div className="p-4 sm:p-5 space-y-3.5">
+          {/* Avatar Section */}
+          <div className="p-3 rounded-2xl bg-surface-container-low/70 border border-surface-variant/40 flex items-center justify-between shadow-sm relative">
+            <div className="flex items-center gap-3.5">
+              <div className="relative" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
+                  className="w-14 h-14 rounded-2xl border-2 flex items-center justify-center text-3xl shadow-md transition-all hover:scale-105 active:scale-95 group relative cursor-pointer"
+                  style={{ backgroundColor: theme.hex + '20', borderColor: theme.hex }}
+                  title="Click to choose new profile emoji"
                 >
-                  <Smile className="w-3.5 h-3.5" />
-                </div>
-              </button>
-
-              {/* Emoji Selection Tooltip / Popover */}
-              {isEmojiPickerOpen && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-3 z-50 w-72 p-3 bg-surface-container-highest/98 backdrop-blur-2xl border border-surface-variant rounded-2xl shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col gap-2">
-                  <div className="flex items-center justify-between px-1 pb-1 border-b border-surface-variant/40">
-                    <span className="text-[11px] font-bold text-on-surface flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" style={{ color: theme.hex }} /> Choose Profile Icon
-                    </span>
-                    <span className="text-[10px] text-outline font-mono">32 Emojis</span>
+                  <span>{userAvatar}</span>
+                  <div
+                    className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center bg-surface border border-surface-variant shadow-sm text-[10px] opacity-90 group-hover:scale-110 transition-transform"
+                    style={{ color: theme.hex }}
+                  >
+                    <Smile className="w-3 h-3" />
                   </div>
+                </button>
 
-                  <div className="grid grid-cols-8 gap-1.5 max-h-48 overflow-y-auto p-1 no-scrollbar">
-                    {EMOJI_OPTIONS.map((emoji) => {
-                      const isSelected = userAvatar === emoji;
-                      return (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => {
-                            setUserAvatar(emoji);
-                            setIsEmojiPickerOpen(false);
-                          }}
-                          className={clsx(
-                            'w-7 h-7 rounded-lg text-base flex items-center justify-center transition-all hover:scale-125 cursor-pointer',
-                            isSelected
-                              ? 'bg-surface-container-low ring-2 ring-primary scale-110 shadow-xs'
-                              : 'hover:bg-surface-container-low/80'
-                          )}
-                          title={`Choose ${emoji}`}
-                        >
-                          {emoji}
-                        </button>
-                      );
-                    })}
+                {/* Emoji Selection Tooltip */}
+                {isEmojiPickerOpen && (
+                  <div className="absolute left-0 top-full mt-2 z-50 w-64 p-2.5 bg-surface-container-highest/98 backdrop-blur-2xl border border-surface-variant rounded-2xl shadow-2xl animate-in zoom-in-95 duration-150 flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-1 pb-1 border-b border-surface-variant/40">
+                      <span className="text-[10px] font-bold text-on-surface flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" style={{ color: theme.hex }} /> Choose Profile Icon
+                      </span>
+                      <span className="text-[9px] text-outline font-mono">32 Emojis</span>
+                    </div>
+
+                    <div className="grid grid-cols-8 gap-1 max-h-36 overflow-y-auto p-0.5 no-scrollbar">
+                      {EMOJI_OPTIONS.map((emoji) => {
+                        const isSelected = userAvatar === emoji;
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setUserAvatar(emoji);
+                              setIsEmojiPickerOpen(false);
+                            }}
+                            className={clsx(
+                              'w-6 h-6 rounded-md text-sm flex items-center justify-center transition-all hover:scale-125 cursor-pointer',
+                              isSelected
+                                ? 'bg-surface-container-low ring-1.5 ring-primary scale-110 shadow-xs'
+                                : 'hover:bg-surface-container-low/80'
+                            )}
+                            title={`Choose ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-on-surface">{displayName}</span>
+                <span className="text-[11px] text-outline font-mono">{username}</span>
+                <span className="text-[10px] text-outline mt-0.5">Click icon to change avatar</span>
+              </div>
             </div>
 
-            <span className="text-xs text-outline font-medium">Click icon to choose avatar</span>
-
             {/* User Stats Pill */}
-            <div className="mt-0.5 flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-variant/50 text-[11px] font-semibold text-outline">
-              <span className="flex items-center gap-1 text-amber-400">
-                <Flame className="w-3.5 h-3.5 fill-amber-400" /> 14 Day Streak
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container border border-surface-variant/50 text-[10px] font-semibold text-outline">
+                <Flame className="w-3 h-3 fill-amber-400 text-amber-400" />
+                <span className="text-amber-400">14d Streak</span>
+              </div>
+              <span className="text-[10px] font-mono font-medium" style={{ color: theme.hex }}>
+                48 Sessions
               </span>
-              <span>•</span>
-              <span style={{ color: theme.hex }}>48 Total Sessions</span>
             </div>
           </div>
 
           {/* Input Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-outline" htmlFor="displayName">
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-outline" htmlFor="displayName">
                 Display Name
               </label>
               <input
@@ -162,11 +169,11 @@ export function ProfileOverlay() {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                className="text-xs bg-surface-container border border-surface-variant/50 rounded-xl px-3.5 py-2.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-medium"
+                className="text-xs bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-medium"
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-outline" htmlFor="username">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-semibold text-outline" htmlFor="username">
                 Handle
               </label>
               <input
@@ -174,23 +181,23 @@ export function ProfileOverlay() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="text-xs bg-surface-container border border-surface-variant/50 rounded-xl px-3.5 py-2.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-mono"
+                className="text-xs bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-mono"
               />
             </div>
           </div>
 
           {/* 24 Harmonious Color Swatches */}
-          <div className="space-y-3 pt-3 border-t border-surface-variant/30">
+          <div className="space-y-2 pt-2 border-t border-surface-variant/30">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-on-surface uppercase tracking-wider">
-                Active Theme & Accent Tint
+              <label className="text-[11px] font-bold text-on-surface uppercase tracking-wider">
+                Theme & Accent Color
               </label>
-              <span className="text-xs font-mono font-medium" style={{ color: theme.hex }}>
+              <span className="text-[11px] font-mono font-medium" style={{ color: theme.hex }}>
                 {theme.id === 'custom' ? `Custom (${customHex})` : theme.name}
               </span>
             </div>
 
-            <div className="grid grid-cols-6 sm:grid-cols-8 gap-2.5 p-4 rounded-2xl bg-surface-container-low/70 border border-surface-variant/40 shadow-sm">
+            <div className="grid grid-cols-8 gap-1.5 p-2.5 rounded-2xl bg-surface-container-low/70 border border-surface-variant/40 shadow-sm">
               {presetThemes.map((p) => {
                 const isSelected = theme.id === p.id;
                 return (
@@ -198,15 +205,15 @@ export function ProfileOverlay() {
                     key={p.id}
                     onClick={() => setTheme(p)}
                     className={clsx(
-                      'w-full aspect-square rounded-2xl transition-all flex items-center justify-center relative border border-white/10 shadow-sm',
+                      'w-full aspect-square rounded-xl transition-all flex items-center justify-center relative border border-white/10 shadow-2xs',
                       isSelected
-                        ? 'scale-110 ring-2 ring-offset-2 ring-offset-surface ring-primary'
+                        ? 'scale-110 ring-2 ring-offset-1 ring-offset-surface ring-primary'
                         : 'hover:scale-105 opacity-85 hover:opacity-100'
                     )}
                     style={{ backgroundColor: p.hex }}
                     title={`${p.name} (${p.hex})`}
                   >
-                    {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                    {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
                   </button>
                 );
               })}
@@ -214,9 +221,9 @@ export function ProfileOverlay() {
               {/* Custom Color Wheel */}
               <label
                 className={clsx(
-                  'w-full aspect-square rounded-2xl transition-all flex items-center justify-center relative cursor-pointer border border-white/20 overflow-hidden shadow-sm',
+                  'w-full aspect-square rounded-xl transition-all flex items-center justify-center relative cursor-pointer border border-white/20 overflow-hidden shadow-2xs',
                   theme.id === 'custom' &&
-                    'scale-110 ring-2 ring-offset-2 ring-offset-surface ring-primary'
+                    'scale-110 ring-2 ring-offset-1 ring-offset-surface ring-primary'
                 )}
                 style={{
                   background:
@@ -231,9 +238,9 @@ export function ProfileOverlay() {
                   className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                 />
                 {theme.id === 'custom' ? (
-                  <Check className="w-3.5 h-3.5 text-white drop-shadow-md stroke-[3] z-10 pointer-events-none" />
+                  <Check className="w-3 h-3 text-white drop-shadow-md stroke-[3] z-10 pointer-events-none" />
                 ) : (
-                  <Pipette className="w-3 h-3 text-white drop-shadow-md z-10 pointer-events-none" />
+                  <Pipette className="w-2.5 h-2.5 text-white drop-shadow-md z-10 pointer-events-none" />
                 )}
               </label>
             </div>
@@ -241,16 +248,16 @@ export function ProfileOverlay() {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
+        <div className="flex justify-end gap-2.5 px-5 py-3 border-t border-surface-variant/30 bg-surface-container-lowest/80 shrink-0">
           <button
             onClick={closeOverlay}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-outline hover:text-on-surface border border-surface-variant hover:bg-surface-container transition-colors"
+            className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-outline hover:text-on-surface border border-surface-variant hover:bg-surface-container transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={closeOverlay}
-            className="px-6 py-2 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+            className="px-5 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
             style={{ backgroundColor: theme.hex }}
           >
             Save Profile

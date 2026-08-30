@@ -113,12 +113,12 @@ export function StatisticsOverlay() {
     setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
-  // Straight line graph SVG calculations
+  // Straight line graph SVG calculations: Compact height
   const svgWidth = 480;
-  const svgHeight = 115;
-  const padX = 24;
-  const padYTop = 14;
-  const padYBottom = 18;
+  const svgHeight = 85;
+  const padX = 20;
+  const padYTop = 8;
+  const padYBottom = 14;
   const maxVal = Math.max(...trendData.map((d) => d.val), 6.0);
 
   const points = trendData.map((d, i) => {
@@ -145,17 +145,17 @@ export function StatisticsOverlay() {
   return (
     <div
       onClick={closeOverlay}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/65 backdrop-blur-md animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-150"
     >
       <div
-        className="w-full max-w-5xl xl:max-w-6xl bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl p-5 sm:p-6 select-none animate-in zoom-in-95 duration-150 relative flex flex-col gap-3.5 overflow-hidden max-h-[96vh]"
+        className="w-full max-w-4xl xl:max-w-5xl bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl p-4 sm:p-5 select-none animate-in zoom-in-95 duration-150 relative flex flex-col gap-2.5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header: Title + Streak on Left, Close on Right (Time range removed from top) */}
-        <div className="flex items-center justify-between border-b border-surface-variant/30 pb-3 shrink-0">
-          <div className="flex items-center gap-3">
+        {/* Header: Compact height */}
+        <div className="flex items-center justify-between border-b border-surface-variant/30 pb-2.5 shrink-0">
+          <div className="flex items-center gap-2.5">
             <div
-              className="w-9 h-9 rounded-2xl flex items-center justify-center border shadow-xs"
+              className="w-8 h-8 rounded-xl flex items-center justify-center border shadow-xs"
               style={{
                 backgroundColor: theme.hex + '18',
                 borderColor: theme.hex + '35',
@@ -165,19 +165,19 @@ export function StatisticsOverlay() {
               <Sparkles className="w-4 h-4" />
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-base sm:text-lg font-bold text-on-surface tracking-tight">Insights</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base font-bold text-on-surface tracking-tight">Insights</h1>
 
               {/* Streak Badge */}
               <div
-                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border shadow-xs"
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold border shadow-xs"
                 style={{
                   backgroundColor: theme.hex + '15',
                   borderColor: theme.hex + '30',
                   color: theme.hex,
                 }}
               >
-                <Flame className="w-3.5 h-3.5 fill-current" />
+                <Flame className="w-3 h-3 fill-current" />
                 <span className="font-mono">14d Streak</span>
               </div>
             </div>
@@ -192,33 +192,33 @@ export function StatisticsOverlay() {
           </button>
         </div>
 
-        {/* Top Visualizations Row: Calendar Map & Straight-Line Focus Trend */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 shrink-0">
-          {/* 1. Consistency Calendar (7 Columns starting from Monday, Month & Year heading) */}
-          <div className="lg:col-span-7 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-3.5 flex flex-col justify-between shadow-xs relative">
+        {/* Top Visualizations Row: Calendar Map & Straight-Line Focus Trend (Vertically Compact) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 shrink-0">
+          {/* 1. Consistency Calendar (7 Columns starting from Monday) */}
+          <div className="lg:col-span-7 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs relative">
             {/* Calendar Header with Month & Year and Nav Controls */}
-            <div className="flex items-center justify-between mb-2 border-b border-surface-variant/20 pb-2">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mb-1.5 border-b border-surface-variant/20 pb-1.5">
+              <div className="flex items-center gap-1.5">
                 <CalendarIcon className="w-3.5 h-3.5" style={{ color: theme.hex }} />
                 <h2 className="text-xs font-bold text-on-surface tracking-wide">
                   {currentMonthName} {currentYear}
                 </h2>
-                <span className="text-[10px] text-outline font-mono ml-1 px-1.5 py-0.5 rounded-md bg-surface-container">
+                <span className="text-[9px] text-outline font-mono ml-1 px-1.5 py-0.5 rounded-md bg-surface-container">
                   Consistency Calendar
                 </span>
               </div>
 
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                  className="p-0.5 rounded-md text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
                   title="Previous Month"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={handleNextMonth}
-                  className="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                  className="p-0.5 rounded-md text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
                   title="Next Month"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -227,12 +227,12 @@ export function StatisticsOverlay() {
             </div>
 
             {/* 7 Columns Day Names Header: Mon - Sun */}
-            <div className="grid grid-cols-7 gap-1.5 mb-1 px-0.5">
+            <div className="grid grid-cols-7 gap-1 mb-1 px-0.5">
               {weekDayHeaders.map((d, i) => (
                 <span
                   key={i}
                   className={clsx(
-                    'text-[10px] font-semibold text-center uppercase tracking-wider',
+                    'text-[9px] font-semibold text-center uppercase tracking-wider',
                     i >= 5 ? 'text-outline/70' : 'text-outline'
                   )}
                 >
@@ -241,14 +241,14 @@ export function StatisticsOverlay() {
               ))}
             </div>
 
-            {/* Calendar Days Grid */}
-            <div className="grid grid-cols-7 gap-1.5 px-0.5 my-auto">
+            {/* Calendar Days Grid: Scaled down height */}
+            <div className="grid grid-cols-7 gap-1 px-0.5 my-auto">
               {calendarCells.map((cell, idx) => {
                 if (cell.isPadding) {
                   return (
                     <div
                       key={`pad-${idx}`}
-                      className="aspect-square rounded-lg bg-transparent border border-dashed border-surface-variant/15 opacity-20 pointer-events-none"
+                      className="h-6 sm:h-6.5 rounded-md bg-transparent border border-dashed border-surface-variant/15 opacity-15 pointer-events-none"
                     />
                   );
                 }
@@ -268,8 +268,8 @@ export function StatisticsOverlay() {
                     }
                     onMouseLeave={() => setHoveredDay(null)}
                     className={clsx(
-                      'aspect-square rounded-lg transition-all duration-150 cursor-pointer shadow-2xs relative flex flex-col items-center justify-between p-1 select-none border',
-                      isToday ? 'ring-2 ring-offset-1 ring-primary' : 'border-surface-variant/20'
+                      'h-6 sm:h-6.5 rounded-md transition-all duration-150 cursor-pointer shadow-2xs relative flex flex-col items-center justify-between p-0.5 select-none border',
+                      isToday ? 'ring-1.5 ring-primary' : 'border-surface-variant/20'
                     )}
                     style={{
                       backgroundColor:
@@ -283,19 +283,19 @@ export function StatisticsOverlay() {
                           ? theme.hex + '95'
                           : theme.hex,
                       color: cell.level >= 2 ? '#ffffff' : 'var(--on-surface)',
-                      transform: isHovered ? 'scale(1.12)' : 'scale(1)',
-                      boxShadow: isHovered ? `0 0 12px ${theme.hex}60` : 'none',
+                      transform: isHovered ? 'scale(1.15)' : 'scale(1)',
+                      boxShadow: isHovered ? `0 0 10px ${theme.hex}60` : 'none',
                       zIndex: isHovered ? 20 : 1,
                     }}
                   >
                     {/* Day number */}
-                    <span className="text-[10px] font-mono font-bold self-start leading-none">
+                    <span className="text-[9px] font-mono font-bold self-start leading-none pl-0.5">
                       {cell.dayNum}
                     </span>
 
-                    {/* Focus dots / hours indicator */}
+                    {/* Focus hours indicator */}
                     {cell.level > 0 && (
-                      <span className="text-[8px] font-mono font-semibold self-end opacity-90 leading-none">
+                      <span className="text-[7.5px] font-mono font-semibold self-end pr-0.5 opacity-90 leading-none">
                         {cell.hours}h
                       </span>
                     )}
@@ -305,18 +305,18 @@ export function StatisticsOverlay() {
             </div>
 
             {/* Calendar Bottom Legend & Hover Details */}
-            <div className="flex items-center justify-between pt-2 mt-1 border-t border-surface-variant/20 text-[10px] text-outline">
+            <div className="flex items-center justify-between pt-1.5 mt-1 border-t border-surface-variant/20 text-[9.5px] text-outline">
               <span className="font-mono truncate">
                 {hoveredDay
-                  ? `${currentMonthName} ${hoveredDay.dayNum}: ${hoveredDay.hours}h focused (${hoveredDay.sessions} sessions)`
-                  : '88% monthly consistency rate'}
+                  ? `${currentMonthName} ${hoveredDay.dayNum}: ${hoveredDay.hours}h (${hoveredDay.sessions}s)`
+                  : '88% monthly consistency'}
               </span>
               <div className="flex items-center gap-1 shrink-0 ml-2">
-                <span className="text-[9px]">Less</span>
+                <span className="text-[8.5px]">Less</span>
                 {[0, 1, 2, 3, 4].map((lvl) => (
                   <span
                     key={lvl}
-                    className="w-2 h-2 rounded-xs"
+                    className="w-1.5 h-1.5 rounded-xs"
                     style={{
                       backgroundColor:
                         lvl === 0
@@ -331,15 +331,15 @@ export function StatisticsOverlay() {
                     }}
                   />
                 ))}
-                <span className="text-[9px]">More</span>
+                <span className="text-[8.5px]">More</span>
               </div>
             </div>
           </div>
 
-          {/* 2. Focus Trend Straight-Line Graph with Time Range Selector inside */}
-          <div className="lg:col-span-5 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-3.5 flex flex-col justify-between shadow-xs">
-            {/* Header: Title + Today/Week/Month/All selector embedded */}
-            <div className="flex items-center justify-between mb-1.5 gap-2">
+          {/* 2. Focus Trend Straight-Line Graph with Time Range Selector (Vertically Compact) */}
+          <div className="lg:col-span-5 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-xs">
+            {/* Header: Title + Selector */}
+            <div className="flex items-center justify-between mb-1 gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <TrendingUp className="w-3.5 h-3.5 shrink-0" style={{ color: theme.hex }} />
                 <span className="text-xs font-semibold text-on-surface tracking-wide truncate">
@@ -361,7 +361,7 @@ export function StatisticsOverlay() {
                     key={tab.id}
                     onClick={() => setTimeRange(tab.id)}
                     className={clsx(
-                      'px-2 py-0.5 rounded-md text-[10px] font-medium transition-all',
+                      'px-1.5 py-0.5 rounded-md text-[9px] font-medium transition-all',
                       timeRange === tab.id
                         ? 'bg-surface-container-highest font-semibold shadow-xs'
                         : 'text-outline hover:text-on-surface'
@@ -375,20 +375,20 @@ export function StatisticsOverlay() {
             </div>
 
             {/* Metric Summary */}
-            <div className="flex items-center justify-between mb-1 px-0.5">
-              <span className="text-[11px] text-outline font-medium">Total Duration:</span>
+            <div className="flex items-center justify-between mb-0.5 px-0.5">
+              <span className="text-[10px] text-outline">Total Focus:</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono font-bold text-on-surface">
+                <span className="text-[11px] font-mono font-bold text-on-surface">
                   {timeRange === 'today' ? `${hoursToday}h ${minutesToday}m` : '22h 42m'}
                 </span>
-                <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full font-mono">
+                <span className="text-[8.5px] font-semibold text-emerald-400 bg-emerald-500/10 px-1 py-0.2 rounded-full font-mono">
                   +18%
                 </span>
               </div>
             </div>
 
-            {/* Straight-Line Graph SVG */}
-            <div className="relative w-full h-[120px] my-auto">
+            {/* Compact Straight-Line Graph SVG */}
+            <div className="relative w-full h-[85px] my-auto">
               <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
                 <defs>
                   <linearGradient id="straightLineGrad" x1="0" y1="0" x2="0" y2="1">
@@ -423,7 +423,7 @@ export function StatisticsOverlay() {
                   d={linePath}
                   fill="none"
                   stroke={theme.hex}
-                  strokeWidth="2.5"
+                  strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -436,7 +436,7 @@ export function StatisticsOverlay() {
                       <circle
                         cx={p.x}
                         cy={p.y}
-                        r="12"
+                        r="10"
                         fill="transparent"
                         className="cursor-pointer"
                         onMouseEnter={() => setHoveredPoint(i)}
@@ -446,7 +446,7 @@ export function StatisticsOverlay() {
                       <circle
                         cx={p.x}
                         cy={p.y}
-                        r={isHovered ? 5 : p.active ? 4 : 3}
+                        r={isHovered ? 4.5 : p.active ? 3.5 : 2.5}
                         fill={isHovered || p.active ? theme.hex : 'var(--surface-container-high)'}
                         stroke={isHovered || p.active ? 'var(--surface)' : theme.hex}
                         strokeWidth="1.5"
@@ -460,19 +460,19 @@ export function StatisticsOverlay() {
               {/* Floating Tooltip for Line Graph */}
               {hoveredPoint !== null && (
                 <div
-                  className="absolute pointer-events-none bg-surface-container-highest px-2 py-1 rounded-md text-[10px] font-semibold text-on-surface shadow-xl border border-surface-variant -translate-x-1/2 -translate-y-full transition-all z-30"
+                  className="absolute pointer-events-none bg-surface-container-highest px-2 py-0.5 rounded-md text-[9px] font-semibold text-on-surface shadow-xl border border-surface-variant -translate-x-1/2 -translate-y-full transition-all z-30"
                   style={{
                     left: `${(points[hoveredPoint].x / svgWidth) * 100}%`,
-                    top: `${(points[hoveredPoint].y / svgHeight) * 100 - 8}%`,
+                    top: `${(points[hoveredPoint].y / svgHeight) * 100 - 6}%`,
                   }}
                 >
-                  <span style={{ color: theme.hex }}>{trendData[hoveredPoint].day}</span>: {trendData[hoveredPoint].hours} ({trendData[hoveredPoint].sessions} sessions)
+                  <span style={{ color: theme.hex }}>{trendData[hoveredPoint].day}</span>: {trendData[hoveredPoint].hours}
                 </div>
               )}
             </div>
 
             {/* X Axis Labels */}
-            <div className="flex items-center justify-between px-2 pt-1 border-t border-surface-variant/20 text-[10px] text-outline">
+            <div className="flex items-center justify-between px-1 pt-1 border-t border-surface-variant/20 text-[9px] text-outline">
               {trendData.map((d, i) => (
                 <span
                   key={i}
@@ -489,79 +489,79 @@ export function StatisticsOverlay() {
           </div>
         </div>
 
-        {/* Bottom Row: 4 Metric Badges & Project Distribution */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 shrink-0">
+        {/* Bottom Row: 4 Metric Badges & Project Distribution (Compact Sizing) */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 shrink-0">
           {/* 4 Compact Stat Badges (Col 5) */}
-          <div className="md:col-span-5 grid grid-cols-2 gap-2.5">
-            <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 flex flex-col justify-between shadow-2xs">
+          <div className="md:col-span-5 grid grid-cols-2 gap-2">
+            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-semibold text-outline uppercase tracking-wider">
+                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
                   Sessions
                 </span>
-                <Clock className="w-3.5 h-3.5 text-outline/70" />
+                <Clock className="w-3 h-3 text-outline/70" />
               </div>
               <div className="my-0.5">
-                <span className="text-xl font-bold text-on-surface font-mono">48</span>
+                <span className="text-lg font-bold text-on-surface font-mono">48</span>
               </div>
-              <span className="text-[10px] text-emerald-400 font-medium font-mono">96% done</span>
+              <span className="text-[9px] text-emerald-400 font-medium font-mono">96% done</span>
             </div>
 
-            <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 flex flex-col justify-between shadow-2xs">
+            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-semibold text-outline uppercase tracking-wider">
+                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
                   Tasks
                 </span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-outline/70" />
+                <CheckCircle2 className="w-3 h-3 text-outline/70" />
               </div>
               <div className="my-0.5">
-                <span className="text-xl font-bold text-on-surface font-mono">31</span>
+                <span className="text-lg font-bold text-on-surface font-mono">31</span>
               </div>
-              <span className="text-[10px] font-medium font-mono" style={{ color: theme.hex }}>
+              <span className="text-[9px] font-medium font-mono" style={{ color: theme.hex }}>
                 +9 week
               </span>
             </div>
 
-            <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 flex flex-col justify-between shadow-2xs">
+            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-semibold text-outline uppercase tracking-wider">
+                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
                   Avg Focus
                 </span>
-                <Zap className="w-3.5 h-3.5 text-outline/70" />
+                <Zap className="w-3 h-3 text-outline/70" />
               </div>
               <div className="my-0.5">
-                <span className="text-xl font-bold text-on-surface font-mono">28m</span>
+                <span className="text-lg font-bold text-on-surface font-mono">28m</span>
               </div>
-              <span className="text-[10px] text-outline font-mono">optimal</span>
+              <span className="text-[9px] text-outline font-mono">optimal</span>
             </div>
 
-            <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-2.5 flex flex-col justify-between shadow-2xs">
+            <div className="border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2 flex flex-col justify-between shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-semibold text-outline uppercase tracking-wider">
+                <span className="text-[8.5px] font-semibold text-outline uppercase tracking-wider">
                   Peak Flow
                 </span>
-                <Target className="w-3.5 h-3.5 text-outline/70" />
+                <Target className="w-3 h-3 text-outline/70" />
               </div>
               <div className="my-0.5">
-                <span className="text-xl font-bold text-on-surface font-mono">10 AM</span>
+                <span className="text-lg font-bold text-on-surface font-mono">10 AM</span>
               </div>
-              <span className="text-[10px] text-outline font-mono">morning</span>
+              <span className="text-[9px] text-outline font-mono">morning</span>
             </div>
           </div>
 
           {/* Project Distribution (Col Span 7) */}
-          <div className="md:col-span-7 border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-3.5 flex flex-col justify-between shadow-2xs">
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="md:col-span-7 border border-surface-variant/35 rounded-xl bg-surface-container-low/50 p-2.5 sm:p-3 flex flex-col justify-between shadow-2xs">
+            <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5" style={{ color: theme.hex }} />
                 <span className="text-xs font-semibold text-on-surface tracking-wide">
                   Project Focus Distribution
                 </span>
               </div>
-              <span className="text-[10px] text-outline font-mono">4 projects</span>
+              <span className="text-[9.5px] text-outline font-mono">4 projects</span>
             </div>
 
             {/* Segmented Distribution Bar */}
-            <div className="w-full h-2 rounded-full overflow-hidden flex bg-surface-container mb-2.5 shadow-inner">
+            <div className="w-full h-1.5 rounded-full overflow-hidden flex bg-surface-container mb-2 shadow-inner">
               {projectDistribution.map((p, idx) => (
                 <div
                   key={idx}
@@ -573,17 +573,17 @@ export function StatisticsOverlay() {
             </div>
 
             {/* Project List Chips */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5">
               {projectDistribution.map((p, idx) => (
                 <div
                   key={idx}
-                  className="px-2.5 py-1.5 rounded-xl bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between"
+                  className="px-2 py-1 rounded-lg bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-[11px] font-medium text-on-surface truncate">{p.name}</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                    <span className="text-[10px] font-medium text-on-surface truncate">{p.name}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0 font-mono text-[10px]">
+                  <div className="flex items-center gap-1 shrink-0 font-mono text-[9.5px]">
                     <span className="text-on-surface font-semibold">{p.time}</span>
                     <span className="text-outline">({p.percent}%)</span>
                   </div>
