@@ -172,11 +172,11 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Insights */}
         <div className="relative group flex items-center justify-center w-full">
           <button
             onClick={() => setOverlay(overlay === 'stats' ? null : 'stats')}
-            aria-label="Statistics"
+            aria-label="Insights"
             className={clsx(
               'w-11 h-11 flex items-center justify-center rounded-xl transition-colors duration-200',
               overlay === 'stats'
@@ -187,7 +187,7 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             <BarChart2 className="w-5 h-5" />
           </button>
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
-            Productivity Insights
+            Insights
           </div>
         </div>
 

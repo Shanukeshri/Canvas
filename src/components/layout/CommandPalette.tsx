@@ -33,19 +33,7 @@ export function CommandPalette() {
 
   const [query, setQuery] = useState('');
 
-  // Handle Cmd+K global key binding
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setOverlay(overlay === 'command-k' ? null : 'command-k');
-      } else if (e.key === 'Escape' && overlay === 'command-k') {
-        closeOverlay();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [overlay, setOverlay, closeOverlay]);
+
 
   if (overlay !== 'command-k') return null;
 
@@ -102,7 +90,7 @@ export function CommandPalette() {
     },
     {
       id: 'overlay-stats',
-      title: 'Open Productivity Insights',
+      title: 'Open Insights',
       category: 'Overlays',
       icon: BarChart3,
       run: () => {

@@ -151,8 +151,14 @@ export function ZenTodoListBoard({
 
     container.addEventListener('wheel', handleWheel, { passive: false });
 
+    const handleQuickAdd = () => {
+      setActiveInlineCol('today');
+    };
+    window.addEventListener('zen:quick-add-task', handleQuickAdd);
+
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('zen:quick-add-task', handleQuickAdd);
     };
   }, [compactMode]);
 

@@ -18,9 +18,11 @@ import { FriendsOverlay } from '@/components/overlays/FriendsOverlay';
 import { NotificationsOverlay } from '@/components/overlays/NotificationsOverlay';
 import { TaskDetailOverlay } from '@/components/overlays/TaskDetailOverlay';
 import { FocusGroupsOverlay } from '@/components/overlays/FocusGroupsOverlay';
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 
 export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () => void }) {
   const { activeTab } = useApp();
+  useGlobalShortcuts();
 
   return (
     <div className="relative flex min-h-screen w-full bg-zen-bg text-zen-text overflow-hidden selection:bg-zen-accent selection:text-white">
