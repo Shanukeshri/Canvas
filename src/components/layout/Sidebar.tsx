@@ -63,7 +63,7 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
         {/* Separator */}
         <div className="w-8 h-[1px] bg-outline-variant/60" />
 
-        {/* Main Nav Tabs: Timer, Tasks, Groups (Last button removed as requested) */}
+        {/* Main Nav Tabs: Timer, Tasks, Groups */}
         <div className="flex flex-col gap-2.5 w-full items-center">
           {/* Focus Timer */}
           <div className="relative group flex items-center justify-center w-full">
@@ -128,19 +128,19 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             <button
               onClick={() => {
                 setActiveTab('groups');
-                setOverlay(overlay === 'groups' ? null : 'groups');
+                setOverlay(null);
               }}
-              aria-current={activeTab === 'groups' ? 'page' : undefined}
+              aria-current={activeTab === 'groups' && overlay === null ? 'page' : undefined}
               aria-label="Focus Groups"
               className={clsx(
                 'relative w-11 h-11 flex items-center justify-center rounded-xl transition-all duration-200',
-                activeTab === 'groups' || overlay === 'groups'
+                activeTab === 'groups' && overlay === null
                   ? 'bg-surface-container-high text-primary font-semibold shadow-sm'
                   : 'text-outline hover:text-primary hover:bg-surface-container-low'
               )}
             >
               <LayoutGrid className="w-5 h-5" />
-              {activeTab === 'groups' && (
+              {activeTab === 'groups' && overlay === null && (
                 <div
                   className="absolute -right-[8px] top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-l-full"
                   style={{ backgroundColor: theme.hex }}
@@ -219,7 +219,7 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
           </div>
         </div>
 
-        {/* Settings */}
+        {/* Settings & Defaults */}
         <div className="relative group flex items-center justify-center w-full">
           <button
             onClick={() => setOverlay(overlay === 'settings' ? null : 'settings')}
@@ -238,24 +238,27 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
           </div>
         </div>
 
-        {/* Theme Light/Dark Mode Toggle */}
+        {/* Dark/Light Mode Switcher */}
         <div className="relative group flex items-center justify-center w-full">
           <button
             onClick={toggleDarkMode}
             aria-label="Toggle Theme Mode"
             className="w-10 h-10 flex items-center justify-center rounded-full text-outline hover:text-primary hover:bg-surface-container-low transition-colors"
           >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+            {isDarkMode ? (
+              <Sun className="w-4 h-4 text-amber-500" />
+            ) : (
+              <Moon className="w-4 h-4 text-indigo-400" />
+            )}
           </button>
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
             {isDarkMode ? 'Light Mode' : 'Dark Mode'}
           </div>
         </div>
 
-        {/* Separator */}
         <div className="w-8 h-[1px] bg-outline-variant/60 my-1" />
 
-        {/* 8. Profile Avatar (Moved to the bottom of the sidebar) */}
+        {/* Profile Avatar / Auth */}
         <div className="relative group flex items-center justify-center w-full">
           <button
             onClick={() => setOverlay(overlay === 'profile' ? null : 'profile')}
@@ -263,10 +266,10 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             className="w-10 h-10 rounded-full border border-outline-variant overflow-hidden shadow-sm flex items-center justify-center text-lg bg-surface-container hover:scale-105 active:scale-95 transition-transform"
             style={{ borderColor: theme.hex + '70' }}
           >
-            {userAvatar}
+            {userAvatar || (isAuthenticated && currentUser ? currentUser.avatar : '🦊')}
           </button>
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
-            {isAuthenticated ? `${currentUser?.name || 'Profile'} & Themes` : 'Sign In & Themes'}
+            {isAuthenticated && currentUser ? `${currentUser.name} & Themes` : 'Profile & Themes'}
           </div>
         </div>
       </div>

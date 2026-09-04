@@ -1,0 +1,270 @@
+// Prisma Schema for Zen Productivity Canvas
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  handle        String    @unique
+  avatar        String    @default("🦊")
+  themeColor    String    @default("#6366f1")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tasks             Task[]
+  assignedTasks     Task[]            @relation("AssignedTasks")
+  focusSessions     FocusSession[]
+  timerState        TimerState?
+  timerPresets      TimerPreset[]
+  soundMixes        SoundMix[]
+  notifications     Notification[]
+  groupMemberships  GroupMembership[]
+  ownedGroups       Group[]           @relation("GroupOwner")
+  sentFriendReqs    FriendRequest[]   @relation("SentFriendRequests")
+  receivedFriendReqs FriendRequest[]  @relation("ReceivedFriendRequests")
+  friendships       Friendship[]      @relation("UserFriendships")
+  friendOf          Friendship[]      @relation("UserFriendOf")
+  sentGroupInvites  GroupInvitation[] @relation("SentGroupInvites")
+  receivedGroupInvites GroupInvitation[] @relation("ReceivedGroupInvites")
+  activityEvents    ActivityEvent[]   @relation("ActorActivity")
+
+  @@index([email])
+  @@index([handle])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String
+  friendId  String
+  createdAt DateTime @default(now())
+
+  user   User @relation("UserFriendships", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("UserFriendOf", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([userId])
+  @@index([friendId])
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("pending") // pending, accepted, declined
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sender   User @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String   @default("")
+  category    String   @default("Focus Room")
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User              @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships GroupMembership[]
+  tasks       Task[]
+  invitations GroupInvitation[]
+  activities  ActivityEvent[]
+
+  @@index([code])
+  @@index([ownerId])
+}
+
+model GroupMembership {
+  id       String   @id @default(cuid())
+  groupId  String
+  userId   String
+  role     String   @default("member") // owner, admin, member
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model GroupInvitation {
+  id        String   @id @default(cuid())
+  groupId   String
+  inviterId String
+  inviteeId String
+  status    String   @default("pending") // pending, accepted, declined
+  createdAt DateTime @default(now())
+
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  inviter User  @relation("SentGroupInvites", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User  @relation("ReceivedGroupInvites", fields: [inviteeId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, inviteeId])
+  @@index([groupId])
+  @@index([inviteeId])
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#6366f1")
+  userId    String?
+  groupId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([groupId])
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  title        String
+  description  String    @default("")
+  project      String    @default("General Focus")
+  priority     String    @default("medium") // low, medium, high
+  dueDate      String    @default("Today")
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  order        Int       @default(0)
+  userId       String
+  groupId      String?
+  assignedToId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group      Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  assignedTo User?  @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([completed])
+  @@index([order])
+}
+
+model FocusSession {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String   @default("pomodoro") // pomodoro, stopwatch
+  taskId            String?
+  groupId           String?
+  startedAtMs       BigInt
+  endedAtMs         BigInt
+  elapsedDurationMs BigInt
+  status            String   @default("completed") // completed, interrupted
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model TimerState {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  mode               String   @default("pomodoro")
+  status             String   @default("idle")
+  phase              String   @default("focus")
+  durationMs         BigInt   @default(1500000)
+  startedAtMs        BigInt?
+  pausedAtMs         BigInt?
+  elapsedDurationMs  BigInt   @default(0)
+  targetCompletionMs BigInt?
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TimerPreset {
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  focusMinutes     Int      @default(25)
+  shortBreakMinutes Int     @default(5)
+  longBreakMinutes  Int     @default(15)
+  targetSessions   Int      @default(4)
+  autoStartBreaks  Boolean  @default(false)
+  soundOnComplete  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SoundMix {
+  id        String         @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime       @default(now())
+  items     SoundMixItem[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SoundMixItem {
+  id         String @id @default(cuid())
+  soundMixId String
+  soundId    String
+  volume     Int    @default(50)
+
+  soundMix SoundMix @relation(fields: [soundMixId], references: [id], onDelete: Cascade)
+
+  @@index([soundMixId])
+}
+
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String
+  title         String
+  message       String
+  type          String   @default("system")
+  read          Boolean  @default(false)
+  actionPayload String?
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+}
+
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  groupId   String?
+  actorId   String
+  type      String
+  payload   String   @default("{}")
+  createdAt DateTime @default(now())
+
+  actor User   @relation("ActorActivity", fields: [actorId], references: [id], onDelete: Cascade)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([actorId])
+  @@index([createdAt])
+}

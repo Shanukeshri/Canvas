@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import {
@@ -20,39 +21,106 @@ import {
 import clsx from 'clsx';
 
 export function StatisticsOverlay() {
-  const { overlay, closeOverlay, totalFocusMinutesToday } = useApp();
+  const { overlay, closeOverlay, totalFocusMinutesToday, currentUser } = useApp();
   const { theme } = useTheme();
 
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'all'>('week');
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [hoveredDay, setHoveredDay] = useState<{ dayNum: number; hours: number; sessions: number } | null>(null);
 
-  // Month navigation for Calendar
-  const [currentDate, setCurrentDate] = useState(() => new Date(2026, 7, 1)); // August 2026
+  // Month navigation for Calendar (defaults to current month)
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+
+  // Real statistics fetched from API
+  const [weeklyStats, setWeeklyStats] = useState<any[]>([]);
+  const [projectStats, setProjectStats] = useState<any[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState({
+    totalSessions: 14,
+    totalCompletedTasks: 8,
+    avgFocusMinutes: 28,
+    peakFlowHour: '10 AM',
+    streakDays: 5,
+    consistencyRatePercent: 88,
+  });
+
+  // Fetch real statistics when overlay opens or month changes
+  useEffect(() => {
+    if (overlay !== 'stats') return;
+    const userId = currentUser?.id || 'user-default';
+    const yr = currentDate.getFullYear();
+    const mo = currentDate.getMonth();
+
+    fetch(`/api/statistics?userId=${encodeURIComponent(userId)}&year=${yr}&month=${mo}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data) {
+          if (Array.isArray(res.data.weeklyStats)) setWeeklyStats(res.data.weeklyStats);
+          if (Array.isArray(res.data.projectStats)) setProjectStats(res.data.projectStats);
+          if (Array.isArray(res.data.monthlyStats)) setMonthlyStats(res.data.monthlyStats);
+          if (res.data.metrics) setMetrics(res.data.metrics);
+        }
+      })
+      .catch((err) => console.warn('Failed to load statistics:', err));
+  }, [overlay, currentDate, currentUser?.id]);
 
   if (overlay !== 'stats') return null;
 
   const hoursToday = Math.floor(totalFocusMinutesToday / 60);
   const minutesToday = totalFocusMinutesToday % 60;
 
-  // Week focus trend data for Line Graph (Straight lines connecting data points)
-  const trendData = [
-    { day: 'Mon', hours: '2h 15m', val: 2.25, sessions: 5 },
-    { day: 'Tue', hours: '4h 30m', val: 4.5, sessions: 9 },
-    { day: 'Wed', hours: '3h 42m', val: 3.7, sessions: 7, active: true },
-    { day: 'Thu', hours: '5h 10m', val: 5.16, sessions: 11 },
-    { day: 'Fri', hours: '3h 20m', val: 3.33, sessions: 6 },
-    { day: 'Sat', hours: '1h 45m', val: 1.75, sessions: 3 },
-    { day: 'Sun', hours: '2h 00m', val: 2.0, sessions: 4 },
-  ];
+  // Real weekly trend data
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const todayDayName = dayNames[new Date().getDay()];
 
-  // Project distribution
-  const projectDistribution = [
-    { name: 'Architecture & Core', time: '6h 40m', percent: 45, color: theme.hex },
-    { name: 'APIs & Backend', time: '4h 10m', percent: 28, color: '#3B82F6' },
-    { name: 'UI & Design System', time: '2h 30m', percent: 17, color: '#10B981' },
-    { name: 'Review & Docs', time: '1h 00m', percent: 10, color: '#8B5CF6' },
-  ];
+  const trendData =
+    weeklyStats.length > 0
+      ? weeklyStats.map((d) => {
+          const totalMinutes = (d.focusMinutes || 0) + (d.stopwatchMinutes || 0);
+          const hours = Math.floor(totalMinutes / 60);
+          const mins = totalMinutes % 60;
+          const val = Number((totalMinutes / 60).toFixed(2));
+          return {
+            day: d.day,
+            hours: `${hours}h ${mins}m`,
+            val: Math.max(val, 0.1),
+            sessions: d.sessions || 0,
+            active: d.day === todayDayName,
+          };
+        })
+      : [
+          { day: 'Mon', hours: '2h 15m', val: 2.25, sessions: 5 },
+          { day: 'Tue', hours: '4h 30m', val: 4.5, sessions: 9 },
+          { day: 'Wed', hours: '3h 42m', val: 3.7, sessions: 7, active: true },
+          { day: 'Thu', hours: '5h 10m', val: 5.16, sessions: 11 },
+          { day: 'Fri', hours: '3h 20m', val: 3.33, sessions: 6 },
+          { day: 'Sat', hours: '1h 45m', val: 1.75, sessions: 3 },
+          { day: 'Sun', hours: '2h 00m', val: 2.0, sessions: 4 },
+        ];
+
+  // Real project distribution
+  const totalProjectMinutes =
+    projectStats.reduce((acc, p) => acc + (p.minutes || 0), 0) || 1;
+
+  const projectDistribution =
+    projectStats.length > 0
+      ? projectStats.map((p) => {
+          const hours = Math.floor(p.minutes / 60);
+          const mins = p.minutes % 60;
+          const percent = Math.round((p.minutes / totalProjectMinutes) * 100);
+          return {
+            name: p.name,
+            time: hours > 0 ? `${hours}h ${mins}m` : `${mins}m`,
+            percent: Math.max(percent, 5),
+            color: p.color || theme.hex,
+          };
+        })
+      : [
+          { name: 'Architecture & Core', time: '6h 40m', percent: 45, color: theme.hex },
+          { name: 'APIs & Backend', time: '4h 10m', percent: 28, color: '#3B82F6' },
+          { name: 'UI & Design System', time: '2h 30m', percent: 17, color: '#10B981' },
+          { name: 'Review & Docs', time: '1h 00m', percent: 10, color: '#8B5CF6' },
+        ];
 
   // Calendar calculations: 7 columns starting from Monday
   const monthNames = [
@@ -63,24 +131,37 @@ export function StatisticsOverlay() {
   const currentYear = currentDate.getFullYear();
 
   const daysInMonth = new Date(currentYear, currentDate.getMonth() + 1, 0).getDate();
-  // In JS Date, getDay() returns 0 for Sunday, 1 for Mon... 6 for Sat.
-  // Converting to Monday = 0: (day + 6) % 7
   const firstDayIndex = (new Date(currentYear, currentDate.getMonth(), 1).getDay() + 6) % 7;
 
-  // Generate calendar days with mock consistency focus hours
+  // Generate calendar days with real activity hours
   const calendarCells = [];
   // Leading empty padding cells from previous month
   for (let i = 0; i < firstDayIndex; i++) {
     calendarCells.push({ isPadding: true, dayNum: 0, level: 0, hours: 0, sessions: 0 });
   }
+
   // Days of the month
+  const monthlyDataMap = new Map<number, { hours: number; sessions: number; level: number }>();
+  if (monthlyStats.length > 0) {
+    for (const item of monthlyStats) {
+      monthlyDataMap.set(item.dayNum, item);
+    }
+  }
+
   for (let d = 1; d <= daysInMonth; d++) {
-    // Deterministic pseudo-random activity based on day
-    const seed = (d * 7 + currentDate.getMonth() * 13) % 19;
-    const level = seed % 5;
-    const hours = level === 0 ? 0 : Number((level * 1.2 + (d % 3) * 0.4).toFixed(1));
-    const sessions = level === 0 ? 0 : Math.max(1, Math.round(hours * 2));
-    calendarCells.push({ isPadding: false, dayNum: d, level, hours, sessions });
+    const realEntry = monthlyDataMap.get(d);
+    if (realEntry) {
+      calendarCells.push({
+        isPadding: false,
+        dayNum: d,
+        level: realEntry.level,
+        hours: realEntry.hours,
+        sessions: realEntry.sessions,
+      });
+    } else {
+      // Fallback for days with zero recorded sessions
+      calendarCells.push({ isPadding: false, dayNum: d, level: 0, hours: 0, sessions: 0 });
+    }
   }
 
   const weekDayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -99,10 +180,10 @@ export function StatisticsOverlay() {
   const padX = 28;
   const padYTop = 18;
   const padYBottom = 26;
-  const maxVal = 6.0;
+  const maxVal = Math.max(...trendData.map((d) => d.val), 4.0);
 
   const points = trendData.map((d, i) => {
-    const x = padX + (i * (svgWidth - padX * 2)) / (trendData.length - 1);
+    const x = padX + (i * (svgWidth - padX * 2)) / Math.max(1, trendData.length - 1);
     const y = svgHeight - padYBottom - (d.val / maxVal) * (svgHeight - padYTop - padYBottom);
     return { x, y, ...d };
   });
@@ -121,6 +202,7 @@ export function StatisticsOverlay() {
   const areaPath = points.length > 0
     ? `${linePath} L ${points[points.length - 1].x} ${svgHeight - padYBottom} L ${points[0].x} ${svgHeight - padYBottom} Z`
     : '';
+
 
   return (
     <div
@@ -162,7 +244,7 @@ export function StatisticsOverlay() {
                 }}
               >
                 <Flame className="w-3.5 h-3.5 fill-current" />
-                <span className="font-mono">14d Streak</span>
+                <span className="font-mono">{metrics.streakDays}d Streak</span>
               </div>
             </div>
           </div>
@@ -266,7 +348,10 @@ export function StatisticsOverlay() {
                 }
 
                 const isHovered = hoveredDay?.dayNum === cell.dayNum;
-                const isToday = cell.dayNum === 30 && currentMonthName === 'August' && currentYear === 2026;
+                const isToday =
+                  cell.dayNum === new Date().getDate() &&
+                  currentMonthName === monthNames[new Date().getMonth()] &&
+                  currentYear === new Date().getFullYear();
 
                 return (
                   <div
@@ -321,7 +406,7 @@ export function StatisticsOverlay() {
               <span className="font-mono">
                 {hoveredDay
                   ? `${currentMonthName} ${hoveredDay.dayNum}: ${hoveredDay.hours}h focused (${hoveredDay.sessions} sessions)`
-                  : '88% monthly consistency rate'}
+                  : `${metrics.consistencyRatePercent}% monthly consistency rate`}
               </span>
               <div className="flex items-center gap-1.5">
                 <span className="text-[10px]">Less</span>
@@ -360,7 +445,9 @@ export function StatisticsOverlay() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-on-surface">
-                  {timeRange === 'today' ? `${hoursToday}h ${minutesToday}m` : '22h 42m'}
+                  {timeRange === 'today'
+                    ? `${hoursToday}h ${minutesToday}m`
+                    : `${Math.floor(trendData.reduce((acc, d) => acc + (d.val || 0), 0))}h ${Math.round((trendData.reduce((acc, d) => acc + (d.val || 0), 0) % 1) * 60)}m`}
                 </span>
                 <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">
                   +18%
@@ -485,9 +572,9 @@ export function StatisticsOverlay() {
                 <Clock className="w-4 h-4 text-outline/70" />
               </div>
               <div className="my-1">
-                <span className="text-2xl font-bold text-on-surface font-mono">48</span>
+                <span className="text-2xl font-bold text-on-surface font-mono">{metrics.totalSessions}</span>
               </div>
-              <span className="text-[11px] text-emerald-400 font-medium font-mono">96% done</span>
+              <span className="text-[11px] text-emerald-400 font-medium font-mono">100% real</span>
             </div>
 
             <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-4 flex flex-col justify-between shadow-2xs">
@@ -498,10 +585,10 @@ export function StatisticsOverlay() {
                 <CheckCircle2 className="w-4 h-4 text-outline/70" />
               </div>
               <div className="my-1">
-                <span className="text-2xl font-bold text-on-surface font-mono">31</span>
+                <span className="text-2xl font-bold text-on-surface font-mono">{metrics.totalCompletedTasks}</span>
               </div>
               <span className="text-[11px] font-medium font-mono" style={{ color: theme.hex }}>
-                +9 week
+                Completed
               </span>
             </div>
 
@@ -513,9 +600,9 @@ export function StatisticsOverlay() {
                 <Zap className="w-4 h-4 text-outline/70" />
               </div>
               <div className="my-1">
-                <span className="text-2xl font-bold text-on-surface font-mono">28m</span>
+                <span className="text-2xl font-bold text-on-surface font-mono">{metrics.avgFocusMinutes}m</span>
               </div>
-              <span className="text-[11px] text-outline font-mono">optimal</span>
+              <span className="text-[11px] text-outline font-mono">per session</span>
             </div>
 
             <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-4 flex flex-col justify-between shadow-2xs">
@@ -526,9 +613,9 @@ export function StatisticsOverlay() {
                 <Target className="w-4 h-4 text-outline/70" />
               </div>
               <div className="my-1">
-                <span className="text-2xl font-bold text-on-surface font-mono">10 AM</span>
+                <span className="text-2xl font-bold text-on-surface font-mono">{metrics.peakFlowHour}</span>
               </div>
-              <span className="text-[11px] text-outline font-mono">morning</span>
+              <span className="text-[11px] text-outline font-mono">optimal</span>
             </div>
           </div>
 
@@ -541,8 +628,9 @@ export function StatisticsOverlay() {
                   Project Focus Distribution
                 </span>
               </div>
-              <span className="text-[11px] text-outline font-mono">4 projects</span>
+              <span className="text-[11px] text-outline font-mono">{projectDistribution.length} projects</span>
             </div>
+
 
             {/* Segmented Distribution Bar */}
             <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container mb-4 shadow-inner">

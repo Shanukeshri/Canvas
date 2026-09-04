@@ -20,10 +20,12 @@ import { TaskDetailOverlay } from '@/components/overlays/TaskDetailOverlay';
 import { FocusGroupsOverlay } from '@/components/overlays/FocusGroupsOverlay';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
+import { useRealtime } from '@/hooks/useRealtime';
 
 export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () => void }) {
   const { activeTab } = useApp();
   useGlobalShortcuts();
+  useRealtime();
 
   return (
     <div className="relative flex min-h-screen w-full bg-zen-bg text-zen-text overflow-hidden selection:bg-zen-accent selection:text-white">

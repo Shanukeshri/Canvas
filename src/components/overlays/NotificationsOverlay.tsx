@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import { acceptGroupInvitationAction } from '@/features/groups/actions';
+
 export function NotificationsOverlay() {
   const {
     overlay,
@@ -26,6 +28,8 @@ export function NotificationsOverlay() {
     setActiveTab,
     acceptFriendRequest,
     declineFriendRequest,
+    setActiveGroupId,
+    currentUser,
   } = useApp();
   const { theme } = useTheme();
 
@@ -55,16 +59,28 @@ export function NotificationsOverlay() {
     }
   };
 
-  const handleAction = (notif: (typeof notifications)[0]) => {
+  const handleAction = async (notif: (typeof notifications)[0]) => {
     markNotificationRead(notif.id);
     if (notif.type === 'group_invite') {
+      if (notif.actionPayload?.invitationId && currentUser) {
+        try {
+          await acceptGroupInvitationAction(currentUser.id, notif.actionPayload.invitationId);
+        } catch (e) {
+          console.warn('Accept group invitation error:', e);
+        }
+      }
+      if (notif.actionPayload?.groupId) {
+        setActiveGroupId(notif.actionPayload.groupId);
+      }
       setActiveTab('groups');
       closeOverlay();
     } else if (notif.type === 'friend_request') {
-      acceptFriendRequest('elena-req');
+      const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
+      acceptFriendRequest(targetId);
       closeOverlay();
     }
   };
+
 
   return (
     <div
@@ -236,7 +252,8 @@ export function NotificationsOverlay() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            declineFriendRequest('elena-req');
+                            const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
+                            declineFriendRequest(targetId);
                             removeNotification(notif.id);
                           }}
                           className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-error hover:bg-surface-container transition-colors"

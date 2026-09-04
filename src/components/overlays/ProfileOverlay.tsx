@@ -15,6 +15,9 @@ import {
   LogIn,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { updateProfileAction, updateUserThemeAction } from '@/features/users/actions';
+
+
 
 const EMOJI_OPTIONS = [
   '🦊', '🐱', '🐼', '🦁', '🦉', '🐺', '🐸', '🐨',
@@ -381,14 +384,29 @@ export function ProfileOverlay() {
               Cancel
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (currentUser) {
-                  setCurrentUser({
+                  const updated = {
                     ...currentUser,
                     name: displayName,
                     handle: username,
                     avatar: userAvatar,
-                  });
+                    themeColor: theme.hex,
+                  };
+                  setCurrentUser(updated);
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('zen_current_user_v1', JSON.stringify(updated));
+                  }
+                  try {
+                    await updateProfileAction(currentUser.id, {
+                      name: displayName,
+                      handle: username,
+                      avatar: userAvatar,
+                      themeColor: theme.hex,
+                    });
+                  } catch (err) {
+                    console.warn('Update profile error:', err);
+                  }
                 }
                 closeOverlay();
               }}

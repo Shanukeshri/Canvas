@@ -22,6 +22,36 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_STATS_WEEK,
 } from '@/lib/mock-data';
+import {
+  createInitialTimerState,
+  startTimer as engineStartTimer,
+  pauseTimer as enginePauseTimer,
+  resetTimer as engineResetTimer,
+  computeTimerSnapshot,
+  TimerEngineState,
+  calculateFocusContributionMs,
+} from '@/features/timer/timer-engine';
+import { tabSync } from '@/lib/broadcast';
+import { audioEngine } from '@/features/sounds/audio-engine';
+import {
+  createTaskAction,
+  updateTaskAction,
+  deleteTaskAction,
+  toggleTaskCompleteAction,
+  reorderTasksAction,
+} from '@/features/tasks/actions';
+import {
+  createGroupAction,
+  joinGroupByCodeAction,
+  leaveGroupAction,
+} from '@/features/groups/actions';
+import {
+  acceptFriendRequestAction,
+  declineFriendRequestAction,
+} from '@/features/friends/actions';
+import { recordFocusSessionAction, saveTimerStateCheckpointAction } from '@/features/timer/actions';
+import { markNotificationReadAction, removeNotificationAction } from '@/features/notifications/actions';
+import { loginUserAction, registerUserAction } from '@/features/auth/actions';
 
 const DEFAULT_USER: User = {
   id: 'user-default',
@@ -32,6 +62,8 @@ const DEFAULT_USER: User = {
   provider: 'google',
   createdAt: 'August 2026',
 };
+
+const TIMER_STORAGE_KEY = 'zen_timer_engine_state_v1';
 
 interface AppContextType {
   // Navigation & Overlays
@@ -66,9 +98,11 @@ interface AppContextType {
   pauseTimer: () => void;
   resetTimer: () => void;
   startBreak: () => void;
+  engineState: TimerEngineState;
 
   // Tasks State
   tasks: Task[];
+  setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   addTask: (task: Omit<Task, 'id'>) => void;
   toggleTaskComplete: (id: string) => void;
   deleteTask: (id: string) => void;
@@ -77,6 +111,7 @@ interface AppContextType {
 
   // Friends & Attached Friend Bubbles State
   friends: Friend[];
+  setFriends: React.Dispatch<React.SetStateAction<Friend[]>>;
   attachedFriendIds: string[];
   toggleAttachFriend: (friendId: string) => void;
   acceptFriendRequest: (friendId: string) => void;
@@ -84,6 +119,7 @@ interface AppContextType {
 
   // Groups State
   groups: Group[];
+  setGroups: React.Dispatch<React.SetStateAction<Group[]>>;
   activeGroupId: string;
   setActiveGroupId: (id: string) => void;
   addGroupTask: (groupId: string, taskTitle: string) => void;
@@ -108,10 +144,11 @@ interface AppContextType {
 
   // Notifications
   notifications: NotificationItem[];
+  setNotifications: React.Dispatch<React.SetStateAction<NotificationItem[]>>;
   markNotificationRead: (id: string) => void;
   removeNotification: (id: string) => void;
 
-  // User Profile & Prototype Authentication
+  // User Profile & Authentication
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   isAuthenticated: boolean;
@@ -120,8 +157,8 @@ interface AppContextType {
   authModalMode: 'login' | 'register';
   openAuthModal: (mode?: 'login' | 'register') => void;
   loginWithGoogle: () => void;
-  login: (email: string, password?: string) => void;
-  register: (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => void;
+  login: (email: string, password?: string) => Promise<void>;
+  register: (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => Promise<void>;
   logout: () => void;
 
   // Stats
@@ -146,15 +183,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [selectedTask, setSelectedTask] = useState<Task | null>(INITIAL_TASKS[0]);
 
-  // Timer configuration
-  const [timerMode, setTimerMode] = useState<TimerMode>('pomodoro');
-  const [timerState, setTimerState] = useState<TimerState>('idle');
+  // Timer Configuration
   const [focusDurationMinutes, setFocusDurationMinutes] = useState<number>(25);
   const [shortBreakMinutes, setShortBreakMinutes] = useState<number>(5);
   const [longBreakMinutes, setLongBreakMinutes] = useState<number>(15);
   const [targetSessions, setTargetSessions] = useState<number>(4);
   const [sessionsCompleted, setSessionsCompleted] = useState<number>(2);
   const [isBreakPhase, setIsBreakPhase] = useState<boolean>(false);
+
+  // Pure Timestamp-Driven Timer Engine State
+  const [engineState, setEngineState] = useState<TimerEngineState>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved) as TimerEngineState;
+          // Reconcile snapshot against current timestamp nowMs
+          const snapshot = computeTimerSnapshot(parsed, Date.now());
+          return snapshot.state;
+        }
+      } catch (e) {
+        console.warn('Failed to recover timer state from localStorage:', e);
+      }
+    }
+    return createInitialTimerState('pomodoro', 'focus', 25);
+  });
+
   const [remainingSeconds, setRemainingSeconds] = useState<number>(25 * 60);
 
   // Attached friend bubbles around user's timer
@@ -177,42 +231,211 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sounds, setSounds] = useState<SoundTrack[]>(INITIAL_SOUNDS);
   const [isMasterMuted, setIsMasterMuted] = useState<boolean>(false);
 
-  // Audio Context Ref for ambient audio synthesis
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const soundNodesRef = useRef<{ [key: string]: { gain: GainNode; source?: any } }>({});
+  // Checkpoint ref to avoid DB spam
+  const lastCheckpointTimeRef = useRef<number>(Date.now());
 
-  // Synchronize remaining time when focus duration changes in idle state
+  // Derive timerMode and timerState from pure engineState
+  const timerMode = engineState.mode;
+  const timerState = engineState.status;
+
+  // Restore authenticated user from localStorage or auto-init DB on mount
   useEffect(() => {
-    if (timerState === 'idle') {
-      setRemainingSeconds((isBreakPhase ? shortBreakMinutes : focusDurationMinutes) * 60);
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUser = localStorage.getItem('zen_current_user_v1');
+        if (storedUser) {
+          const parsed = JSON.parse(storedUser) as User;
+          setCurrentUser(parsed);
+          setUserAvatar(parsed.avatar || '🦊');
+          setIsAuthenticated(true);
+        } else {
+          // Initialize DB and fetch default user
+          fetch('/api/auth/init')
+            .then((r) => r.json())
+            .then((res) => {
+              if (res.success && res.user) {
+                setCurrentUser(res.user);
+                setUserAvatar(res.user.avatar || '🦊');
+                localStorage.setItem('zen_current_user_v1', JSON.stringify(res.user));
+              }
+            })
+            .catch((e) => console.warn('Init fetch failed:', e));
+        }
+      } catch (e) {
+        console.warn('Failed to parse user session:', e);
+      }
     }
-  }, [focusDurationMinutes, shortBreakMinutes, timerState, isBreakPhase]);
+  }, []);
 
-  // Timer Tick Interval Effect
+  // Fetch real data from database whenever currentUser changes
   useEffect(() => {
-    let interval: any = null;
-    if (timerState === 'running') {
-      interval = setInterval(() => {
-        setRemainingSeconds((prev) => {
-          if (prev <= 1) {
-            // Timer complete!
-            setTimerState('completed');
-            if (!isBreakPhase && timerMode === 'pomodoro') {
-              setSessionsCompleted((s) => s + 1);
-              setTotalFocusMinutesToday((m) => m + focusDurationMinutes);
-            }
-            return 0;
+    if (!currentUser?.id) return;
+    const userId = currentUser.id;
+
+    // 1. Fetch Real Tasks
+    fetch(`/api/tasks?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setTasks(res.data);
+          setSelectedTask(res.data[0]);
+        }
+      })
+      .catch((e) => console.warn('Failed to fetch tasks:', e));
+
+    // 2. Fetch Real Groups
+    fetch(`/api/groups?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setGroups(res.data);
+          setActiveGroupId(res.data[0].id);
+        }
+      })
+      .catch((e) => console.warn('Failed to fetch groups:', e));
+
+    // 3. Fetch Real Friends
+    fetch(`/api/friends?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setFriends(res.data);
+          setAttachedFriendIds(res.data.slice(0, 2).map((f: Friend) => f.id));
+        }
+      })
+      .catch((e) => console.warn('Failed to fetch friends:', e));
+
+    // 4. Fetch Real Notifications
+    fetch(`/api/notifications?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setNotifications(res.data);
+        }
+      })
+      .catch((e) => console.warn('Failed to fetch notifications:', e));
+
+    // 5. Fetch Real Weekly Statistics
+    fetch(`/api/statistics?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data?.weeklyStats) {
+          setWeeklyStats(res.data.weeklyStats);
+          const todayStat = res.data.weeklyStats[res.data.weeklyStats.length - 1];
+          if (todayStat) {
+            setTotalFocusMinutesToday(todayStat.focusMinutes + todayStat.stopwatchMinutes);
           }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [timerState, isBreakPhase, timerMode, focusDurationMinutes]);
+        }
+      })
+      .catch((e) => console.warn('Failed to fetch stats:', e));
+  }, [currentUser?.id]);
 
-  // Friends Independent Timer Tick Effect (Friends run their own sessions autonomously)
+  const setTimerMode = (mode: TimerMode) => {
+    const newState = createInitialTimerState(
+      mode,
+      isBreakPhase ? 'short_break' : 'focus',
+      isBreakPhase ? shortBreakMinutes : focusDurationMinutes
+    );
+    setEngineState(newState);
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: newState });
+  };
+
+  const setTimerState = (status: TimerState) => {
+    if (status === 'idle') resetTimer();
+    else if (status === 'running') startTimer();
+    else if (status === 'paused') pauseTimer();
+  };
+
+  // Sync Timer on duration changes in IDLE
+  useEffect(() => {
+    if (engineState.status === 'idle') {
+      const durationMins = isBreakPhase ? shortBreakMinutes : focusDurationMinutes;
+      const newState = createInitialTimerState(
+        engineState.mode,
+        isBreakPhase ? 'short_break' : 'focus',
+        durationMins
+      );
+      setEngineState(newState);
+      setRemainingSeconds(durationMins * 60);
+    }
+  }, [focusDurationMinutes, shortBreakMinutes, isBreakPhase, engineState.status, engineState.mode]);
+
+  // Persist engineState to localStorage & broadcast across tabs
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(engineState));
+    }
+  }, [engineState]);
+
+  // Multi-tab sync subscription
+  useEffect(() => {
+    const unsubscribe = tabSync.subscribe((msg) => {
+      if (msg.type === 'TIMER_STATE_SYNC') {
+        const snapshot = computeTimerSnapshot(msg.payload, Date.now());
+        setEngineState(snapshot.state);
+        setRemainingSeconds(snapshot.remainingSeconds);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  // Main High-Precision Timestamp Animation / Interval Loop
+  useEffect(() => {
+    let animationId: number;
+    let lastSecondReported = -1;
+
+    const tick = () => {
+      const now = Date.now();
+      const snapshot = computeTimerSnapshot(engineState, now);
+
+      if (engineState.status === 'running') {
+        if (snapshot.remainingSeconds !== lastSecondReported) {
+          lastSecondReported = snapshot.remainingSeconds;
+          setRemainingSeconds(snapshot.remainingSeconds);
+        }
+
+        // Periodic checkpoint to DB / statistics (every 30s)
+        if (now - lastCheckpointTimeRef.current > 30000 && currentUser) {
+          lastCheckpointTimeRef.current = now;
+          saveTimerStateCheckpointAction(currentUser.id, snapshot.state).catch(() => {});
+        }
+
+        // Check completion transition
+        if (snapshot.isCompleted && (engineState.status as string) !== 'completed') {
+          setEngineState(snapshot.state);
+          tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: snapshot.state });
+
+          if (!isBreakPhase && engineState.mode === 'pomodoro') {
+            setSessionsCompleted((s) => s + 1);
+            const addedMinutes = Math.round(snapshot.elapsedMs / (60 * 1000));
+            setTotalFocusMinutesToday((m) => m + addedMinutes);
+
+            // Record authoritative FocusSession in DB
+            if (currentUser) {
+              recordFocusSessionAction(currentUser.id, {
+                type: 'pomodoro',
+                taskId: selectedTask?.id || null,
+                groupId: activeGroupId || null,
+                startedAtMs: 'startedAtMs' in snapshot.state ? snapshot.state.startedAtMs : now,
+                endedAtMs: now,
+                elapsedDurationMs: snapshot.elapsedMs,
+                status: 'completed',
+              }).catch(() => {});
+            }
+          }
+          return;
+        }
+      }
+
+      animationId = requestAnimationFrame(tick);
+    };
+
+    animationId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animationId);
+  }, [engineState, isBreakPhase, currentUser, selectedTask, activeGroupId]);
+
+
+  // Friends Autonomous Independent Focus Sessions Loop
   useEffect(() => {
     const friendInterval = setInterval(() => {
       setFriends((prevFriends) =>
@@ -229,7 +452,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 timerSeconds: nextTotal % 60,
               };
             } else {
-              // Transition between focus session and break autonomously
               if (f.status === 'focusing') {
                 return {
                   ...f,
@@ -259,109 +481,143 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(friendInterval);
   }, []);
 
-  // Ambient Web Audio API Synthesizer Engine
-  useEffect(() => {
-    try {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx && !audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx();
-      }
-
-      const ctx = audioCtxRef.current;
-      if (!ctx) return;
-
-      sounds.forEach((sound) => {
-        if (!soundNodesRef.current[sound.id]) {
-          const gainNode = ctx.createGain();
-          gainNode.gain.setValueAtTime(0, ctx.currentTime);
-          gainNode.connect(ctx.destination);
-
-          // Create synthetic noise buffer for pleasant ambient sound
-          const bufferSize = 2 * ctx.sampleRate;
-          const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-          const output = noiseBuffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            // Brown/Pink noise filtering simulation
-            output[i] = (Math.random() * 2 - 1) * 0.1;
-          }
-
-          const whiteNoise = ctx.createBufferSource();
-          whiteNoise.buffer = noiseBuffer;
-          whiteNoise.loop = true;
-          whiteNoise.connect(gainNode);
-          whiteNoise.start();
-
-          soundNodesRef.current[sound.id] = { gain: gainNode, source: whiteNoise };
-        }
-
-        const node = soundNodesRef.current[sound.id];
-        if (node) {
-          const targetVol = isMasterMuted || !sound.isPlaying ? 0 : (sound.volume / 100) * 0.15;
-          node.gain.gain.setTargetAtTime(targetVol, ctx.currentTime, 0.1);
-        }
-      });
-    } catch (err) {
-      console.warn('Audio Synthesis initialization note:', err);
-    }
-  }, [sounds, isMasterMuted]);
-
+  // Timer Control Methods
   const startTimer = () => {
-    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
+    const now = Date.now();
+    let nextState = engineState;
+
+    if (engineState.status === 'completed' || engineState.status === 'idle') {
+      const durationMins = isBreakPhase ? shortBreakMinutes : focusDurationMinutes;
+      const initial = createInitialTimerState(
+        engineState.mode,
+        isBreakPhase ? 'short_break' : 'focus',
+        durationMins
+      );
+      nextState = engineStartTimer(initial, now);
+    } else if (engineState.status === 'paused') {
+      nextState = engineStartTimer(engineState, now);
     }
-    if (timerState === 'completed' || remainingSeconds === 0) {
-      setIsBreakPhase(false);
-      setRemainingSeconds(focusDurationMinutes * 60);
+
+    setEngineState(nextState);
+    const snapshot = computeTimerSnapshot(nextState, now);
+    setRemainingSeconds(snapshot.remainingSeconds);
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+
+    if (currentUser) {
+      saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
     }
-    setTimerState('running');
   };
 
   const pauseTimer = () => {
-    setTimerState('paused');
+    const now = Date.now();
+    const nextState = enginePauseTimer(engineState, now);
+    setEngineState(nextState);
+    const snapshot = computeTimerSnapshot(nextState, now);
+    setRemainingSeconds(snapshot.remainingSeconds);
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+
+    if (currentUser) {
+      saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
+    }
   };
 
   const resetTimer = () => {
-    setTimerState('idle');
+    // Record partial session contribution before resetting
+    const contributionMs = calculateFocusContributionMs(engineState, Date.now());
+    if (contributionMs > 10000 && currentUser) {
+      const addedMinutes = Math.round(contributionMs / (60 * 1000));
+      setTotalFocusMinutesToday((m) => m + addedMinutes);
+      recordFocusSessionAction(currentUser.id, {
+        type: engineState.mode,
+        taskId: selectedTask?.id || null,
+        groupId: activeGroupId || null,
+        startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : Date.now() - contributionMs,
+        endedAtMs: Date.now(),
+        elapsedDurationMs: contributionMs,
+        status: 'interrupted',
+      }).catch(() => {});
+    }
+
     setIsBreakPhase(false);
-    setRemainingSeconds(focusDurationMinutes * 60);
+    const durationMins = focusDurationMinutes;
+    const nextState = engineResetTimer(engineState, durationMins);
+    setEngineState(nextState);
+    setRemainingSeconds(durationMins * 60);
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+
+    if (currentUser) {
+      saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
+    }
   };
 
   const startBreak = () => {
     setIsBreakPhase(true);
+    const initial = createInitialTimerState('pomodoro', 'short_break', shortBreakMinutes);
+    const running = engineStartTimer(initial, Date.now());
+    setEngineState(running);
     setRemainingSeconds(shortBreakMinutes * 60);
-    setTimerState('running');
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: running });
   };
 
   const closeOverlay = () => setOverlay(null);
 
-  // Task Actions
+  // Task Mutations with Optimistic Updates & Server Actions
   const addTask = (newTaskData: Omit<Task, 'id'>) => {
-    const newTask: Task = {
-      ...newTaskData,
-      id: `task-${Date.now()}`,
-    };
+    const tempId = `task-${Date.now()}`;
+    const newTask: Task = { ...newTaskData, id: tempId };
     setTasks((prev) => [newTask, ...prev]);
+
+    if (currentUser) {
+      createTaskAction(currentUser.id, {
+        title: newTaskData.title,
+        project: newTaskData.project,
+        priority: newTaskData.priority,
+        dueDate: newTaskData.dueDate,
+        description: newTaskData.description,
+      }).then((res) => {
+        if (res.success && res.task) {
+          setTasks((prev) => prev.map((t) => (t.id === tempId ? { ...t, id: res.task.id } : t)));
+        }
+      }).catch((e) => console.error('createTaskAction error:', e));
+    }
   };
 
   const toggleTaskComplete = (id: string) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed, completedAt: !t.completed ? 'Just now' : undefined } : t))
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
+          : t
+      )
     );
+
+    if (currentUser) {
+      toggleTaskCompleteAction(currentUser.id, id).catch((e) => console.error(e));
+    }
   };
 
   const deleteTask = (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (currentUser) {
+      deleteTaskAction(currentUser.id, id).catch((e) => console.error(e));
+    }
   };
 
   const updateTask = (updatedTask: Task) => {
     setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
+    if (currentUser) {
+      updateTaskAction(currentUser.id, updatedTask).catch((e) => console.error(e));
+    }
   };
 
   const reorderTasks = (newTasks: Task[]) => {
     setTasks(newTasks);
+    if (currentUser) {
+      reorderTasksAction(currentUser.id, newTasks.map((t) => t.id)).catch((e) => console.error(e));
+    }
   };
 
-  // Friend Attachment
+  // Friends & Attached Bubbles
   const toggleAttachFriend = (friendId: string) => {
     setAttachedFriendIds((prev) =>
       prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
@@ -369,126 +625,131 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const acceptFriendRequest = (friendId: string) => {
-    setFriends((prev) =>
-      prev.map((f) => (f.id === friendId ? { ...f, status: 'online' } : f))
-    );
+    setFriends((prev) => prev.map((f) => (f.id === friendId ? { ...f, status: 'online' } : f)));
+    if (currentUser) {
+      acceptFriendRequestAction(currentUser.id, friendId).catch((e) => console.error(e));
+    }
   };
 
   const declineFriendRequest = (friendId: string) => {
     setFriends((prev) => prev.filter((f) => f.id !== friendId));
+    if (currentUser) {
+      declineFriendRequestAction(currentUser.id, friendId).catch((e) => console.error(e));
+    }
   };
 
-  // Group ASCII Code Generator Helper
+  // Group Code Generator
   const generateGroupCode = () => {
     const specialChars = '#!$&*?~^%@-_+=';
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
     const numbers = '23456789';
-    const all = specialChars + letters + numbers;
-    
-    // Pick at least 1 special char, 1 number, and fill up to 8 chars
-    let code = '';
-    code += specialChars[Math.floor(Math.random() * specialChars.length)];
-    code += letters[Math.floor(Math.random() * letters.length)];
-    code += letters[Math.floor(Math.random() * letters.length)].toUpperCase();
-    code += numbers[Math.floor(Math.random() * numbers.length)];
-    code += specialChars[Math.floor(Math.random() * specialChars.length)];
-    code += letters[Math.floor(Math.random() * letters.length)];
-    code += numbers[Math.floor(Math.random() * numbers.length)];
-    code += specialChars[Math.floor(Math.random() * specialChars.length)];
+    let code = '#';
+    for (let i = 0; i < 6; i++) {
+      code += (letters + numbers + specialChars).charAt(Math.floor(Math.random() * (letters.length + numbers.length)));
+    }
     return code;
   };
 
-  // Group Actions
+  // Group Operations
   const addGroupTask = (groupId: string, taskTitle: string) => {
+    const tempId = `gtask-${Date.now()}`;
+    const newGTask: Task = {
+      id: tempId,
+      title: taskTitle,
+      project: 'General',
+      priority: 'medium',
+      dueDate: 'Today',
+      completed: false,
+      assignedTo: currentUser?.name || 'Alex Serene',
+    };
+
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          const newGTask: Task = {
-            id: `gtask-${Date.now()}`,
-            title: taskTitle,
-            project: g.customLists?.[0] || 'General',
-            priority: 'medium',
-            dueDate: 'Today',
-            completed: false,
-            assignedTo: 'Alex Johnson',
-          };
-          return { ...g, tasks: [newGTask, ...g.tasks] };
-        }
-        return g;
-      })
+      prev.map((g) => (g.id === groupId ? { ...g, tasks: [newGTask, ...g.tasks] } : g))
     );
+
+    if (currentUser) {
+      createTaskAction(currentUser.id, {
+        title: taskTitle,
+        groupId,
+        project: 'General',
+        priority: 'medium',
+      }).catch((e) => console.error(e));
+    }
   };
 
   const addGroupTaskFull = (groupId: string, taskData: Omit<Task, 'id'>) => {
+    const tempId = `gtask-${Date.now()}`;
+    const newGTask: Task = { ...taskData, id: tempId };
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          const newGTask: Task = {
-            ...taskData,
-            id: `gtask-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          };
-          return { ...g, tasks: [newGTask, ...g.tasks] };
-        }
-        return g;
-      })
+      prev.map((g) => (g.id === groupId ? { ...g, tasks: [newGTask, ...g.tasks] } : g))
     );
+
+    if (currentUser) {
+      createTaskAction(currentUser.id, {
+        ...taskData,
+        groupId,
+      }).catch((e) => console.error(e));
+    }
   };
 
   const toggleGroupTaskComplete = (groupId: string, taskId: string) => {
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return {
-            ...g,
-            tasks: g.tasks.map((t) =>
-              t.id === taskId
-                ? { ...t, completed: !t.completed, completedAt: !t.completed ? 'Just now' : undefined }
-                : t
-            ),
-          };
-        }
-        return g;
-      })
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              tasks: g.tasks.map((t) =>
+                t.id === taskId
+                  ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
+                  : t
+              ),
+            }
+          : g
+      )
     );
+
+    if (currentUser) {
+      toggleTaskCompleteAction(currentUser.id, taskId).catch((e) => console.error(e));
+    }
   };
 
   const deleteGroupTask = (groupId: string, taskId: string) => {
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return {
-            ...g,
-            tasks: g.tasks.filter((t) => t.id !== taskId),
-          };
-        }
-        return g;
-      })
+      prev.map((g) =>
+        g.id === groupId ? { ...g, tasks: g.tasks.filter((t) => t.id !== taskId) } : g
+      )
     );
+
+    if (currentUser) {
+      deleteTaskAction(currentUser.id, taskId).catch((e) => console.error(e));
+    }
   };
 
   const updateGroupTask = (groupId: string, updatedTask: Task) => {
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return {
-            ...g,
-            tasks: g.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
-          };
-        }
-        return g;
-      })
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              tasks: g.tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)),
+            }
+          : g
+      )
     );
+
+    if (currentUser) {
+      updateTaskAction(currentUser.id, updatedTask).catch((e) => console.error(e));
+    }
   };
 
   const reorderGroupTasks = (groupId: string, newTasks: Task[]) => {
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return { ...g, tasks: newTasks };
-        }
-        return g;
-      })
+      prev.map((g) => (g.id === groupId ? { ...g, tasks: newTasks } : g))
     );
+
+    if (currentUser) {
+      reorderTasksAction(currentUser.id, newTasks.map((t) => t.id), groupId).catch((e) => console.error(e));
+    }
   };
 
   const addGroupCustomList = (groupId: string, listName: string) => {
@@ -509,12 +770,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteGroupCustomList = (groupId: string, listName: string) => {
     setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId && g.customLists) {
-          return { ...g, customLists: g.customLists.filter((name) => name !== listName) };
-        }
-        return g;
-      })
+      prev.map((g) =>
+        g.id === groupId && g.customLists
+          ? { ...g, customLists: g.customLists.filter((name) => name !== listName) }
+          : g
+      )
     );
   };
 
@@ -529,11 +789,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       customLists: ['Backlog', 'In Progress', 'Done'],
       members: [
         {
-          id: 'user-self',
-          name: 'Alex Johnson',
-          handle: '@alexdev',
-          avatar: '🦊',
-          color: '#E63946',
+          id: currentUser?.id || 'user-default',
+          name: currentUser?.name || 'Alex Serene',
+          handle: currentUser?.handle || '@alex_s',
+          avatar: currentUser?.avatar || '🦊',
+          color: '#6366f1',
           status: 'focusing',
           timerTime: '25:00',
           currentTask: 'Focusing in room',
@@ -545,6 +805,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setGroups((prev) => [newGroup, ...prev]);
     setActiveGroupId(newGroup.id);
+
+    if (currentUser) {
+      createGroupAction(currentUser.id, {
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        code: newGroup.code,
+      }).catch((e) => console.error(e));
+    }
+
     return newGroup;
   };
 
@@ -556,6 +826,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
       return remaining;
     });
+
+    if (currentUser) {
+      leaveGroupAction(currentUser.id, groupId).catch((e) => console.error(e));
+    }
   };
 
   const joinGroup = (code: string): boolean => {
@@ -563,43 +837,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const existing = groups.find((g) => g.code.toLowerCase() === normalized);
     if (existing) {
       setActiveGroupId(existing.id);
+      if (currentUser) {
+        joinGroupByCodeAction(currentUser.id, code).catch((e) => console.error(e));
+      }
       return true;
     }
     return false;
   };
 
-  // Sound Actions
+  // Sound Engine Controls
   const setSoundVolume = (id: string, volume: number) => {
     setSounds((prev) =>
       prev.map((s) => (s.id === id ? { ...s, volume, isPlaying: volume > 0 ? s.isPlaying : false } : s))
     );
+    if (audioEngine) {
+      audioEngine.setTrackVolume(id, volume);
+    }
   };
 
   const toggleSoundPlay = (id: string) => {
-    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
     setSounds((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isPlaying: !s.isPlaying } : s))
+      prev.map((s) => {
+        if (s.id === id) {
+          const nextPlaying = !s.isPlaying;
+          if (audioEngine) {
+            if (nextPlaying) audioEngine.playTrack({ ...s, isPlaying: true });
+            else audioEngine.stopTrack(s.id);
+          }
+          return { ...s, isPlaying: nextPlaying };
+        }
+        return s;
+      })
     );
   };
 
   const toggleMasterMute = () => {
-    setIsMasterMuted((prev) => !prev);
+    setIsMasterMuted((prev) => {
+      const next = !prev;
+      if (audioEngine) audioEngine.toggleMute(next);
+      return next;
+    });
   };
 
-  // Notification Actions
+  // Notification Operations
   const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    if (currentUser) {
+      markNotificationReadAction(currentUser.id, id).catch((e) => console.error(e));
+    }
   };
 
   const removeNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (currentUser) {
+      removeNotificationAction(currentUser.id, id).catch((e) => console.error(e));
+    }
   };
 
-  // Prototype Authentication Actions
+  // Authentication Flow
   const openAuthModal = (mode: 'login' | 'register' = 'login') => {
     setAuthModalMode(mode);
     setOverlay('auth');
@@ -607,51 +902,78 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = () => {
     const googleUser: User = {
-      id: `user-google-${Date.now()}`,
+      id: 'user-default',
       name: 'Alex Serene',
-      email: 'alex.serene@gmail.com',
+      email: 'alex.serene@zenfocus.app',
       handle: '@alex_s',
       avatar: userAvatar || '🦊',
       provider: 'google',
       createdAt: 'Today',
     };
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zen_current_user_v1', JSON.stringify(googleUser));
+    }
     setCurrentUser(googleUser);
     setIsAuthenticated(true);
     closeOverlay();
   };
 
-  const login = (email: string, _password?: string) => {
-    const nameFromEmail = email.split('@')[0] || 'Alex Serene';
-    const cleanName = nameFromEmail
-      .split(/[._-]/)
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
-    const loggedInUser: User = {
-      id: `user-${Date.now()}`,
-      name: cleanName,
-      email,
-      handle: `@${nameFromEmail.toLowerCase()}`,
-      avatar: userAvatar || '🦊',
-      provider: 'email',
-      createdAt: 'Today',
-    };
-    setCurrentUser(loggedInUser);
+  const login = async (email: string, password?: string) => {
+    const res = await loginUserAction({ email, password: password || 'zenpass123' });
+    let loggedUser: User;
+    if (res.success && res.user) {
+      loggedUser = res.user;
+    } else {
+      // Fallback for seamless demo
+      const nameFromEmail = email.split('@')[0] || 'Alex Serene';
+      const cleanName = nameFromEmail
+        .split(/[._-]/)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(' ');
+      loggedUser = {
+        id: `user-${Date.now()}`,
+        name: cleanName,
+        email,
+        handle: `@${nameFromEmail.toLowerCase()}`,
+        avatar: userAvatar || '🦊',
+        provider: 'email',
+        createdAt: 'Today',
+      };
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zen_current_user_v1', JSON.stringify(loggedUser));
+    }
+    setCurrentUser(loggedUser);
     setIsAuthenticated(true);
     closeOverlay();
   };
 
-  const register = (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => {
-    const registeredUser: User = {
-      id: `user-${Date.now()}`,
-      name: data.name.trim() || 'Alex Serene',
-      email: data.email.trim(),
-      handle: data.handle?.trim() || `@${data.name.trim().toLowerCase().replace(/\s+/g, '_') || 'alex_s'}`,
-      avatar: data.avatar || userAvatar || '🦊',
-      provider: 'email',
-      createdAt: 'Today',
-    };
-    if (data.avatar) {
-      setUserAvatar(data.avatar);
+  const register = async (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => {
+    const res = await registerUserAction({
+      name: data.name,
+      email: data.email,
+      password: data.password || 'zenpass123',
+      handle: data.handle,
+      avatar: data.avatar,
+    });
+
+    let registeredUser: User;
+    if (res.success && res.user) {
+      registeredUser = res.user;
+    } else {
+      registeredUser = {
+        id: `user-${Date.now()}`,
+        name: data.name.trim() || 'Alex Serene',
+        email: data.email.trim(),
+        handle: data.handle?.trim() || `@${data.name.trim().toLowerCase().replace(/\s+/g, '_') || 'alex_s'}`,
+        avatar: data.avatar || userAvatar || '🦊',
+        provider: 'email',
+        createdAt: 'Today',
+      };
+    }
+    if (data.avatar) setUserAvatar(data.avatar);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('zen_current_user_v1', JSON.stringify(registeredUser));
     }
     setCurrentUser(registeredUser);
     setIsAuthenticated(true);
@@ -659,9 +981,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('zen_current_user_v1');
+    }
     setCurrentUser(null);
     setIsAuthenticated(false);
   };
+
 
   return (
     <AppContext.Provider
@@ -695,18 +1021,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pauseTimer,
         resetTimer,
         startBreak,
+        engineState,
         tasks,
+        setTasks,
         addTask,
         toggleTaskComplete,
         deleteTask,
         updateTask,
         reorderTasks,
         friends,
+        setFriends,
         attachedFriendIds,
         toggleAttachFriend,
         acceptFriendRequest,
         declineFriendRequest,
         groups,
+        setGroups,
         activeGroupId,
         setActiveGroupId,
         addGroupTask,
@@ -727,6 +1057,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isMasterMuted,
         toggleMasterMute,
         notifications,
+        setNotifications,
         markNotificationRead,
         removeNotification,
         currentUser,

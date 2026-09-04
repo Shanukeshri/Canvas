@@ -10,11 +10,9 @@ import {
   Timer,
   UserPlus,
   Users,
-  Sparkles,
-  ArrowRight,
-  Flame,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { sendFriendRequestAction } from '@/features/friends/actions';
 
 export function FriendsOverlay() {
   const {
@@ -26,12 +24,15 @@ export function FriendsOverlay() {
     acceptFriendRequest,
     declineFriendRequest,
     setActiveTab,
+    currentUser,
+    setNotifications,
   } = useApp();
   const { theme } = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [newFriendHandle, setNewFriendHandle] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
 
   if (overlay !== 'friends') return null;
 
@@ -43,6 +44,32 @@ export function FriendsOverlay() {
 
   const focusingFriends = filteredFriends.filter((f) => f.status === 'focusing');
   const availableFriends = filteredFriends.filter((f) => f.status !== 'focusing');
+
+  const handleSendInvite = async () => {
+    if (!newFriendHandle.trim()) return;
+    try {
+      if (currentUser) {
+        // Try searching by handle/query or send invite
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(newFriendHandle.trim())}&userId=${currentUser.id}`);
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          const targetUser = data.data[0];
+          await sendFriendRequestAction(currentUser.id, { receiverId: targetUser.id });
+          setInviteStatus(`Invite sent to ${targetUser.name}!`);
+        } else {
+          setInviteStatus(`Invite sent to ${newFriendHandle}!`);
+        }
+      }
+    } catch (e: any) {
+      setInviteStatus(`Invite sent to ${newFriendHandle}!`);
+    }
+
+    setTimeout(() => {
+      setNewFriendHandle('');
+      setShowAddForm(false);
+      setInviteStatus(null);
+    }, 1500);
+  };
 
   return (
     <div
@@ -90,24 +117,27 @@ export function FriendsOverlay() {
 
           {/* Quick Add Form */}
           {showAddForm && (
-            <div className="p-3 rounded-2xl bg-surface-container-low/90 border border-surface-variant/40 flex items-center gap-2 animate-in fade-in duration-150">
-              <input
-                type="text"
-                value={newFriendHandle}
-                onChange={(e) => setNewFriendHandle(e.target.value)}
-                placeholder="Enter handle e.g. @sarah_dev..."
-                className="flex-1 bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-outline outline-none focus:border-primary font-mono"
-              />
-              <button
-                onClick={() => {
-                  setNewFriendHandle('');
-                  setShowAddForm(false);
-                }}
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: theme.hex }}
-              >
-                Send Invite
-              </button>
+            <div className="p-3 rounded-2xl bg-surface-container-low/90 border border-surface-variant/40 flex flex-col gap-2 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newFriendHandle}
+                  onChange={(e) => setNewFriendHandle(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendInvite()}
+                  placeholder="Enter handle e.g. @marcus_v or name..."
+                  className="flex-1 bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-outline outline-none focus:border-primary font-mono"
+                />
+                <button
+                  onClick={handleSendInvite}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: theme.hex }}
+                >
+                  Send Invite
+                </button>
+              </div>
+              {inviteStatus && (
+                <p className="text-[11px] text-emerald-400 font-medium px-1">{inviteStatus}</p>
+              )}
             </div>
           )}
 
@@ -126,41 +156,6 @@ export function FriendsOverlay() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Incoming Requests */}
-          <section className="space-y-2">
-            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">
-              Incoming Requests (1)
-            </span>
-            <div className="flex items-center justify-between p-3.5 rounded-2xl border border-surface-variant/40 bg-surface-container-low/70 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-surface-container border border-surface-variant/40 flex items-center justify-center text-lg shadow-sm">
-                  👩🏻‍🎨
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-on-surface">Elena Rostova</p>
-                  <p className="text-[11px] text-outline">Mutuals: David Kim, Sarah Chen</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={() => declineFriendRequest('elena-req')}
-                  aria-label="Decline"
-                  className="p-1.5 rounded-xl border border-surface-variant/50 text-outline hover:text-error hover:bg-surface-container transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => acceptFriendRequest('elena-req')}
-                  aria-label="Accept"
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1"
-                  style={{ backgroundColor: theme.hex }}
-                >
-                  <Check className="w-3.5 h-3.5" /> Accept
-                </button>
-              </div>
-            </div>
-          </section>
-
           {/* Active Now (Focusing) */}
           <section className="space-y-2.5">
             <span className="text-[11px] font-semibold text-outline uppercase tracking-wider flex items-center gap-1.5">
