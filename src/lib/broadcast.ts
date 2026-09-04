@@ -1,8 +1,8 @@
 export type TabSyncMessage =
-  | { type: 'TIMER_STATE_SYNC'; payload: any }
-  | { type: 'TIMER_RESET'; payload: { newDurationMinutes?: number } }
-  | { type: 'TAB_ACTIVE_PING'; tabId: string }
-  | { type: 'THEME_CHANGED'; themeId: string };
+  | { type: 'TIMER_STATE_SYNC'; payload: any; userId?: string }
+  | { type: 'TIMER_RESET'; payload: { newDurationMinutes?: number }; userId?: string }
+  | { type: 'TAB_ACTIVE_PING'; tabId: string; userId?: string }
+  | { type: 'THEME_CHANGED'; themeId: string; userId?: string };
 
 class ZenBroadcastChannel {
   private channel: BroadcastChannel | null = null;

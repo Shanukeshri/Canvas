@@ -156,42 +156,127 @@ export function FriendsOverlay() {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Active Now (Focusing) */}
-          <section className="space-y-2.5">
-            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.hex }} />
-              Focusing Now ({focusingFriends.length})
-            </span>
+          {friends.length === 0 ? (
+            <div className="text-center py-10 px-4 flex flex-col items-center justify-center">
+              <div
+                className="w-14 h-14 rounded-3xl flex items-center justify-center text-2xl mb-3 shadow-sm border border-surface-variant/40"
+                style={{ backgroundColor: theme.hex + '15' }}
+              >
+                👥
+              </div>
+              <h3 className="text-sm font-bold text-on-surface mb-1">No Focus Buddies Yet</h3>
+              <p className="text-xs text-outline max-w-xs mb-5 leading-relaxed">
+                Add friends using their unique handle (e.g. @alex_s or teammates) to see when they are focusing and attach their timers to your canvas.
+              </p>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-md hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer"
+                style={{ backgroundColor: theme.hex }}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Add Your First Friend</span>
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Active Now (Focusing) */}
+              <section className="space-y-2.5">
+                <span className="text-[11px] font-semibold text-outline uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.hex }} />
+                  Focusing Now ({focusingFriends.length})
+                </span>
 
-            <div className="space-y-2">
-              {focusingFriends.map((friend) => {
-                const isAttached = attachedFriendIds.includes(friend.id);
-                return (
-                  <div
-                    key={friend.id}
-                    className="p-3.5 rounded-2xl border border-surface-variant/40 bg-surface-container-low/60 hover:border-primary/40 transition-all flex flex-col gap-2.5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  {focusingFriends.map((friend) => {
+                    const isAttached = attachedFriendIds.includes(friend.id);
+                    return (
+                      <div
+                        key={friend.id}
+                        className="p-3.5 rounded-2xl border border-surface-variant/40 bg-surface-container-low/60 hover:border-primary/40 transition-all flex flex-col gap-2.5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <div
+                                className="w-10 h-10 rounded-2xl border flex items-center justify-center text-lg shadow-sm"
+                                style={{
+                                  backgroundColor: friend.color + '20',
+                                  borderColor: friend.color + '60',
+                                }}
+                              >
+                                {friend.avatar}
+                              </div>
+                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-surface-container-highest rounded-full flex items-center justify-center border border-surface-variant text-[9px]">
+                                <Timer className="w-2.5 h-2.5" style={{ color: theme.hex }} />
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-on-surface">{friend.name}</p>
+                              <p className="text-[11px] text-outline">
+                                {friend.currentTask || 'Deep Flow'} • {friend.timerMinutes || 25}m left
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              toggleAttachFriend(friend.id);
+                              closeOverlay();
+                              setActiveTab('timer');
+                            }}
+                            className={clsx(
+                              'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm',
+                              isAttached
+                                ? 'bg-surface-container border border-primary text-primary font-bold'
+                                : 'text-white hover:opacity-90'
+                            )}
+                            style={!isAttached ? { backgroundColor: theme.hex } : { color: theme.hex }}
+                          >
+                            {isAttached ? 'On Canvas' : 'Attach Orbit'}
+                          </button>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: '65%',
+                              backgroundColor: friend.color || theme.hex,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Online / Available */}
+              <section className="space-y-2">
+                <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">
+                  Available Friends ({availableFriends.length})
+                </span>
+
+                <div className="space-y-1.5">
+                  {availableFriends.map((friend) => (
+                    <div
+                      key={friend.id}
+                      className="flex items-center justify-between p-3 rounded-2xl border border-surface-variant/20 hover:border-surface-variant/60 hover:bg-surface-container-low/50 transition-colors"
+                    >
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <div
-                            className="w-10 h-10 rounded-2xl border flex items-center justify-center text-lg shadow-sm"
-                            style={{
-                              backgroundColor: friend.color + '20',
-                              borderColor: friend.color + '60',
-                            }}
+                            className="w-9 h-9 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-base"
+                            style={{ backgroundColor: friend.color + '15' }}
                           >
                             {friend.avatar}
                           </div>
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-surface-container-highest rounded-full flex items-center justify-center border border-surface-variant text-[9px]">
-                            <Timer className="w-2.5 h-2.5" style={{ color: theme.hex }} />
-                          </div>
+                          <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-surface-container-lowest" />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-on-surface">{friend.name}</p>
-                          <p className="text-[11px] text-outline">
-                            {friend.currentTask || 'Deep Flow'} • {friend.timerMinutes || 25}m left
-                          </p>
+                          <p className="text-xs font-semibold text-on-surface">{friend.name}</p>
+                          <p className="text-[10px] text-outline font-mono">{friend.handle}</p>
                         </div>
                       </div>
 
@@ -201,77 +286,17 @@ export function FriendsOverlay() {
                           closeOverlay();
                           setActiveTab('timer');
                         }}
-                        className={clsx(
-                          'px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm',
-                          isAttached
-                            ? 'bg-surface-container border border-primary text-primary font-bold'
-                            : 'text-white hover:opacity-90'
-                        )}
-                        style={!isAttached ? { backgroundColor: theme.hex } : { color: theme.hex }}
+                        className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container transition-colors"
+                        title="Invite to Canvas Orbit"
                       >
-                        {isAttached ? 'On Canvas' : 'Attach Orbit'}
+                        <Timer className="w-4 h-4" />
                       </button>
                     </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-1 bg-surface-container rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: '65%',
-                          backgroundColor: friend.color || theme.hex,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-          {/* Online / Available */}
-          <section className="space-y-2">
-            <span className="text-[11px] font-semibold text-outline uppercase tracking-wider block">
-              Available Friends ({availableFriends.length})
-            </span>
-
-            <div className="space-y-1.5">
-              {availableFriends.map((friend) => (
-                <div
-                  key={friend.id}
-                  className="flex items-center justify-between p-3 rounded-2xl border border-surface-variant/20 hover:border-surface-variant/60 hover:bg-surface-container-low/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div
-                        className="w-9 h-9 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-base"
-                        style={{ backgroundColor: friend.color + '15' }}
-                      >
-                        {friend.avatar}
-                      </div>
-                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-surface-container-lowest" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-on-surface">{friend.name}</p>
-                      <p className="text-[10px] text-outline font-mono">{friend.handle}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      toggleAttachFriend(friend.id);
-                      closeOverlay();
-                      setActiveTab('timer');
-                    }}
-                    className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container transition-colors"
-                    title="Invite to Canvas Orbit"
-                  >
-                    <Timer className="w-4 h-4" />
-                  </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
+              </section>
+            </>
+          )}
         </div>
 
         {/* Footer Actions */}

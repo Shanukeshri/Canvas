@@ -14,14 +14,7 @@ import {
   StatDayData,
   User,
 } from '@/types';
-import {
-  INITIAL_TASKS,
-  INITIAL_FRIENDS,
-  INITIAL_GROUPS,
-  INITIAL_SOUNDS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_STATS_WEEK,
-} from '@/lib/mock-data';
+import { INITIAL_SOUNDS } from '@/lib/mock-data';
 import {
   createInitialTimerState,
   startTimer as engineStartTimer,
@@ -51,17 +44,16 @@ import {
 } from '@/features/friends/actions';
 import { recordFocusSessionAction, saveTimerStateCheckpointAction } from '@/features/timer/actions';
 import { markNotificationReadAction, removeNotificationAction } from '@/features/notifications/actions';
-import { loginUserAction, registerUserAction } from '@/features/auth/actions';
 
-const DEFAULT_USER: User = {
-  id: 'user-default',
-  name: 'Alex Serene',
-  email: 'alex.serene@zenfocus.app',
-  handle: '@alex_s',
-  avatar: '🦊',
-  provider: 'google',
-  createdAt: 'August 2026',
-};
+export const EMPTY_WEEK_STATS: StatDayData[] = [
+  { day: 'Mon', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Tue', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Wed', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Thu', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Fri', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Sat', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+  { day: 'Sun', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
+];
 
 const TIMER_STORAGE_KEY = 'zen_timer_engine_state_v1';
 
@@ -155,7 +147,11 @@ interface AppContextType {
   userAvatar: string;
   setUserAvatar: (avatar: string) => void;
   authModalMode: 'login' | 'register';
-  openAuthModal: (mode?: 'login' | 'register') => void;
+  openAuthModal: (mode?: 'login' | 'register', notice?: string) => void;
+  authNotice: string | null;
+  setAuthNotice: (notice: string | null) => void;
+  isCheckingAuth: boolean;
+  checkAuthStatus: () => Promise<void>;
   loginWithGoogle: () => void;
   login: (email: string, password?: string) => Promise<void>;
   register: (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => Promise<void>;
@@ -175,20 +171,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<Task | null>(null);
 
   // Authentication State
-  const [currentUser, setCurrentUser] = useState<User | null>(DEFAULT_USER);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   // Tasks
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(INITIAL_TASKS[0]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   // Timer Configuration
   const [focusDurationMinutes, setFocusDurationMinutes] = useState<number>(25);
   const [shortBreakMinutes, setShortBreakMinutes] = useState<number>(5);
   const [longBreakMinutes, setLongBreakMinutes] = useState<number>(15);
   const [targetSessions, setTargetSessions] = useState<number>(4);
-  const [sessionsCompleted, setSessionsCompleted] = useState<number>(2);
+  const [sessionsCompleted, setSessionsCompleted] = useState<number>(0);
   const [isBreakPhase, setIsBreakPhase] = useState<boolean>(false);
 
   // Pure Timestamp-Driven Timer Engine State
@@ -211,18 +209,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [remainingSeconds, setRemainingSeconds] = useState<number>(25 * 60);
 
-  // Attached friend bubbles around user's timer
-  const [attachedFriendIds, setAttachedFriendIds] = useState<string[]>(['friend-1', 'friend-2']);
+  // Attached friend bubbles around user's timer (clean by default)
+  const [attachedFriendIds, setAttachedFriendIds] = useState<string[]>([]);
 
-  // Friends & Groups
-  const [friends, setFriends] = useState<Friend[]>(INITIAL_FRIENDS);
-  const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
-  const [activeGroupId, setActiveGroupId] = useState<string>('group-1');
+  // Friends & Groups (clean by default)
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [activeGroupId, setActiveGroupId] = useState<string>('');
 
-  // Notifications & Stats
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [weeklyStats, setWeeklyStats] = useState<StatDayData[]>(INITIAL_STATS_WEEK);
-  const [totalFocusMinutesToday, setTotalFocusMinutesToday] = useState<number>(222);
+  // Notifications & Stats (clean by default)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [weeklyStats, setWeeklyStats] = useState<StatDayData[]>(EMPTY_WEEK_STATS);
+  const [totalFocusMinutesToday, setTotalFocusMinutesToday] = useState<number>(0);
 
   // User Profile
   const [userAvatar, setUserAvatar] = useState<string>('🦊');
@@ -238,47 +236,70 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const timerMode = engineState.mode;
   const timerState = engineState.status;
 
-  // Restore authenticated user from localStorage or auto-init DB on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const storedUser = localStorage.getItem('zen_current_user_v1');
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser) as User;
-          setCurrentUser(parsed);
-          setUserAvatar(parsed.avatar || '🦊');
-          setIsAuthenticated(true);
-        } else {
-          // Initialize DB and fetch default user
-          fetch('/api/auth/init')
-            .then((r) => r.json())
-            .then((res) => {
-              if (res.success && res.user) {
-                setCurrentUser(res.user);
-                setUserAvatar(res.user.avatar || '🦊');
-                localStorage.setItem('zen_current_user_v1', JSON.stringify(res.user));
-              }
-            })
-            .catch((e) => console.warn('Init fetch failed:', e));
+  // Restore authenticated user using token verification
+  const checkAuthStatus = async () => {
+    setIsCheckingAuth(true);
+    try {
+      const res = await fetch('/api/auth/status');
+      const data = await res.json();
+      if (data.success && (data.status === 'authenticated' || data.status === 'refreshed') && data.user) {
+        setCurrentUser(data.user);
+        setUserAvatar(data.user.avatar || '🦊');
+        setIsAuthenticated(true);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zen_current_user_v1', JSON.stringify(data.user));
         }
-      } catch (e) {
-        console.warn('Failed to parse user session:', e);
+      } else if (data.status === 'expired_refresh') {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('zen_current_user_v1');
+        }
+        setAuthNotice('Your session has expired. Please sign in to continue.');
+      } else {
+        // no_token
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('zen_current_user_v1');
+        }
       }
+    } catch (e) {
+      console.warn('Auth status check error:', e);
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsCheckingAuth(false);
     }
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
   }, []);
 
   // Fetch real data from database whenever currentUser changes
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) {
+      setTasks([]);
+      setSelectedTask(null);
+      setFriends([]);
+      setAttachedFriendIds([]);
+      setGroups([]);
+      setActiveGroupId('');
+      setNotifications([]);
+      setWeeklyStats(EMPTY_WEEK_STATS);
+      setTotalFocusMinutesToday(0);
+      return;
+    }
     const userId = currentUser.id;
 
     // 1. Fetch Real Tasks
     fetch(`/api/tasks?userId=${encodeURIComponent(userId)}`)
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           setTasks(res.data);
-          setSelectedTask(res.data[0]);
+          setSelectedTask(res.data[0] || null);
         }
       })
       .catch((e) => console.warn('Failed to fetch tasks:', e));
@@ -287,20 +308,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetch(`/api/groups?userId=${encodeURIComponent(userId)}`)
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           setGroups(res.data);
-          setActiveGroupId(res.data[0].id);
+          setActiveGroupId(res.data[0]?.id || '');
         }
       })
       .catch((e) => console.warn('Failed to fetch groups:', e));
 
-    // 3. Fetch Real Friends
+    // 3. Fetch Real Friends & Saved Attached Friends
     fetch(`/api/friends?userId=${encodeURIComponent(userId)}`)
       .then((r) => r.json())
       .then((res) => {
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        if (res.success && Array.isArray(res.data)) {
           setFriends(res.data);
-          setAttachedFriendIds(res.data.slice(0, 2).map((f: Friend) => f.id));
+          let savedAttached: string[] = [];
+          try {
+            const raw = localStorage.getItem(`zen_attached_friends_${userId}`);
+            if (raw) savedAttached = JSON.parse(raw);
+          } catch {}
+          const validAttached = savedAttached.filter((id) => res.data.some((f: Friend) => f.id === id));
+          setAttachedFriendIds(validAttached);
         }
       })
       .catch((e) => console.warn('Failed to fetch friends:', e));
@@ -619,9 +646,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // Friends & Attached Bubbles
   const toggleAttachFriend = (friendId: string) => {
-    setAttachedFriendIds((prev) =>
-      prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId]
-    );
+    setAttachedFriendIds((prev) => {
+      const next = prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId];
+      if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
+      }
+      return next;
+    });
   };
 
   const acceptFriendRequest = (friendId: string) => {
@@ -895,99 +926,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Authentication Flow
-  const openAuthModal = (mode: 'login' | 'register' = 'login') => {
+  const openAuthModal = (mode: 'login' | 'register' = 'login', notice?: string) => {
     setAuthModalMode(mode);
+    setAuthNotice(notice || null);
     setOverlay('auth');
   };
 
   const loginWithGoogle = () => {
-    const googleUser: User = {
-      id: 'user-default',
-      name: 'Alex Serene',
-      email: 'alex.serene@zenfocus.app',
-      handle: '@alex_s',
-      avatar: userAvatar || '🦊',
-      provider: 'google',
-      createdAt: 'Today',
-    };
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('zen_current_user_v1', JSON.stringify(googleUser));
-    }
-    setCurrentUser(googleUser);
-    setIsAuthenticated(true);
-    closeOverlay();
+    openAuthModal(
+      'login',
+      'Google OAuth requires configured Google Client ID in .env. Please sign in or register with email below.'
+    );
   };
 
   const login = async (email: string, password?: string) => {
-    const res = await loginUserAction({ email, password: password || 'zenpass123' });
-    let loggedUser: User;
-    if (res.success && res.user) {
-      loggedUser = res.user;
-    } else {
-      // Fallback for seamless demo
-      const nameFromEmail = email.split('@')[0] || 'Alex Serene';
-      const cleanName = nameFromEmail
-        .split(/[._-]/)
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
-      loggedUser = {
-        id: `user-${Date.now()}`,
-        name: cleanName,
-        email,
-        handle: `@${nameFromEmail.toLowerCase()}`,
-        avatar: userAvatar || '🦊',
-        provider: 'email',
-        createdAt: 'Today',
-      };
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password: password || '' }),
+    });
+    const data = await res.json();
+    if (!data.success || !data.user) {
+      throw new Error(data.error || 'Login failed. Please check your credentials.');
     }
+    const loggedUser = data.user;
     if (typeof window !== 'undefined') {
       localStorage.setItem('zen_current_user_v1', JSON.stringify(loggedUser));
     }
     setCurrentUser(loggedUser);
+    setUserAvatar(loggedUser.avatar || '🦊');
     setIsAuthenticated(true);
+    setAuthNotice(null);
     closeOverlay();
   };
 
   const register = async (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => {
-    const res = await registerUserAction({
-      name: data.name,
-      email: data.email,
-      password: data.password || 'zenpass123',
-      handle: data.handle,
-      avatar: data.avatar,
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     });
-
-    let registeredUser: User;
-    if (res.success && res.user) {
-      registeredUser = res.user;
-    } else {
-      registeredUser = {
-        id: `user-${Date.now()}`,
-        name: data.name.trim() || 'Alex Serene',
-        email: data.email.trim(),
-        handle: data.handle?.trim() || `@${data.name.trim().toLowerCase().replace(/\s+/g, '_') || 'alex_s'}`,
-        avatar: data.avatar || userAvatar || '🦊',
-        provider: 'email',
-        createdAt: 'Today',
-      };
+    const result = await res.json();
+    if (!result.success || !result.user) {
+      throw new Error(result.error || 'Registration failed.');
     }
+    const registeredUser = result.user;
     if (data.avatar) setUserAvatar(data.avatar);
     if (typeof window !== 'undefined') {
       localStorage.setItem('zen_current_user_v1', JSON.stringify(registeredUser));
     }
     setCurrentUser(registeredUser);
+    setUserAvatar(registeredUser.avatar || '🦊');
     setIsAuthenticated(true);
+    setAuthNotice(null);
     closeOverlay();
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
     if (typeof window !== 'undefined') {
       localStorage.removeItem('zen_current_user_v1');
     }
     setCurrentUser(null);
     setIsAuthenticated(false);
+    setTasks([]);
+    setSelectedTask(null);
+    setFriends([]);
+    setAttachedFriendIds([]);
+    setGroups([]);
+    setActiveGroupId('');
+    setNotifications([]);
+    setWeeklyStats(EMPTY_WEEK_STATS);
+    setTotalFocusMinutesToday(0);
+    closeOverlay();
   };
-
 
   return (
     <AppContext.Provider
@@ -1067,6 +1081,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setUserAvatar,
         authModalMode,
         openAuthModal,
+        authNotice,
+        setAuthNotice,
+        isCheckingAuth,
+        checkAuthStatus,
         loginWithGoogle,
         login,
         register,

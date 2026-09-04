@@ -13,7 +13,7 @@ import {
   Bell,
   Sun,
   Moon,
-  Clock,
+  Hourglass,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -49,14 +49,14 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             onClick={() => {
               if (onOpenProductPage) onOpenProductPage();
             }}
-            aria-label="Product Story & Overview"
+            aria-label="Canvas Product Overview"
             className="w-11 h-11 rounded-xl flex items-center justify-center bg-surface-container-low border border-outline-variant text-primary hover:bg-surface-container-high hover:scale-105 active:scale-95 transition-all shadow-sm"
           >
-            <Clock className="w-5 h-5" style={{ color: theme.hex }} />
+            <Hourglass className="w-5 h-5" style={{ color: theme.hex }} />
           </button>
           {/* Tooltip */}
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
-            Product Story & Overview
+            Canvas Product Overview
           </div>
         </div>
 

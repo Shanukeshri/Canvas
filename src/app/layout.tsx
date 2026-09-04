@@ -5,13 +5,13 @@ import { AppProvider } from '@/context/AppContext';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 
 export const metadata: Metadata = {
-  title: 'Zen Productivity Canvas — Quiet Focus Environment',
+  title: 'Canvas — Quiet Focus Environment',
   description:
     'A quiet, minimalist productivity application designed around deep focus, independent timers, ambient soundscapes, and shared focus groups.',
   openGraph: {
-    title: 'Zen Productivity Canvas',
+    title: 'Canvas',
     description: 'Minimalist quiet focus environment with independent timers and soundscapes',
-    siteName: 'Zen Focus',
+    siteName: 'Canvas',
   },
 };
 

@@ -10,10 +10,11 @@ import {
   User as UserIcon,
   Eye,
   EyeOff,
-  Sparkles,
+  Hourglass,
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -28,27 +29,32 @@ export function AuthModal() {
     loginWithGoogle,
     login,
     register,
+    authNotice,
   } = useApp();
   const { theme } = useTheme();
 
   const [mode, setMode] = useState<'login' | 'register'>(authModalMode || 'login');
-  const [email, setEmail] = useState('alex.serene@zenfocus.app');
-  const [password, setPassword] = useState('••••••••••••');
-  const [name, setName] = useState('Alex Serene');
-  const [handle, setHandle] = useState('@alex_s');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('🦊');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Sync mode if changed from outside
   React.useEffect(() => {
     if (authModalMode) {
       setMode(authModalMode);
     }
-  }, [authModalMode]);
+    if (authNotice) {
+      setNoticeMessage(authNotice);
+    }
+  }, [authModalMode, authNotice]);
 
   if (overlay !== 'auth') return null;
 
@@ -57,24 +63,28 @@ export function AuthModal() {
     setTimeout(() => {
       setIsLoadingGoogle(false);
       loginWithGoogle();
-    }, 650);
+    }, 400);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
       if (mode === 'login') {
-        login(email, password);
+        await login(email, password);
       } else {
-        register({ name, email, handle, avatar: selectedAvatar, password });
+        await register({ name, email, handle, avatar: selectedAvatar, password });
       }
-    }, 500);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleForgotPassword = () => {
-    setNoticeMessage(`Password reset link sent to ${email || 'your email'}!`);
+    setNoticeMessage(`Password reset instructions sent to ${email || 'your email'}!`);
     setTimeout(() => setNoticeMessage(null), 4000);
   };
 
@@ -100,7 +110,7 @@ export function AuthModal() {
               className="w-10 h-10 rounded-2xl flex items-center justify-center border border-surface-variant/40 shadow-sm"
               style={{ backgroundColor: theme.hex + '18', color: theme.hex }}
             >
-              <Sparkles className="w-5 h-5" />
+              <Hourglass className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-on-surface">
@@ -136,6 +146,14 @@ export function AuthModal() {
             >
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{noticeMessage}</span>
+            </div>
+          )}
+
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="p-3 rounded-2xl border border-red-500/40 bg-red-500/10 text-red-400 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+              <span>{errorMessage}</span>
             </div>
           )}
 
@@ -238,7 +256,7 @@ export function AuthModal() {
                           `@${e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'user'}`
                         );
                       }}
-                      placeholder="e.g. Alex Serene"
+                      placeholder="e.g. Elena Rostova"
                       className="w-full text-xs bg-surface-container border border-surface-variant/50 rounded-xl pl-10 pr-3.5 py-2.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-medium"
                     />
                   </div>
@@ -283,7 +301,7 @@ export function AuthModal() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="alex.serene@zenfocus.app"
+                  placeholder="you@example.com"
                   className="w-full text-xs bg-surface-container border border-surface-variant/50 rounded-xl pl-10 pr-3.5 py-2.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-medium"
                 />
               </div>
@@ -313,7 +331,7 @@ export function AuthModal() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your secret key"
+                  placeholder="••••••••••••"
                   className="w-full text-xs bg-surface-container border border-surface-variant/50 rounded-xl pl-10 pr-10 py-2.5 text-on-surface focus:outline-none focus:border-primary transition-colors font-medium"
                 />
                 <button
