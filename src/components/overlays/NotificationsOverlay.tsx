@@ -26,6 +26,7 @@ export function NotificationsOverlay() {
     overlay,
     closeOverlay,
     notifications,
+    setNotifications,
     markNotificationRead,
     removeNotification,
     setActiveTab,
@@ -38,6 +39,20 @@ export function NotificationsOverlay() {
     setFriends,
   } = useApp();
   const { theme } = useTheme();
+
+  // Fresh fetch from database whenever overlay opens
+  React.useEffect(() => {
+    if (overlay === 'notifications' && currentUser?.id) {
+      fetch(`/api/notifications?userId=${encodeURIComponent(currentUser.id)}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setNotifications(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [overlay, currentUser?.id, setNotifications]);
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'invites' | 'milestones'>('all');
 

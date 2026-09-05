@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SoundTrack } from '@/types';
 
-export const SOUND_CATALOG: SoundTrack[] = [
+const SOUND_CATALOG: SoundTrack[] = [
   { id: 'sound-1', name: 'Gentle Rain', category: 'Nature', volume: 65, isPlaying: false, type: 'rain' },
   { id: 'sound-2', name: 'Cozy Fireplace', category: 'Ambient', volume: 40, isPlaying: false, type: 'fireplace' },
   { id: 'sound-3', name: 'Deep Brown Noise', category: 'Noise', volume: 25, isPlaying: false, type: 'brown' },

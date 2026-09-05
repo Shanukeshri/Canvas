@@ -35,17 +35,43 @@ export function SettingsOverlay() {
     setLongBreakMinutes,
     targetSessions,
     setTargetSessions,
+    currentUser,
+    saveUserPreferences,
   } = useApp();
 
   const { theme, setTheme, customHex, setCustomColor, isDarkMode, toggleDarkMode, presetThemes } =
     useTheme();
 
+  const userPrefs = React.useMemo(() => {
+    try {
+      return currentUser?.preferences ? JSON.parse(currentUser.preferences) : {};
+    } catch {
+      return {};
+    }
+  }, [currentUser?.preferences]);
+
   const [activeSettingsTab, setActiveSettingsTab] = useState<
     'timer' | 'sounds' | 'appearance' | 'shortcuts'
   >('timer');
-  const [autoStartBreaks, setAutoStartBreaks] = useState(true);
-  const [autoStartFocus, setAutoStartFocus] = useState(false);
-  const [soundChime, setSoundChime] = useState('tibetan');
+  const [autoStartBreaks, setAutoStartBreaks] = useState(() => userPrefs.autoStartBreaks ?? true);
+  const [autoStartFocus, setAutoStartFocus] = useState(() => userPrefs.autoStartFocus ?? false);
+  const [soundChime, setSoundChime] = useState(() => userPrefs.soundChime ?? 'tibetan');
+
+  const handleSaveAndClose = () => {
+    saveUserPreferences?.({
+      focusDurationMinutes,
+      shortBreakMinutes,
+      longBreakMinutes,
+      targetSessions,
+      autoStartBreaks,
+      autoStartFocus,
+      soundChime,
+      themeColor: theme.hex,
+      isDarkMode,
+      timerMode,
+    });
+    closeOverlay();
+  };
 
   if (overlay !== 'settings' && overlay !== 'timer-settings') return null;
 
@@ -384,7 +410,10 @@ export function SettingsOverlay() {
                       return (
                         <button
                           key={p.id}
-                          onClick={() => setTheme(p)}
+                          onClick={() => {
+                            setTheme(p);
+                            saveUserPreferences?.({ themeColor: p.hex });
+                          }}
                           className={clsx(
                             'w-full aspect-square rounded-2xl flex items-center justify-center transition-all relative border border-white/10 shadow-sm',
                             isSelected
@@ -415,7 +444,10 @@ export function SettingsOverlay() {
                       <input
                         type="color"
                         value={customHex}
-                        onChange={(e) => setCustomColor(e.target.value)}
+                        onChange={(e) => {
+                          setCustomColor(e.target.value);
+                          saveUserPreferences?.({ themeColor: e.target.value });
+                        }}
                         className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                       />
                       <Pipette className="w-3.5 h-3.5 text-white drop-shadow-md z-10 pointer-events-none" />
@@ -434,7 +466,10 @@ export function SettingsOverlay() {
                     </span>
                   </div>
                   <button
-                    onClick={toggleDarkMode}
+                    onClick={() => {
+                      toggleDarkMode();
+                      saveUserPreferences?.({ isDarkMode: !isDarkMode });
+                    }}
                     className="px-4 py-2 rounded-xl bg-surface-container border border-surface-variant text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-2 shadow-sm"
                   >
                     {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
@@ -482,13 +517,13 @@ export function SettingsOverlay() {
           {/* Footer Actions */}
           <div className="flex justify-end gap-3 pt-6 border-t border-surface-variant/30 mt-6">
             <button
-              onClick={closeOverlay}
+              onClick={handleSaveAndClose}
               className="px-5 py-2 rounded-xl text-xs font-semibold text-outline hover:text-on-surface border border-surface-variant hover:bg-surface-container transition-colors"
             >
               Close
             </button>
             <button
-              onClick={closeOverlay}
+              onClick={handleSaveAndClose}
               className="px-6 py-2 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity"
               style={{ backgroundColor: theme.hex }}
             >

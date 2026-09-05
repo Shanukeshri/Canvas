@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           handle: true,
           avatar: true,
           themeColor: true,
+          preferences: true,
           createdAt: true,
         },
       });
@@ -81,6 +82,7 @@ export async function GET(req: NextRequest) {
           handle: user.handle,
           avatar: user.avatar,
           themeColor: user.themeColor || '#6366f1',
+          preferences: user.preferences,
           provider: 'email',
           createdAt: user.createdAt.toLocaleDateString(),
         },
@@ -112,6 +114,7 @@ export async function GET(req: NextRequest) {
           handle: true,
           avatar: true,
           themeColor: true,
+          preferences: true,
           createdAt: true,
         },
       });
@@ -137,6 +140,7 @@ export async function GET(req: NextRequest) {
           handle: user.handle,
           avatar: user.avatar,
           themeColor: user.themeColor || '#6366f1',
+          preferences: user.preferences,
           provider: 'email',
           createdAt: user.createdAt.toLocaleDateString(),
         },

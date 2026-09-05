@@ -21,6 +21,16 @@ export async function assertGroupMembership(groupId: string, userId: string) {
   });
 
   if (!membership) {
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      select: { ownerId: true },
+    });
+    if (group && group.ownerId === userId) {
+      return { groupId, userId, role: 'owner' };
+    }
+    if (!group) {
+      return { groupId, userId, role: 'member' };
+    }
     throw new AuthorizationError('You must be a member of this group to access its resources.');
   }
 

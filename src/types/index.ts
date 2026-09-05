@@ -22,6 +22,7 @@ export interface User {
   handle: string;
   avatar: string;
   themeColor?: string;
+  preferences?: string | null;
   provider: "email" | "google" | "guest";
   createdAt?: string;
 }

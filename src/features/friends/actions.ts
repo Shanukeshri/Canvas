@@ -62,54 +62,105 @@ export async function sendFriendRequestAction(senderId: string, data: unknown) {
 }
 
 export async function acceptFriendRequestAction(userId: string, requestId: string) {
-  const request = await prisma.friendRequest.findUnique({
-    where: { id: requestId },
+  // Find request by id, or by senderId + receiverId
+  let request = await prisma.friendRequest.findFirst({
+    where: {
+      OR: [
+        { id: requestId, receiverId: userId },
+        { senderId: requestId, receiverId: userId },
+      ],
+    },
     include: {
-      sender: { select: { name: true } },
-      receiver: { select: { name: true } },
+      sender: { select: { id: true, name: true, handle: true, avatar: true, themeColor: true } },
+      receiver: { select: { id: true, name: true, handle: true, avatar: true, themeColor: true } },
     },
   });
 
-  if (!request || request.receiverId !== userId) {
+  // Fallback: reverse lookup in case userId sent and the other accepted
+  if (!request) {
+    request = await prisma.friendRequest.findFirst({
+      where: {
+        OR: [
+          { id: requestId, senderId: userId },
+          { receiverId: requestId, senderId: userId },
+        ],
+      },
+      include: {
+        sender: { select: { id: true, name: true, handle: true, avatar: true, themeColor: true } },
+        receiver: { select: { id: true, name: true, handle: true, avatar: true, themeColor: true } },
+      },
+    });
+  }
+
+  // If still not found, check if already friends
+  if (!request) {
+    const existingFriendship = await prisma.friendship.findFirst({
+      where: {
+        OR: [
+          { userId, friendId: requestId },
+          { userId: requestId, friendId: userId },
+        ],
+      },
+    });
+    if (existingFriendship) {
+      return { success: true, alreadyFriends: true };
+    }
     throw new Error('Friend request not found or unauthorized.');
   }
 
-  await prisma.$transaction([
-    prisma.friendship.create({
+  // Ensure friendship records exist
+  const existingFriendship = await prisma.friendship.findFirst({
+    where: {
+      OR: [
+        { userId: request.senderId, friendId: request.receiverId },
+        { userId: request.receiverId, friendId: request.senderId },
+      ],
+    },
+  });
+
+  if (!existingFriendship) {
+    await prisma.friendship.create({
       data: {
         userId: request.senderId,
         friendId: request.receiverId,
       },
-    }),
-    prisma.friendRequest.update({
-      where: { id: requestId },
-      data: { status: 'accepted' },
-    }),
-    prisma.notification.create({
+    });
+  }
+
+  await prisma.friendRequest.updateMany({
+    where: {
+      OR: [
+        { id: request.id },
+        { senderId: request.senderId, receiverId: request.receiverId },
+      ],
+    },
+    data: { status: 'accepted' },
+  });
+
+  try {
+    await prisma.notification.create({
       data: {
         userId: request.senderId,
         title: 'Friend Request Accepted',
         message: `${request.receiver.name} accepted your friend request.`,
         type: 'friend_request',
+        actionPayload: JSON.stringify({ friendId: request.receiverId, friendName: request.receiver.name }),
       },
-    }),
-  ]);
+    });
+  } catch {}
 
   revalidatePath('/app');
   return { success: true };
 }
 
 export async function declineFriendRequestAction(userId: string, requestId: string) {
-  const request = await prisma.friendRequest.findUnique({
-    where: { id: requestId },
-  });
-
-  if (!request || request.receiverId !== userId) {
-    throw new Error('Unauthorized.');
-  }
-
-  await prisma.friendRequest.update({
-    where: { id: requestId },
+  await prisma.friendRequest.updateMany({
+    where: {
+      OR: [
+        { id: requestId, receiverId: userId },
+        { senderId: requestId, receiverId: userId },
+      ],
+    },
     data: { status: 'declined' },
   });
 

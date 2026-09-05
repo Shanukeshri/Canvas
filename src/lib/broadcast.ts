@@ -8,7 +8,8 @@ export type TabSyncMessage =
   | { type: 'COWORK_ORBIT_SYNC'; payload: { attachedFriendIds: string[] }; userId: string }
   | { type: 'COWORK_DISCONNECT_SYNC'; payload: { targetFriendId: string }; userId: string }
   | { type: 'FRIEND_TIMER_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
-  | { type: 'TIMER_EVENT_SYNC'; payload: any; friendUserId: string; targetUserId?: string };
+  | { type: 'TIMER_EVENT_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
+  | { type: 'FRIEND_REQUEST_SYNC'; payload: any; userId?: string };
 
 class ZenBroadcastChannel {
   private channel: BroadcastChannel | null = null;

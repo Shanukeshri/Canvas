@@ -51,7 +51,8 @@ export async function getUserFriends(userId: string): Promise<Friend[]> {
 export async function searchUsers(query: string, currentUserId: string) {
   if (!query || query.trim().length === 0) return [];
 
-  const cleanQuery = query.trim().toLowerCase();
+  const raw = query.trim();
+  const cleanQuery = raw.startsWith('@') ? raw.slice(1).toLowerCase() : raw.toLowerCase();
 
   const users = await prisma.user.findMany({
     where: {
@@ -59,9 +60,10 @@ export async function searchUsers(query: string, currentUserId: string) {
         { id: { not: currentUserId } },
         {
           OR: [
-            { name: { contains: cleanQuery } },
-            { handle: { contains: cleanQuery } },
-            { email: { contains: cleanQuery } },
+            { name: { contains: cleanQuery, mode: 'insensitive' } },
+            { handle: { contains: cleanQuery, mode: 'insensitive' } },
+            { handle: { contains: `@${cleanQuery}`, mode: 'insensitive' } },
+            { email: { contains: cleanQuery, mode: 'insensitive' } },
           ],
         },
       ],

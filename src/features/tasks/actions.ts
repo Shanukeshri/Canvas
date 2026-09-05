@@ -8,13 +8,20 @@ import { assertTaskDeletionAllowed, assertGroupMembership } from '@/lib/auth/aut
 export async function createTaskAction(userId: string, data: unknown) {
   const parsed = CreateTaskSchema.parse(data);
 
+  let validGroupId: string | null = null;
   if (parsed.groupId) {
-    await assertGroupMembership(parsed.groupId, userId);
+    const group = await prisma.group.findUnique({
+      where: { id: parsed.groupId },
+    });
+    if (group) {
+      await assertGroupMembership(parsed.groupId, userId);
+      validGroupId = group.id;
+    }
   }
 
   // Determine highest order index
   const lastTask = await prisma.task.findFirst({
-    where: parsed.groupId ? { groupId: parsed.groupId } : { userId, groupId: null },
+    where: validGroupId ? { groupId: validGroupId } : { userId, groupId: null },
     orderBy: { order: 'desc' },
     select: { order: true },
   });
@@ -30,7 +37,7 @@ export async function createTaskAction(userId: string, data: unknown) {
       description: parsed.description || '',
       completed: parsed.completed || false,
       userId,
-      groupId: parsed.groupId || null,
+      groupId: validGroupId,
       order: nextOrder,
     },
   });

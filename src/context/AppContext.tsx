@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import {
   ActiveTab,
   OverlayType,
@@ -43,6 +43,7 @@ import {
   acceptFriendRequestAction,
   declineFriendRequestAction,
 } from '@/features/friends/actions';
+import { updateUserPreferencesAction } from '@/features/users/actions';
 import { recordFocusSessionAction, saveTimerStateCheckpointAction } from '@/features/timer/actions';
 import { markNotificationReadAction, removeNotificationAction } from '@/features/notifications/actions';
 
@@ -161,6 +162,9 @@ interface AppContextType {
   register: (data: { name: string; email: string; handle?: string; avatar?: string; password?: string }) => Promise<void>;
   logout: () => void;
 
+  // Preferences & Persistence
+  saveUserPreferences: (preferences: Record<string, any>) => void;
+
   // Stats
   weeklyStats: StatDayData[];
   totalFocusMinutesToday: number;
@@ -264,6 +268,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(data.user);
         setUserAvatar(data.user.avatar || '🦊');
         setIsAuthenticated(true);
+        if (data.user.preferences) {
+          try {
+            const prefs = JSON.parse(data.user.preferences);
+            if (prefs.focusDurationMinutes) setFocusDurationMinutes(prefs.focusDurationMinutes);
+            if (prefs.shortBreakMinutes) setShortBreakMinutes(prefs.shortBreakMinutes);
+            if (prefs.longBreakMinutes) setLongBreakMinutes(prefs.longBreakMinutes);
+            if (prefs.targetSessions) setTargetSessions(prefs.targetSessions);
+          } catch {}
+        }
         if (typeof window !== 'undefined') {
           localStorage.setItem('zen_current_user_v1', JSON.stringify(data.user));
         }
@@ -774,17 +787,52 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const acceptFriendRequest = (friendId: string) => {
-    setFriends((prev) => prev.map((f) => (f.id === friendId ? { ...f, status: 'online' } : f)));
+  const saveUserPreferences = useCallback(
+    (preferences: Record<string, any>) => {
+      if (currentUser?.id) {
+        updateUserPreferencesAction(currentUser.id, preferences).catch((e) =>
+          console.warn('Failed to save preferences:', e)
+        );
+      }
+    },
+    [currentUser?.id]
+  );
+
+  const acceptFriendRequest = async (friendId: string) => {
     if (currentUser) {
-      acceptFriendRequestAction(currentUser.id, friendId).catch((e) => console.error(e));
+      try {
+        await fetch('/api/friends', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id, requestId: friendId, action: 'accept' }),
+        });
+        const res = await fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setFriends(data.data);
+        }
+      } catch (e) {
+        console.error('acceptFriendRequest error:', e);
+      }
     }
   };
 
-  const declineFriendRequest = (friendId: string) => {
-    setFriends((prev) => prev.filter((f) => f.id !== friendId));
+  const declineFriendRequest = async (friendId: string) => {
     if (currentUser) {
-      declineFriendRequestAction(currentUser.id, friendId).catch((e) => console.error(e));
+      try {
+        await fetch('/api/friends', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id, requestId: friendId, action: 'decline' }),
+        });
+        const res = await fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`);
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setFriends(data.data);
+        }
+      } catch (e) {
+        console.error('declineFriendRequest error:', e);
+      }
     }
   };
 
@@ -939,11 +987,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       customLists: ['Backlog', 'In Progress', 'Done'],
       members: [
         {
-          id: currentUser?.id || 'user-default',
-          name: currentUser?.name || 'Alex Serene',
-          handle: currentUser?.handle || '@alex_s',
+          id: currentUser?.id || 'guest',
+          name: currentUser?.name || 'User',
+          handle: currentUser?.handle || '@user',
           avatar: currentUser?.avatar || '🦊',
-          color: '#6366f1',
+          color: currentUser?.themeColor || '#6366f1',
           status: 'focusing',
           timerTime: '25:00',
           currentTask: 'Focusing in room',
@@ -962,7 +1010,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         description: data.description,
         category: data.category,
         code: newGroup.code,
-      }).catch((e) => console.error(e));
+      })
+        .then((res) => {
+          if (res?.success && res.group?.id) {
+            setGroups((prev) =>
+              prev.map((g) => (g.id === newGroup.id ? { ...g, id: res.group.id } : g))
+            );
+            setActiveGroupId((prev) => (prev === newGroup.id ? res.group.id : prev));
+          }
+        })
+        .catch((e) => console.error(e));
     }
 
     return newGroup;
@@ -1213,6 +1270,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         logout,
         weeklyStats,
         totalFocusMinutesToday,
+        saveUserPreferences,
       }}
     >
       {children}

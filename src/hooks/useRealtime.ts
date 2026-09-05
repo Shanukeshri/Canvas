@@ -14,6 +14,7 @@ export function useRealtime() {
     setGroups,
     activeGroupId,
     setNotifications,
+    attachedFriendIds,
     setAttachedFriendIds,
     attachFriend,
     detachFriend,
@@ -223,19 +224,8 @@ export function useRealtime() {
 
           if (exists) {
             return prev.map((f) => (f.id === payload.userId ? { ...f, ...updatedData } : f));
-          } else {
-            return [
-              ...prev,
-              {
-                id: payload.userId,
-                name: payload.userName || 'Coworker',
-                handle: `@${(payload.userName || 'coworker').toLowerCase().replace(/\s+/g, '_')}`,
-                avatar: payload.userAvatar || '🦊',
-                color: payload.userColor || '#6366f1',
-                ...updatedData,
-              } as Friend,
-            ];
           }
+          return prev;
         });
       };
 
@@ -369,10 +359,12 @@ export function useRealtime() {
         } else if (msg.type === 'COWORK_ORBIT_SYNC') {
           const ids = msg.payload?.attachedFriendIds || [];
           ids.forEach((id: string) => attachFriend(id));
-        } else if (msg.type === 'COWORK_DISCONNECT_SYNC') {
-          const targetId = msg.payload?.targetFriendId;
-          if (targetId) {
-            detachFriend(targetId);
+        } else if (msg.type === 'FRIEND_REQUEST_SYNC') {
+          if (msg.payload?.receiverId === currentUser.id) {
+            handleFriendRequestReceived({
+              requestId: `freq-${Date.now()}`,
+              sender: msg.payload.sender,
+            });
           }
         }
       });
@@ -404,7 +396,9 @@ export function useRealtime() {
               }
               return f;
             });
-            const extra = prev.filter((p) => !friendsData.data.some((f: Friend) => f.id === p.id));
+            const extra = prev.filter(
+              (p) => attachedFriendIds.includes(p.id) && !friendsData.data.some((f: Friend) => f.id === p.id)
+            );
             return [...merged, ...extra];
           });
         }

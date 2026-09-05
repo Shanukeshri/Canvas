@@ -86,6 +86,10 @@ export interface ClientToServerEvents {
   'presence:heartbeat': (payload: { userId: string; activeGroupId?: string }) => void;
   'presence:status': (payload: { userId: string; status: 'online' | 'focusing' | 'break' | 'offline'; currentTask?: string }) => void;
 
+  // Friend Events
+  'friend:request': (payload: { receiverId: string; sender: any }) => void;
+  'friend:accept': (payload: { requestId?: string; senderId: string; receiverId: string }) => void;
+
   // Multi-tab Sync
   'tab:ping': (payload: { tabId: string }) => void;
 }

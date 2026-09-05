@@ -24,6 +24,7 @@ export function FriendsOverlay() {
     overlay,
     closeOverlay,
     friends,
+    setFriends,
     attachedFriendIds,
     toggleAttachFriend,
     setActiveTab,
@@ -31,20 +32,30 @@ export function FriendsOverlay() {
   } = useApp();
   const { theme } = useTheme();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [newFriendHandle, setNewFriendHandle] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  // Fresh fetch real friends when overlay opens
+  useEffect(() => {
+    if (overlay === 'friends' && currentUser?.id) {
+      fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setFriends(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [overlay, currentUser?.id, setFriends]);
 
-  // Suggestions state
+  const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearchingSuggestions, setIsSearchingSuggestions] = useState(false);
   const [sentCoworkMap, setSentCoworkMap] = useState<Record<string, boolean>>({});
+  const [sentFriendRequestMap, setSentFriendRequestMap] = useState<Record<string, boolean>>({});
   const [coworkToast, setCoworkToast] = useState<string | null>(null);
 
-  // Debounced user search suggestions for name searching
+  // Debounced user search suggestions for real matching users
   useEffect(() => {
-    const q = searchQuery.trim() || newFriendHandle.trim();
+    const q = searchQuery.trim();
     if (!q) {
       setSuggestions([]);
       return;
@@ -53,7 +64,7 @@ export function FriendsOverlay() {
     const timer = setTimeout(async () => {
       setIsSearchingSuggestions(true);
       try {
-        const userId = currentUser?.id || 'user-default';
+        const userId = currentUser?.id || 'guest';
         const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}&userId=${encodeURIComponent(userId)}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
@@ -64,10 +75,10 @@ export function FriendsOverlay() {
       } finally {
         setIsSearchingSuggestions(false);
       }
-    }, 250);
+    }, 200);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, newFriendHandle, currentUser?.id]);
+  }, [searchQuery, currentUser?.id]);
 
   if (overlay !== 'friends') return null;
 
@@ -133,30 +144,7 @@ export function FriendsOverlay() {
     }
   };
 
-  const handleSendInvite = async () => {
-    if (!newFriendHandle.trim()) return;
-    try {
-      if (currentUser) {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(newFriendHandle.trim())}&userId=${currentUser.id}`);
-        const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const targetUser = data.data[0];
-          await sendFriendRequestAction(currentUser.id, { receiverId: targetUser.id });
-          setInviteStatus(`Invite sent to ${targetUser.name}!`);
-        } else {
-          setInviteStatus(`Invite sent to ${newFriendHandle}!`);
-        }
-      }
-    } catch (e: any) {
-      setInviteStatus(`Invite sent to ${newFriendHandle}!`);
-    }
 
-    setTimeout(() => {
-      setNewFriendHandle('');
-      setShowAddForm(false);
-      setInviteStatus(null);
-    }, 1500);
-  };
 
   return (
     <div
@@ -178,79 +166,56 @@ export function FriendsOverlay() {
                 <Users className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-on-surface">Friends</h2>
-                <p className="text-xs text-outline">Shared presence & accountability circles</p>
+                <h2 className="text-base font-bold text-on-surface">Friends & Co-work</h2>
+                <p className="text-xs text-outline">Find buddies, send friend requests & co-work together</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="p-2 rounded-xl text-outline hover:text-primary hover:bg-surface-container transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                style={showAddForm ? { color: theme.hex } : {}}
-              >
-                <UserPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add Friend</span>
-              </button>
-              <button
-                onClick={closeOverlay}
-                aria-label="Close"
-                className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+            <button
+              onClick={closeOverlay}
+              aria-label="Close"
+              className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Quick Add Form */}
-          {showAddForm && (
-            <div className="p-3 rounded-2xl bg-surface-container-low/90 border border-surface-variant/40 flex flex-col gap-2 animate-in fade-in duration-150">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newFriendHandle}
-                  onChange={(e) => setNewFriendHandle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendInvite()}
-                  placeholder="Enter handle e.g. @marcus_v or name..."
-                  className="flex-1 bg-surface-container border border-surface-variant/50 rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-outline outline-none focus:border-primary font-mono"
-                />
-                <button
-                  onClick={handleSendInvite}
-                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
-                  style={{ backgroundColor: theme.hex }}
-                >
-                  Send Invite
-                </button>
-              </div>
-              {inviteStatus && (
-                <p className="text-[11px] text-emerald-400 font-medium px-1">{inviteStatus}</p>
-              )}
-            </div>
-          )}
-
-          {/* Search Input */}
+          {/* Unified Single Search Bar */}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
             <input
+              id="friends-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface-container-low/70 border border-surface-variant/40 rounded-xl pl-9 pr-4 py-2 text-xs text-on-surface placeholder:text-outline focus:border-primary outline-none transition-colors font-medium"
-              placeholder="Search friends by name or handle..."
+              className="w-full bg-surface-container-low/80 border border-surface-variant/50 rounded-2xl pl-9 pr-4 py-2.5 text-xs text-on-surface placeholder:text-outline focus:border-primary outline-none transition-colors font-medium shadow-inner"
+              placeholder="Search friends or find users by name or @handle..."
               type="text"
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSuggestions([]);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface text-xs p-1"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
 
           {/* Live Search Suggestions Dropdown */}
           {suggestions.length > 0 && (
             <div className="p-2.5 rounded-2xl bg-surface-container-low border border-surface-variant/60 shadow-xl flex flex-col gap-1.5 animate-in fade-in duration-150">
               <span className="text-[10px] font-bold text-outline uppercase tracking-wider px-2 pt-1 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3 text-primary" /> Suggestions ({suggestions.length})
+                <Sparkles className="w-3 h-3 text-primary" /> Matching Users ({suggestions.length})
               </span>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
+              <div className="space-y-1 max-h-48 overflow-y-auto">
                 {suggestions.map((user) => {
                   const friendMatch = friends.find((f) => f.id === user.id);
                   const isAttached = attachedFriendIds.includes(user.id);
                   const isSent = sentCoworkMap[user.id];
+                  const isFriendRequestSent = sentFriendRequestMap[user.id];
 
                   return (
                     <div
@@ -259,7 +224,7 @@ export function FriendsOverlay() {
                     >
                       <div className="flex items-center gap-2.5">
                         <div
-                          className="w-7 h-7 rounded-lg border border-surface-variant/40 flex items-center justify-center text-sm"
+                          className="w-8 h-8 rounded-xl border border-surface-variant/40 flex items-center justify-center text-sm shadow-xs"
                           style={{ backgroundColor: (user.themeColor || '#6366f1') + '20' }}
                         >
                           {user.avatar || '🦊'}
@@ -281,7 +246,7 @@ export function FriendsOverlay() {
                             }
                           }}
                           className={clsx(
-                            'px-3 py-1 rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer',
+                            'px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-xs cursor-pointer flex items-center gap-1.5',
                             isAttached
                               ? 'bg-surface-container border border-primary text-primary font-bold'
                               : isSent
@@ -290,22 +255,61 @@ export function FriendsOverlay() {
                           )}
                           style={!isAttached && !isSent ? { backgroundColor: theme.hex } : !isAttached && isSent ? {} : { color: theme.hex }}
                         >
-                          {isAttached ? 'Attached' : isSent ? 'Request Sent' : 'Attach'}
+                          {isAttached ? (
+                            <>
+                              <Check className="w-3 h-3" /> Attached
+                            </>
+                          ) : isSent ? (
+                            'Invite Sent'
+                          ) : (
+                            'Invite'
+                          )}
                         </button>
                       ) : (
                         <button
+                          disabled={isFriendRequestSent}
                           onClick={async () => {
                             if (currentUser) {
-                              await sendFriendRequestAction(currentUser.id, { receiverId: user.id });
-                              setInviteStatus(`Friend invite sent to ${user.name}!`);
-                              setSearchQuery('');
-                              setSuggestions([]);
+                              try {
+                                const res = await fetch('/api/friends', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ senderId: currentUser.id, receiverId: user.id }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setSentFriendRequestMap((prev) => ({ ...prev, [user.id]: true }));
+                                  setCoworkToast(`Friend request sent to ${user.name}!`);
+                                  try {
+                                    const socket = getSocket(currentUser.id);
+                                    socket.emit('friend:request', { receiverId: user.id, sender: currentUser });
+                                  } catch {}
+                                  tabSync.publish({
+                                    type: 'FRIEND_REQUEST_SYNC',
+                                    payload: { receiverId: user.id, sender: currentUser },
+                                    userId: currentUser.id,
+                                  });
+                                  setTimeout(() => setCoworkToast(null), 3000);
+                                } else {
+                                  setCoworkToast(data.error || 'Request failed');
+                                  setTimeout(() => setCoworkToast(null), 3000);
+                                }
+                              } catch (e: any) {
+                                setCoworkToast(e.message || 'Request failed');
+                                setTimeout(() => setCoworkToast(null), 3000);
+                              }
                             }
                           }}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold text-white shadow-xs cursor-pointer hover:opacity-90 transition-opacity"
-                          style={{ backgroundColor: theme.hex }}
+                          className={clsx(
+                            'px-3.5 py-1.5 rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer',
+                            isFriendRequestSent
+                              ? 'bg-surface-container text-outline border border-surface-variant font-medium'
+                              : 'text-white hover:opacity-90'
+                          )}
+                          style={!isFriendRequestSent ? { backgroundColor: theme.hex } : {}}
                         >
-                          Add Friend
+                          <UserPlus className="w-3 h-3" />
+                          {isFriendRequestSent ? 'Requested' : 'Friend+'}
                         </button>
                       )}
                     </div>
@@ -336,15 +340,18 @@ export function FriendsOverlay() {
               </div>
               <h3 className="text-sm font-bold text-on-surface mb-1">No Focus Buddies Yet</h3>
               <p className="text-xs text-outline max-w-xs mb-5 leading-relaxed">
-                Add friends using their unique handle (e.g. @sarahc, @davidk) to see when they are focusing and attach their timers to your canvas.
+                Find friends by searching their name or @handle above to see when they are focusing and invite them to co-work.
               </p>
               <button
-                onClick={() => setShowAddForm(true)}
+                onClick={() => {
+                  const input = document.getElementById('friends-search-input');
+                  input?.focus();
+                }}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-md hover:opacity-95 transition-all flex items-center gap-2 cursor-pointer"
                 style={{ backgroundColor: theme.hex }}
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Add Your First Friend</span>
+                <span>Find Focus Buddies</span>
               </button>
             </div>
           ) : (
@@ -415,9 +422,9 @@ export function FriendsOverlay() {
                                 <span>Attached</span>
                               </>
                             ) : isSent ? (
-                              <span>Request Sent</span>
+                              <span>Invite Sent</span>
                             ) : (
-                              <span>Attach</span>
+                              <span>Invite</span>
                             )}
                           </button>
                         </div>
@@ -489,7 +496,15 @@ export function FriendsOverlay() {
                           )}
                           style={!isAttached && !isSent ? { backgroundColor: theme.hex } : !isAttached && isSent ? {} : { color: theme.hex }}
                         >
-                          {isAttached ? 'Attached' : isSent ? 'Request Sent' : 'Attach'}
+                          {isAttached ? (
+                            <>
+                              <Check className="w-3 h-3" /> Attached
+                            </>
+                          ) : isSent ? (
+                            'Invite Sent'
+                          ) : (
+                            'Invite'
+                          )}
                         </button>
                       </div>
                     );
