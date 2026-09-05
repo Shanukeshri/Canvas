@@ -12,14 +12,17 @@ import {
   VolumeX,
   CloudRain,
   Flame,
-  Trees,
-  Wind,
   Waves,
-  Coffee,
+  Wind,
   Radio,
-  Bird,
+  Sparkles,
+  Zap,
+  Moon,
+  Headphones,
+  Disc,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { SoundCategory } from '@/types';
 
 export function SoundMixerOverlay() {
   const {
@@ -30,10 +33,11 @@ export function SoundMixerOverlay() {
     toggleSoundPlay,
     isMasterMuted,
     toggleMasterMute,
+    stopAllSounds,
   } = useApp();
   const { theme } = useTheme();
 
-  const [activeCategory, setActiveCategory] = useState<'All' | 'Nature' | 'Ambient' | 'Noise'>('All');
+  const [activeCategory, setActiveCategory] = useState<'All' | SoundCategory>('All');
 
   if (overlay !== 'sound') return null;
 
@@ -41,36 +45,56 @@ export function SoundMixerOverlay() {
   const filteredSounds =
     activeCategory === 'All' ? sounds : sounds.filter((s) => s.category === activeCategory);
 
-  const getSoundIcon = (type?: string, id?: string) => {
-    const key = type || id || '';
-    if (key.includes('rain')) return <CloudRain className="w-4 h-4" />;
-    if (key.includes('fire')) return <Flame className="w-4 h-4" />;
-    if (key.includes('forest') || key.includes('tree')) return <Trees className="w-4 h-4" />;
-    if (key.includes('wind')) return <Wind className="w-4 h-4" />;
-    if (key.includes('ocean') || key.includes('wave')) return <Waves className="w-4 h-4" />;
-    if (key.includes('cafe')) return <Coffee className="w-4 h-4" />;
-    if (key.includes('bird')) return <Bird className="w-4 h-4" />;
-    return <Radio className="w-4 h-4" />;
+  const getSoundIcon = (id: string, type?: string) => {
+    if (id === 'rain') return <CloudRain className="w-4 h-4" />;
+    if (id === 'ocean') return <Waves className="w-4 h-4" />;
+    if (id === 'fireplace') return <Flame className="w-4 h-4" />;
+    if (id === 'white') return <Wind className="w-4 h-4" />;
+    if (id === 'pink') return <Radio className="w-4 h-4" />;
+    if (id === 'brown') return <Disc className="w-4 h-4" />;
+    if (id === 'gamma') return <Zap className="w-4 h-4" />;
+    if (id === 'alpha') return <Sparkles className="w-4 h-4" />;
+    if (id === 'theta') return <Moon className="w-4 h-4" />;
+    if (id === 'solfeggio-852') return <Music className="w-4 h-4" />;
+    if (type === 'binaural') return <Headphones className="w-4 h-4" />;
+    return <Music className="w-4 h-4" />;
   };
 
   const applyPreset = (presetName: string) => {
+    if (presetName === 'mute-all') {
+      stopAllSounds();
+      return;
+    }
+
+    const presetTargets: Record<string, { activeIds: string[]; volumes: Record<string, number> }> = {
+      'deep-calm': {
+        activeIds: ['rain', 'brown', 'alpha'],
+        volumes: { rain: 60, brown: 35, alpha: 25 },
+      },
+      'theta-dream': {
+        activeIds: ['ocean', 'theta'],
+        volumes: { ocean: 55, theta: 30 },
+      },
+      'peak-cognition': {
+        activeIds: ['white', 'gamma'],
+        volumes: { white: 20, gamma: 25 },
+      },
+      'serene-852': {
+        activeIds: ['fireplace', 'solfeggio-852'],
+        volumes: { fireplace: 45, 'solfeggio-852': 20 },
+      },
+    };
+
+    const target = presetTargets[presetName];
+    if (!target) return;
+
     sounds.forEach((s) => {
-      let shouldPlay = false;
-      let vol = s.volume;
-      if (presetName === 'rainfall') {
-        shouldPlay = s.id === 'sound-1';
-        vol = 70;
-      } else if (presetName === 'hearth') {
-        shouldPlay = s.id === 'sound-1' || s.id === 'sound-2';
-        vol = 50;
-      } else if (presetName === 'cafe') {
-        shouldPlay = s.id === 'sound-6' || s.id === 'sound-3';
-        vol = 45;
-      } else if (presetName === 'mute-all') {
-        shouldPlay = false;
+      const shouldPlay = target.activeIds.includes(s.id);
+      const targetVol = target.volumes[s.id] ?? s.volume;
+      setSoundVolume(s.id, targetVol);
+      if (s.isPlaying !== shouldPlay) {
+        toggleSoundPlay(s.id);
       }
-      if (s.isPlaying !== shouldPlay) toggleSoundPlay(s.id);
-      setSoundVolume(s.id, vol);
     });
   };
 
@@ -80,10 +104,10 @@ export function SoundMixerOverlay() {
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
     >
       <div
-        className="w-full max-w-[620px] bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden animate-in zoom-in-95 duration-200"
+        className="w-full max-w-[660px] bg-surface-container-lowest/95 backdrop-blur-2xl border border-surface-variant/40 rounded-3xl shadow-2xl flex flex-col max-h-[88vh] overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header: Music icon, title & active badge, no sub heading */}
+        {/* Header */}
         <header className="px-6 py-5 border-b border-surface-variant/30 flex items-center justify-between bg-surface-container-lowest/80 shrink-0">
           <div className="flex items-center gap-3">
             <div
@@ -94,7 +118,7 @@ export function SoundMixerOverlay() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-on-surface">Ambient Soundscapes</h2>
+                <h2 className="text-base font-semibold text-on-surface">Ambient Sound Studio</h2>
                 {activeSounds.length > 0 && !isMasterMuted && (
                   <span
                     className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow-sm flex items-center gap-1"
@@ -116,18 +140,19 @@ export function SoundMixerOverlay() {
           </button>
         </header>
 
-        {/* Scrollable Body (Active atmosphere mix removed) */}
+        {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Quick Sound Presets */}
+          {/* Quick Atmosphere Presets */}
           <div className="space-y-2.5">
             <span className="text-[11px] font-semibold text-outline uppercase tracking-wider">
-              Focus Presets
+              Atmosphere Presets
             </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {[
-                { id: 'rainfall', label: 'Rain Meditation', icon: '🌧️' },
-                { id: 'hearth', label: 'Cozy Hearth', icon: '🔥' },
-                { id: 'cafe', label: 'Midnight Cafe', icon: '☕' },
+                { id: 'deep-calm', label: 'Deep Calm', icon: '🌧️' },
+                { id: 'theta-dream', label: 'Theta Surf', icon: '🌊' },
+                { id: 'peak-cognition', label: 'Gamma Alert', icon: '⚡' },
+                { id: 'serene-852', label: '852 Hz Serene', icon: '🔥' },
                 { id: 'mute-all', label: 'Silence All', icon: '🤫' },
               ].map((preset) => (
                 <button
@@ -144,9 +169,9 @@ export function SoundMixerOverlay() {
             </div>
           </div>
 
-          {/* Category Filter Pills */}
+          {/* Category Filter Tabs */}
           <div className="flex gap-1.5 border-b border-surface-variant/30 pb-3 overflow-x-auto no-scrollbar">
-            {(['All', 'Nature', 'Ambient', 'Noise'] as const).map((cat) => (
+            {(['All', 'Nature', 'Noise', 'Frequencies'] as const).map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -161,6 +186,16 @@ export function SoundMixerOverlay() {
               </button>
             ))}
           </div>
+
+          {/* Binaural Beats Headphone Tip */}
+          {(activeCategory === 'All' || activeCategory === 'Frequencies') && (
+            <div className="p-3 rounded-2xl bg-surface-container-low/60 border border-surface-variant/30 flex items-center gap-3 text-xs text-outline">
+              <Headphones className="w-4 h-4 text-primary shrink-0" style={{ color: theme.hex }} />
+              <span>
+                <strong>Headphones Recommended:</strong> Binaural beats (Gamma, Alpha, Theta) work through stereo frequency separation between ears.
+              </span>
+            </div>
+          )}
 
           {/* Sound Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -187,13 +222,17 @@ export function SoundMixerOverlay() {
                         )}
                         style={isPlaying ? { color: theme.hex, borderColor: theme.hex + '60' } : {}}
                       >
-                        {getSoundIcon(sound.type, sound.id)}
+                        {getSoundIcon(sound.id, sound.type)}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-xs font-semibold text-on-surface truncate">
-                          {sound.name}
-                        </h4>
-                        <span className="text-[10px] text-outline">{sound.category}</span>
+                        <div className="flex items-center gap-1.5">
+                          <h4 className="text-xs font-semibold text-on-surface truncate">
+                            {sound.name}
+                          </h4>
+                        </div>
+                        <p className="text-[10px] text-outline truncate">
+                          {sound.description || sound.category}
+                        </p>
                       </div>
                     </div>
 
@@ -201,7 +240,7 @@ export function SoundMixerOverlay() {
                     <button
                       onClick={() => toggleSoundPlay(sound.id)}
                       className={clsx(
-                        'w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-xs',
+                        'w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-xs shrink-0',
                         isPlaying
                           ? 'bg-primary text-on-primary scale-105'
                           : 'bg-surface-container hover:bg-surface-container-high text-outline hover:text-on-surface'
@@ -216,7 +255,7 @@ export function SoundMixerOverlay() {
                   {/* Volume Slider */}
                   <div className="flex items-center gap-2 pt-1">
                     <button
-                      onClick={() => setSoundVolume(sound.id, sound.volume > 0 ? 0 : 60)}
+                      onClick={() => setSoundVolume(sound.id, sound.volume > 0 ? 0 : 40)}
                       className="text-outline hover:text-on-surface transition-colors"
                       title={sound.volume === 0 ? 'Unmute' : 'Mute'}
                     >

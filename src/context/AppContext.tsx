@@ -15,6 +15,7 @@ import {
   User,
 } from '@/types';
 import { INITIAL_SOUNDS } from '@/lib/mock-data';
+import { SOUND_CATALOG } from '@/features/sounds/sounds';
 import {
   createInitialTimerState,
   startTimer as engineStartTimer,
@@ -138,6 +139,7 @@ interface AppContextType {
   toggleSoundPlay: (id: string) => void;
   isMasterMuted: boolean;
   toggleMasterMute: () => void;
+  stopAllSounds: () => void;
 
   // Notifications
   notifications: NotificationItem[];
@@ -247,8 +249,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // User Profile
   const [userAvatar, setUserAvatar] = useState<string>('🦊');
 
-  // Sounds
-  const [sounds, setSounds] = useState<SoundTrack[]>(INITIAL_SOUNDS);
+  // Sounds: strictly all off (isPlaying: false) on initial load, but configured volumes persist locally
+  const [sounds, setSounds] = useState<SoundTrack[]>(() => {
+    let savedVolumes: Record<string, number> = {};
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('zen_sound_volumes_v2');
+        if (raw) savedVolumes = JSON.parse(raw);
+      } catch {}
+    }
+    return SOUND_CATALOG.map((s) => ({
+      ...s,
+      volume: typeof savedVolumes[s.id] === 'number' ? savedVolumes[s.id] : s.volume,
+      isPlaying: false, // Never auto-start; always all off on load/entry
+    }));
+  });
   const [isMasterMuted, setIsMasterMuted] = useState<boolean>(false);
 
   // Checkpoint ref to avoid DB spam
@@ -1061,30 +1076,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  // Sound Engine Controls
+  // Sound Engine Controls - strictly local, no external server/socket sync
   const setSoundVolume = (id: string, volume: number) => {
-    setSounds((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, volume, isPlaying: volume > 0 ? s.isPlaying : false } : s))
-    );
+    const clamped = Math.max(0, Math.min(100, Math.round(volume)));
+    setSounds((prev) => {
+      const updated = prev.map((s) =>
+        s.id === id ? { ...s, volume: clamped, isPlaying: clamped > 0 ? s.isPlaying : false } : s
+      );
+      if (typeof window !== 'undefined') {
+        try {
+          const volumesObj = updated.reduce<Record<string, number>>((acc, curr) => {
+            acc[curr.id] = curr.volume;
+            return acc;
+          }, {});
+          localStorage.setItem('zen_sound_volumes_v2', JSON.stringify(volumesObj));
+        } catch {}
+      }
+      return updated;
+    });
+
     if (audioEngine) {
-      audioEngine.setTrackVolume(id, volume);
+      audioEngine.setTrackVolume(id, clamped);
+      if (clamped === 0) {
+        audioEngine.stopTrack(id);
+      }
     }
   };
 
   const toggleSoundPlay = (id: string) => {
+    const current = sounds.find((s) => s.id === id);
+    if (!current) return;
+
+    const nextPlaying = !current.isPlaying;
+
+    // Trigger audio engine outside of React functional state updater
+    if (audioEngine) {
+      if (nextPlaying) {
+        audioEngine.playTrack({ ...current, isPlaying: true });
+      } else {
+        audioEngine.stopTrack(id);
+      }
+    }
+
     setSounds((prev) =>
-      prev.map((s) => {
-        if (s.id === id) {
-          const nextPlaying = !s.isPlaying;
-          if (audioEngine) {
-            if (nextPlaying) audioEngine.playTrack({ ...s, isPlaying: true });
-            else audioEngine.stopTrack(s.id);
-          }
-          return { ...s, isPlaying: nextPlaying };
-        }
-        return s;
-      })
+      prev.map((s) => (s.id === id ? { ...s, isPlaying: nextPlaying } : s))
     );
+  };
+
+  const stopAllSounds = () => {
+    if (audioEngine) {
+      audioEngine.stopAll();
+    }
+    setSounds((prev) => prev.map((s) => ({ ...s, isPlaying: false })));
   };
 
   const toggleMasterMute = () => {
@@ -1094,6 +1137,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
+
+  // Stop all audio on page unload/unmount so nothing plays when leaving
+  useEffect(() => {
+    const handleUnload = () => {
+      if (audioEngine) {
+        audioEngine.stopAll();
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      if (audioEngine) {
+        audioEngine.stopAll();
+      }
+    };
+  }, []);
 
   // Notification Operations
   const markNotificationRead = (id: string) => {
@@ -1258,6 +1317,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         toggleSoundPlay,
         isMasterMuted,
         toggleMasterMute,
+        stopAllSounds,
         notifications,
         setNotifications,
         markNotificationRead,

@@ -85,21 +85,20 @@ export interface Group {
   activeCount: number;
 }
 
+export type SoundCategory = 'Nature' | 'Noise' | 'Frequencies';
+export type SoundSourceKind = 'file' | 'noise' | 'binaural' | 'tone';
+
 export interface SoundTrack {
   id: string;
   name: string;
-  category: "Nature" | "Ambient" | "Noise";
+  category: SoundCategory;
   volume: number; // 0 to 100
   isPlaying: boolean;
-  type:
-    | "rain"
-    | "fireplace"
-    | "brown"
-    | "white"
-    | "pink"
-    | "ocean"
-    | "library"
-    | "cafe";
+  type: SoundSourceKind;
+  src?: string;
+  noiseType?: 'white' | 'pink' | 'brown';
+  frequency?: number;
+  description?: string;
 }
 
 export interface SoundMix {

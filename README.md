@@ -20,9 +20,9 @@ Here is the magic waiting at your fingertips — no complicated manuals required
 - **Pomodoro & Stopwatch Modes**: Set intervals of your choice, such as classic 25-minute sprints, quick 5-minute breathers, or extended coffee breaks, or just run an open stopwatch.
 - **Sleep-Proof & Bulletproof**: Laptop went to sleep? Accidentally refreshed? No worries! The timer tracks real-world time, so you’ll never lose a single second of your hard work.
 
-### 🎧 Ambient Sound Mixer
-- **Layer Your Atmosphere**: Mix and match cozy soundscapes! Blend soft summer rain with a crackling fireplace, deep brown noise, or the gentle hum of a midnight café.
-- **Individual Volume Dials**: Turn up the ocean waves, keep the library chatter subtle, and craft your ultimate sonic blanket.
+### 🎧 Ambient Sound Studio
+- **Layer Your Atmosphere**: Mix and match 10 rich acoustic modes! Blend static nature sounds (rain, ocean waves, fireplace) with generated noise (white, pink, brown) and research-backed brain frequencies (Gamma, Alpha, Theta, and 852 Hz).
+- **Independent Volume Dials**: Fine-tune individual volume sliders with smooth fading, craft custom sonic layers, and enjoy your mix with zero distortion thanks to an onboard limiter.
 
 ### 📋 Joyful Task Organization
 - **Clean Checklists**: Group tasks under specific projects, set priority badges, and add due dates.
