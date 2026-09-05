@@ -263,11 +263,11 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
         : 0;
 
   // 4. Focus Together Timers Entrance (Segment 4):
-  // The middle timer comes from above, and the side ones from the side as we scroll in.
+  // The middle timer comes from above, and the side ones from the side as we scroll in smoothly and slowly.
   const timersProgress = (() => {
     if (activeSegment >= 4) return 1;
     if (activeSegment < 3) return 0;
-    return Math.max(0, Math.min(1, (scrollRatio - 3.1) / 0.85));
+    return Math.max(0, Math.min(1, (scrollRatio - 3.3) / 0.7));
   })();
 
   const groupTimers = [
@@ -278,7 +278,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       color: '#10b981', // Emerald green
       time: '18:42',
       status: 'FOCUS',
-      direction: 'left', // enters from the left side
+      direction: 'left', // enters slowly from the left side
     },
     {
       id: 'david',
@@ -287,7 +287,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       color: theme.hex || '#6366f1', // Canvas theme color
       time: '25:00',
       status: 'DEEP WORK',
-      direction: 'top', // enters from above
+      direction: 'top', // enters slowly from above
     },
     {
       id: 'elena',
@@ -296,20 +296,20 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       color: '#f59e0b', // Warm Amber
       time: '34:15',
       status: 'FLOW',
-      direction: 'right', // enters from the right side
+      direction: 'right', // enters slowly from the right side
     },
   ];
 
   const getTimerTransform = (direction: string) => {
     const factor = 1 - timersProgress;
     if (direction === 'left') {
-      return `translateX(-${factor * 280}px)`;
+      return `translateX(-${factor * 220}px)`;
     }
     if (direction === 'right') {
-      return `translateX(${factor * 280}px)`;
+      return `translateX(${factor * 220}px)`;
     }
     // direction === 'top'
-    return `translateY(-${factor * 250}px)`;
+    return `translateY(-${factor * 180}px)`;
   };
 
   return (
@@ -774,9 +774,9 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             accountability.
           </p>
 
-          {/* Three Timers with Distinct Colors & Dynamic Scroll Inward Motion */}
+          {/* Three Timers with Distinct Colors & Dynamic Slow Inward Motion */}
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 max-w-4xl w-full my-2">
-            {groupTimers.map((t) => (
+            {groupTimers.map((t, idx) => (
               <div
                 key={t.id}
                 className="w-48 h-48 sm:w-56 sm:h-56 rounded-full border-4 flex flex-col items-center justify-center p-4 shadow-2xl backdrop-blur-2xl bg-surface-container-low/90 select-none hover:scale-105 transition-transform duration-300"
@@ -785,7 +785,8 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
                   boxShadow: `0 14px 35px -8px ${t.color}35`,
                   transform: getTimerTransform(t.direction),
                   opacity: 0.15 + 0.85 * timersProgress,
-                  transition: 'transform 0.15s ease-out, opacity 0.15s ease-out',
+                  transition: 'transform 1.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transitionDelay: `${idx * 200}ms`,
                 }}
               >
                 {/* Name inside at the top of the timer */}

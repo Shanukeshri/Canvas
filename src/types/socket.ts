@@ -90,6 +90,9 @@ export interface ClientToServerEvents {
   'friend:request': (payload: { receiverId: string; sender: any }) => void;
   'friend:accept': (payload: { requestId?: string; senderId: string; receiverId: string }) => void;
 
+  // Theme / Color Broadcast
+  'user:color_update': (payload: { userId: string; themeColor: string }) => void;
+
   // Multi-tab Sync
   'tab:ping': (payload: { tabId: string }) => void;
 }
@@ -140,6 +143,9 @@ export interface ServerToClientEvents {
   'friend:request_received': (payload: { requestId: string; sender: Friend; timestampMs: number }) => void;
   'friend:request_accepted': (payload: { friendshipId: string; friend: Friend; timestampMs: number }) => void;
   'friend:status_changed': (payload: { friendId: string; status: 'online' | 'focusing' | 'break' | 'offline'; currentTask?: string; timerTime?: string }) => void;
+
+  // Theme / Color Broadcast
+  'user:color_changed': (payload: { userId: string; themeColor: string }) => void;
 
   // Presence
   'presence:update': (payload: { onlineUserIds: string[] }) => void;

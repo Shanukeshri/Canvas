@@ -6,7 +6,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { OrbitBubbles } from './OrbitBubbles';
 import { Plus } from 'lucide-react';
 import clsx from 'clsx';
-import confetti from 'canvas-confetti';
 
 export function ImmersiveTimer() {
   const {
@@ -30,22 +29,6 @@ export function ImmersiveTimer() {
 
   const { theme } = useTheme();
 
-  // Trigger subtle celebration burst on session completion
-  useEffect(() => {
-    if (timerState === 'completed') {
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: [theme.hex, '#ffffff', '#e2e8f0'],
-        });
-      } catch (e) {
-        console.log('Confetti trigger', e);
-      }
-    }
-  }, [timerState, theme.hex]);
-
   // Format MM:SS
   const formatTime = (secs: number) => {
     const minutes = Math.floor(secs / 60);
@@ -57,11 +40,14 @@ export function ImmersiveTimer() {
   const totalSecs = (isBreakPhase ? shortBreakMinutes : focusDurationMinutes) * 60;
   const isStopwatch = timerMode === 'stopwatch';
   const progressPercent = isStopwatch
-    ? Math.min(100, Math.max(0, ((remainingSeconds % 60) / 60) * 100))
+    ? 100
     : totalSecs > 0
     ? Math.min(100, Math.max(0, ((totalSecs - Math.max(0, remainingSeconds)) / totalSecs) * 100))
     : 0;
-  const strokeDashoffset = Math.max(0, Math.min(301.59, 301.59 - (301.59 * progressPercent) / 100));
+  // In stopwatch mode, the progress circle is static and always complete (offset = 0)
+  const strokeDashoffset = isStopwatch
+    ? 0
+    : Math.max(0, Math.min(301.59, 301.59 - (301.59 * progressPercent) / 100));
 
   const attachedFriends = friends.filter((f) => attachedFriendIds.includes(f.id));
 
@@ -158,6 +144,7 @@ export function ImmersiveTimer() {
 
         {/* Center Content */}
         <div className="flex flex-col items-center justify-center z-10 space-y-2 pointer-events-none">
+          {/* Main Timer label: Only FOCUS or BREAK */}
           <span
             className={clsx(
               "font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors",
@@ -165,10 +152,7 @@ export function ImmersiveTimer() {
             )}
             style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
           >
-            {timerState === 'idle' && (isStopwatch ? 'STOPWATCH' : 'FOCUS')}
-            {timerState === 'running' && (isStopwatch ? 'FLOW' : isBreakPhase ? 'REST' : 'FOCUS')}
-            {timerState === 'paused' && 'PAUSED'}
-            {timerState === 'completed' && 'DONE'}
+            {isBreakPhase ? 'BREAK' : 'FOCUS'}
           </span>
 
           <span
@@ -181,8 +165,8 @@ export function ImmersiveTimer() {
             {formatTime(Math.max(0, remainingSeconds))}
           </span>
 
-          {/* Session Indicator Dots in User Theme Color or Stopwatch Flow Pill */}
-          {timerMode === 'pomodoro' ? (
+          {/* Session Indicator Dots in User Theme Color for Pomodoro */}
+          {timerMode === 'pomodoro' && (
             <div className="flex items-center gap-2 pt-3">
               {Array.from({ length: targetSessions }).map((_, idx) => (
                 <span
@@ -196,11 +180,6 @@ export function ImmersiveTimer() {
                   }}
                 />
               ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 pt-2 text-outline text-[11px] font-medium tracking-wider uppercase">
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: theme.hex }} />
-              <span>Count Up Flow</span>
             </div>
           )}
         </div>

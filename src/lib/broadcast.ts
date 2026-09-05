@@ -9,6 +9,7 @@ export type TabSyncMessage =
   | { type: 'COWORK_DISCONNECT_SYNC'; payload: { targetFriendId: string }; userId: string }
   | { type: 'FRIEND_TIMER_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
   | { type: 'TIMER_EVENT_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
+  | { type: 'USER_COLOR_SYNC'; payload: { userId: string; themeColor: string }; userId?: string }
   | { type: 'FRIEND_REQUEST_SYNC'; payload: any; userId?: string };
 
 class ZenBroadcastChannel {

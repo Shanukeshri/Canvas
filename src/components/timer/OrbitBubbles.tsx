@@ -419,13 +419,10 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
           : Math.max(0.05, Math.min(1, totalSeconds / Math.max(1, totalDurationSec)));
         const strokeDashoffset = Math.max(0, 301.59 - 301.59 * progressFraction);
 
-        // Distinct harmonious theme palette matching main timer
-        const themeTokens = FRIEND_THEMES[friend.id] || {
-          primary: friend.color || '#c084fc',
-          glow: friend.color || '#a855f7',
-        };
-
-        const friendColor = isFriendBreak ? '#34d399' : themeTokens.primary;
+        // Use live broadcasted friend theme color with fallback
+        const friendColor = isFriendBreak
+          ? '#34d399'
+          : (friend.color || FRIEND_THEMES[friend.id]?.primary || '#c084fc');
         // Theme-tinted white for countdown digits matching main timer's --timer-digits aesthetic
         const friendDigitsColor = isInactive
           ? 'var(--outline)'
@@ -588,15 +585,6 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                     />
                   ))}
                 </div>
-              </div>
-
-              {/* Hover Tooltip for Task Details */}
-              <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap shadow-sm pointer-events-none z-30 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: friendColor }} />
-                <span className="text-on-surface-variant">
-                  {friend.status === 'break' ? 'Break: ' : isFriendStopwatch ? 'Stopwatch: ' : friend.status === 'focusing' ? 'Focusing: ' : 'Status: '}
-                </span>
-                <span style={{ color: friendColor }}>{friend.currentTask || (friend.status === 'break' ? '5m Break' : isFriendStopwatch ? 'Flow Session' : 'Focus Session')}</span>
               </div>
             </div>
           </div>

@@ -3,11 +3,13 @@
 import { useEffect, useRef } from 'react';
 import { getSocket } from '@/lib/socket/socket-client';
 import { useApp } from '@/context/AppContext';
+import { useTheme } from '@/context/ThemeContext';
 import { Friend } from '@/types';
 import { ExactTimerStatePayload, TimerEventType } from '@/types/socket';
 import { tabSync } from '@/lib/broadcast';
 
 export function useRealtime() {
+  const { theme } = useTheme();
   const {
     currentUser,
     setFriends,
@@ -119,6 +121,28 @@ export function useRealtime() {
     selectedTask?.title,
   ]);
 
+  // Broadcast color update to everyone whenever user changes their theme color
+  const lastEmittedColorRef = useRef<string>(theme.hex);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !currentUser?.id) return;
+    if (lastEmittedColorRef.current === theme.hex) return;
+    lastEmittedColorRef.current = theme.hex;
+
+    try {
+      const socket = getSocket(currentUser.id);
+      socket.emit('user:color_update', {
+        userId: currentUser.id,
+        themeColor: theme.hex,
+      });
+    } catch {}
+
+    tabSync.publish({
+      type: 'USER_COLOR_SYNC',
+      payload: { userId: currentUser.id, themeColor: theme.hex },
+      userId: currentUser.id,
+    });
+  }, [theme.hex, currentUser?.id]);
+
   useEffect(() => {
     if (typeof window === 'undefined' || !currentUser?.id) return;
 
@@ -221,6 +245,10 @@ export function useRealtime() {
             lastUpdatedMs: Date.now(),
             currentTask: payload.currentTask || (isRunning ? 'Deep focus' : 'Online'),
           };
+
+          if (payload.userColor) {
+            updatedData.color = payload.userColor;
+          }
 
           if (exists) {
             return prev.map((f) => (f.id === payload.userId ? { ...f, ...updatedData } : f));
@@ -335,6 +363,14 @@ export function useRealtime() {
         ]);
       };
 
+      // User color changed in real time
+      const handleUserColorChanged = (payload: { userId: string; themeColor: string }) => {
+        if (!payload?.userId || payload.userId === currentUser.id) return;
+        setFriends((prev) =>
+          prev.map((f) => (f.id === payload.userId ? { ...f, color: payload.themeColor } : f))
+        );
+      };
+
       socket.on('timer:state_synced', handleTimerStateSynced);
       socket.on('timer:event_synced', handleTimerStateSynced);
       socket.on('timer:state_requested', handleTimerStateRequested);
@@ -342,6 +378,7 @@ export function useRealtime() {
       socket.on('cowork:accepted', handleCoworkAccepted);
       socket.on('cowork:disconnected', handleCoworkDisconnected);
       socket.on('friend:request_received', handleFriendRequestReceived);
+      socket.on('user:color_changed', handleUserColorChanged);
 
       // Multi-tab channel fallback for multi-user local testing
       unsubTab = tabSync.subscribe((msg) => {
@@ -359,6 +396,10 @@ export function useRealtime() {
         } else if (msg.type === 'COWORK_ORBIT_SYNC') {
           const ids = msg.payload?.attachedFriendIds || [];
           ids.forEach((id: string) => attachFriend(id));
+        } else if (msg.type === 'USER_COLOR_SYNC') {
+          if (msg.payload?.userId !== currentUser.id && msg.payload?.userId && msg.payload?.themeColor) {
+            handleUserColorChanged(msg.payload);
+          }
         } else if (msg.type === 'FRIEND_REQUEST_SYNC') {
           if (msg.payload?.receiverId === currentUser.id) {
             handleFriendRequestReceived({
@@ -418,6 +459,7 @@ export function useRealtime() {
           socket.off('cowork:accepted');
           socket.off('cowork:disconnected');
           socket.off('friend:request_received');
+          socket.off('user:color_changed');
         } catch {}
       }
     };

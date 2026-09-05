@@ -172,6 +172,12 @@ export function createSocketServer() {
       });
     });
 
+    // --- Theme & Color Broadcast Events ---
+    socket.on('user:color_update', ({ userId, themeColor }) => {
+      console.log(`[Socket.IO] User ${userId} color changed to ${themeColor}`);
+      socket.broadcast.emit('user:color_changed', { userId, themeColor });
+    });
+
     // --- Presence Events ---
     socket.on('presence:status', ({ userId, status, currentTask }) => {
       socket.broadcast.emit('friend:status_changed', {

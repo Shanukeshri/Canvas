@@ -13,7 +13,6 @@ import {
   PanelRightOpen,
 } from 'lucide-react';
 import clsx from 'clsx';
-import confetti from 'canvas-confetti';
 
 export function ZenGroupsPage() {
   const {
@@ -47,22 +46,6 @@ export function ZenGroupsPage() {
 
   // Find active group or default to first group
   const currentGroup = groups.find((g) => g.id === activeGroupId) || groups[0];
-
-  // Trigger subtle celebration burst on session completion
-  useEffect(() => {
-    if (timerState === 'completed') {
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: [theme.hex, '#ffffff', '#e2e8f0'],
-        });
-      } catch (e) {
-        console.log('Confetti trigger', e);
-      }
-    }
-  }, [timerState, theme.hex]);
 
   // Format MM:SS
   const formatTime = (secs: number) => {
