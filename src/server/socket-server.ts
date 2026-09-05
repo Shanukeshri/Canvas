@@ -59,11 +59,56 @@ export function createSocketServer() {
       socket.broadcast.emit('timer:completed', payload);
     });
 
+    socket.on('timer:sync_state', (payload) => {
+      socket.broadcast.emit('timer:state_synced', payload);
+    });
+
+    socket.on('timer:request_state', (payload) => {
+      if (payload.targetUserId) {
+        io.to(`user:${payload.targetUserId}`).emit('timer:state_requested', payload);
+      } else {
+        socket.broadcast.emit('timer:state_requested', payload);
+      }
+    });
+
     socket.on('timer:heartbeat', (payload) => {
       if (payload.userId) {
         const user = onlineUsers.get(payload.userId);
         if (user) user.lastSeen = Date.now();
       }
+    });
+
+    // --- Co-working Orbit Events ---
+    socket.on('cowork:request', (payload) => {
+      io.to(`user:${payload.receiverId}`).emit('cowork:requested', {
+        ...payload,
+        timestampMs: Date.now(),
+      });
+      socket.broadcast.emit('cowork:requested', {
+        ...payload,
+        timestampMs: Date.now(),
+      });
+    });
+
+    socket.on('cowork:accept', (payload) => {
+      io.emit('cowork:accepted', {
+        ...payload,
+        timestampMs: Date.now(),
+      });
+    });
+
+    socket.on('cowork:decline', (payload) => {
+      io.emit('cowork:declined', {
+        ...payload,
+        timestampMs: Date.now(),
+      });
+    });
+
+    socket.on('cowork:disconnect', (payload) => {
+      io.emit('cowork:disconnected', {
+        ...payload,
+        timestampMs: Date.now(),
+      });
     });
 
     // --- Group Events ---

@@ -13,8 +13,11 @@ import {
   ArrowRight,
   UserPlus,
   Flame,
+  Timer,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { getSocket } from '@/lib/socket/socket-client';
+import { tabSync } from '@/lib/broadcast';
 
 import { acceptGroupInvitationAction } from '@/features/groups/actions';
 
@@ -30,6 +33,7 @@ export function NotificationsOverlay() {
     declineFriendRequest,
     setActiveGroupId,
     currentUser,
+    setAttachedFriendIds,
   } = useApp();
   const { theme } = useTheme();
 
@@ -41,7 +45,7 @@ export function NotificationsOverlay() {
 
   const filteredNotifications = notifications.filter((notif) => {
     if (activeFilter === 'unread') return !notif.read;
-    if (activeFilter === 'invites') return notif.type === 'group_invite' || notif.type === 'friend_request';
+    if (activeFilter === 'invites') return notif.type === 'group_invite' || notif.type === 'friend_request' || notif.type === 'cowork_request';
     if (activeFilter === 'milestones') return notif.type === 'timer_complete';
     return true;
   });
@@ -52,6 +56,8 @@ export function NotificationsOverlay() {
         return <Users className="w-4 h-4 text-purple-400" />;
       case 'friend_request':
         return <UserPlus className="w-4 h-4 text-blue-400" />;
+      case 'cowork_request':
+        return <Timer className="w-4 h-4 text-emerald-400" />;
       case 'timer_complete':
         return <Flame className="w-4 h-4 text-amber-400" />;
       default:
@@ -77,6 +83,25 @@ export function NotificationsOverlay() {
     } else if (notif.type === 'friend_request') {
       const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
       acceptFriendRequest(targetId);
+      closeOverlay();
+    } else if (notif.type === 'cowork_request') {
+      const senderId = notif.actionPayload?.senderId;
+      if (senderId) {
+        setAttachedFriendIds((prev) => (prev.includes(senderId) ? prev : [...prev, senderId]));
+        try {
+          const socket = getSocket();
+          socket.emit('cowork:accept', {
+            senderId,
+            receiverId: currentUser?.id || 'guest',
+          });
+        } catch {}
+        tabSync.publish({
+          type: 'COWORK_ORBIT_SYNC',
+          payload: { attachedFriendIds: [senderId] },
+          userId: currentUser?.id || '',
+        });
+      }
+      setActiveTab('timer');
       closeOverlay();
     }
   };
@@ -257,6 +282,40 @@ export function NotificationsOverlay() {
                             removeNotification(notif.id);
                           }}
                           className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-error hover:bg-surface-container transition-colors"
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    )}
+
+                    {notif.type === 'cowork_request' && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction(notif);
+                          }}
+                          className="px-3.5 py-1 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer"
+                          style={{ backgroundColor: theme.hex }}
+                        >
+                          <Check className="w-3.5 h-3.5" /> Accept Co-work
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const senderId = notif.actionPayload?.senderId;
+                            if (senderId) {
+                              try {
+                                const socket = getSocket();
+                                socket.emit('cowork:decline', {
+                                  senderId,
+                                  receiverId: currentUser?.id || 'guest',
+                                });
+                              } catch {}
+                            }
+                            removeNotification(notif.id);
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium text-outline hover:text-error hover:bg-surface-container transition-colors cursor-pointer"
                         >
                           Decline
                         </button>

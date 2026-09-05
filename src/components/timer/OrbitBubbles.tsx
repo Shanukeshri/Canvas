@@ -6,6 +6,8 @@ import { useApp } from '@/context/AppContext';
 import { hexToRgb, mixColor } from '@/lib/theme-utils';
 import { X } from 'lucide-react';
 import clsx from 'clsx';
+import { getSocket } from '@/lib/socket/socket-client';
+import { tabSync } from '@/lib/broadcast';
 
 interface OrbitBubblesProps {
   attachedFriends: Friend[];
@@ -32,7 +34,30 @@ interface BubblePhysics {
 }
 
 export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesProps) {
-  const { toggleAttachFriend } = useApp();
+  const { toggleAttachFriend, setAttachedFriendIds, currentUser } = useApp();
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+
+  const handleConfirmRemove = (friendId: string) => {
+    // 1. Remove locally
+    setAttachedFriendIds((prev) => prev.filter((id) => id !== friendId));
+    setConfirmingRemoveId(null);
+
+    // 2. Terminate connection from both sides via socket
+    try {
+      const socket = getSocket();
+      socket.emit('cowork:disconnect', {
+        userId: currentUser?.id || 'user-default',
+        targetUserId: friendId,
+      });
+    } catch {}
+
+    // 3. Terminate via broadcast for multi-tab
+    tabSync.publish({
+      type: 'COWORK_DISCONNECT_SYNC',
+      payload: { targetFriendId: friendId },
+      userId: currentUser?.id || '',
+    });
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const bubbleDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -346,8 +371,25 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
     >
       {attachedFriends.map((friend) => {
         const isDragging = activeDragId === friend.id;
-        const totalSeconds = (friend.timerMinutes || 25) * 60 + (friend.timerSeconds || 0);
-        const progressFraction = Math.max(0.15, (totalSeconds % (25 * 60)) / (25 * 60));
+
+        // High-precision remaining seconds: use exact targetCompletionMs if running
+        const isFriendFocusing = friend.status === 'focusing' || friend.isFocusing === true;
+        const isFriendBreak = friend.status === 'break';
+        const isInactive = !isFriendFocusing && !isFriendBreak;
+
+        let totalSeconds = (friend.timerMinutes ?? 25) * 60 + (friend.timerSeconds ?? 0);
+        if (isFriendFocusing && friend.targetCompletionMs) {
+          const remMs = Math.max(0, friend.targetCompletionMs - Date.now());
+          totalSeconds = Math.ceil(remMs / 1000);
+        } else if (friend.remainingMs !== undefined && !isFriendFocusing) {
+          totalSeconds = Math.ceil(friend.remainingMs / 1000);
+        }
+
+        const displayMinutes = Math.floor(totalSeconds / 60);
+        const displaySeconds = totalSeconds % 60;
+
+        const totalDurationSec = friend.durationMs ? Math.round(friend.durationMs / 1000) : 25 * 60;
+        const progressFraction = Math.max(0.05, Math.min(1, totalSeconds / totalDurationSec));
         const strokeDashoffset = 301.59 - 301.59 * progressFraction;
 
         // Distinct harmonious theme palette matching main timer
@@ -355,11 +397,6 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
           primary: friend.color || '#c084fc',
           glow: friend.color || '#a855f7',
         };
-
-        // Each friend has their OWN state independent of the main timer
-        const isFriendFocusing = friend.status === 'focusing' || friend.isFocusing === true;
-        const isFriendBreak = friend.status === 'break';
-        const isInactive = !isFriendFocusing && !isFriendBreak;
 
         const friendColor = isFriendBreak ? '#34d399' : themeTokens.primary;
         // Theme-tinted white for countdown digits matching main timer's --timer-digits aesthetic
@@ -404,22 +441,49 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                 style={{ backgroundColor: friendColor }}
               />
 
-              {/* Close 'X' Button on Top Right inside circle on hover */}
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleAttachFriend(friend.id);
-                }}
-                className={clsx(
-                  'absolute rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer',
-                  compact ? 'top-1 right-1 w-5 h-5 text-[10px]' : 'top-2 right-2 w-6 h-6'
-                )}
-                title={`Remove ${friend.name} from canvas`}
-                aria-label={`Remove ${friend.name}`}
-              >
-                <X className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
-              </button>
+              {/* Confirm Removal Popover or 'X' Button */}
+              {confirmingRemoveId === friend.id ? (
+                <div
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute inset-2 rounded-full bg-surface-container-lowest/95 backdrop-blur-md border border-rose-500/40 p-2.5 flex flex-col items-center justify-center z-40 animate-in fade-in zoom-in-95 duration-150 text-center select-none"
+                >
+                  <p className="text-[11px] font-bold text-on-surface mb-0.5">Confirm?</p>
+                  <p className="text-[9px] text-outline mb-2">Disconnect both</p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingRemoveId(null)}
+                      className="px-2 py-0.5 rounded-lg text-[10px] text-outline hover:text-on-surface border border-surface-variant bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmRemove(friend.id)}
+                      className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 transition-colors shadow-xs cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmingRemoveId(friend.id);
+                  }}
+                  className={clsx(
+                    'absolute rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer',
+                    compact ? 'top-1 right-1 w-5 h-5 text-[10px]' : 'top-2 right-2 w-6 h-6'
+                  )}
+                  title={`Remove ${friend.name} from canvas`}
+                  aria-label={`Remove ${friend.name}`}
+                >
+                  <X className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
+                </button>
+              )}
 
               {/* SVG Progress Circle Ring */}
               <svg
@@ -478,7 +542,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                   )}
                   style={{ color: friendDigitsColor }}
                 >
-                  {friend.timerMinutes}:{friend.timerSeconds !== undefined ? friend.timerSeconds.toString().padStart(2, '0') : '00'}
+                  {displayMinutes}:{displaySeconds.toString().padStart(2, '0')}
                 </span>
 
                 {/* Session Indicator Dots */}

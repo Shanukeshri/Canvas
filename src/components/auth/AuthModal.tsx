@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { formatErrorMessage } from '@/lib/utils/error-formatter';
 
 const AVATAR_OPTIONS = ['🦊', '🐱', '🐼', '🦁', '🦉', '🐺', '🐸', '🐨', '👩🏻‍💻', '👨🏽‍💻', '🧙‍♂️', '🧑‍🚀'];
 
@@ -77,7 +78,7 @@ export function AuthModal() {
         await register({ name, email, handle, avatar: selectedAvatar, password });
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Authentication failed. Please check your credentials.');
+      setErrorMessage(formatErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }

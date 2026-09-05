@@ -10,6 +10,7 @@ import {
   ACCESS_TOKEN_TTL,
   REFRESH_TOKEN_TTL,
 } from '@/lib/auth/tokens';
+import { formatErrorMessage } from '@/lib/utils/error-formatter';
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       handle: user.handle,
       avatar: user.avatar,
+      themeColor: user.themeColor || '#6366f1',
       provider: 'email',
       createdAt: user.createdAt.toLocaleDateString(),
     };
@@ -102,7 +104,7 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error.message || 'Login failed.' },
+      { success: false, error: formatErrorMessage(error) },
       { status: 400 }
     );
   }

@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Volume2,
   Users,
-  LogIn,
   CheckCircle2,
   Clock,
   Flame,
@@ -18,11 +17,6 @@ import {
   Check,
   ListTodo,
   Waves,
-  Mail,
-  Bell,
-  Calendar,
-  MessageSquare,
-  Zap,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -199,28 +193,34 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
   // Scroll Driven Computations
   // ============================================================
 
-  // 1. Distractions Dispersal (Segment 1 -> Segment 2)
-  // When scrolling away from segment 1, distractions move outwards away from center
-  const distractionProgress =
-    activeSegment > 1
-      ? 1
-      : activeSegment === 1
-        ? Math.max(0, Math.min(1, (scrollRatio - 1.0) / 0.65))
-        : 0;
+  // 1. Distractions Motion (Segment 1):
+  // As we scroll into segment 1 from hero, distractions come from outside inward.
+  // At segment 1, they surround the timer.
+  // As we scroll away from segment 1 to segment 2, they disperse outwards.
+  const distractionProgress = (() => {
+    if (activeSegment === 0 || scrollRatio < 1.0) {
+      // Coming in from outside as we scroll into segment 1
+      return Math.max(0, Math.min(1, (1.0 - scrollRatio) / 0.85));
+    }
+    if (activeSegment > 1 || scrollRatio > 1.0) {
+      // Dispersing outwards away as we scroll past segment 1
+      return Math.max(0, Math.min(1, (scrollRatio - 1.0) / 0.65));
+    }
+    return 0;
+  })();
 
   // 2. Todo List Sequential Checking (Segment 2 -> Segment 3)
-  // As we scroll from segment 2, todos get checked one by one
-  const todoScrollRatio =
-    activeSegment > 2
-      ? 1
-      : activeSegment === 2
-        ? Math.max(0, Math.min(1, (scrollRatio - 2.0) / 0.68))
-        : 0;
-
-  const scrollCheckedCount =
-    activeSegment > 2
-      ? INITIAL_TODOS.length
-      : Math.min(INITIAL_TODOS.length, Math.floor(todoScrollRatio * (INITIAL_TODOS.length + 0.4)));
+  // Starts checking the boxes as soon as there is a start of scrolling!
+  const scrollCheckedCount = (() => {
+    if (activeSegment > 2) return INITIAL_TODOS.length;
+    if (activeSegment < 2 || scrollRatio <= 2.015) return 0;
+    const delta = scrollRatio - 2.0;
+    if (delta > 0.36) return 4;
+    if (delta > 0.24) return 3;
+    if (delta > 0.12) return 2;
+    if (delta > 0.015) return 1;
+    return 0;
+  })();
 
   const toggleTodoManual = (id: string) => {
     setManualCheckedTodos((prev) => ({
@@ -235,14 +235,82 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
   const totalCompletedTodos = INITIAL_TODOS.filter((t, i) => isTodoCompleted(t.id, i)).length;
 
-  // 3. Soundscapes Maximize (Segment 3 -> Segment 4)
-  // When we scroll away from segment 3, all music sliders scroll to the end (100%)
-  const soundScrollProgress =
+  // 3. Soundscapes Motion (Segment 3):
+  // When scrolling into segment 3 from segment 2, pointers start at the very start (0%) and come to current place.
+  // When resting on segment 3, pointers are at current place (baseVol).
+  // When scrolling away from segment 3 towards segment 4, pointers scroll to 100% (the end).
+  const getSoundDisplayVol = (baseVol: number) => {
+    if (activeSegment > 3 || scrollRatio >= 3.65) {
+      return 100;
+    }
+    if (scrollRatio > 3.0) {
+      const leaveProgress = Math.max(0, Math.min(1, (scrollRatio - 3.0) / 0.65));
+      return Math.round(baseVol + (100 - baseVol) * leaveProgress);
+    }
+    if (activeSegment < 3 || scrollRatio < 3.0) {
+      // Starts at 0% when scrollRatio <= 2.15, glides up to baseVol by scrollRatio = 3.0
+      const enterProgress = Math.max(0, Math.min(1, (scrollRatio - 2.15) / 0.85));
+      return Math.round(baseVol * enterProgress);
+    }
+    return baseVol;
+  };
+
+  const soundScrollAwayProgress =
     activeSegment > 3
       ? 1
       : activeSegment === 3
         ? Math.max(0, Math.min(1, (scrollRatio - 3.0) / 0.65))
         : 0;
+
+  // 4. Focus Together Timers Entrance (Segment 4):
+  // The middle timer comes from above, and the side ones from the side as we scroll in.
+  const timersProgress = (() => {
+    if (activeSegment >= 4) return 1;
+    if (activeSegment < 3) return 0;
+    return Math.max(0, Math.min(1, (scrollRatio - 3.1) / 0.85));
+  })();
+
+  const groupTimers = [
+    {
+      id: 'sarah',
+      name: 'Sarah',
+      avatar: '👩🏻‍💻',
+      color: '#10b981', // Emerald green
+      time: '18:42',
+      status: 'FOCUS',
+      direction: 'left', // enters from the left side
+    },
+    {
+      id: 'david',
+      name: 'David',
+      avatar: '👨🏻‍🎨',
+      color: theme.hex || '#6366f1', // Canvas theme color
+      time: '25:00',
+      status: 'DEEP WORK',
+      direction: 'top', // enters from above
+    },
+    {
+      id: 'elena',
+      name: 'Elena',
+      avatar: '👩🏼‍🔬',
+      color: '#f59e0b', // Warm Amber
+      time: '34:15',
+      status: 'FLOW',
+      direction: 'right', // enters from the right side
+    },
+  ];
+
+  const getTimerTransform = (direction: string) => {
+    const factor = 1 - timersProgress;
+    if (direction === 'left') {
+      return `translateX(-${factor * 280}px)`;
+    }
+    if (direction === 'right') {
+      return `translateX(${factor * 280}px)`;
+    }
+    // direction === 'top'
+    return `translateY(-${factor * 250}px)`;
+  };
 
   return (
     <div
@@ -265,14 +333,6 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => openAuthModal('login')}
-            className="px-4 py-2 rounded-full text-xs font-semibold text-outline hover:text-on-surface hover:bg-surface-container transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>{isAuthenticated ? currentUser?.name || 'Account' : 'Sign In'}</span>
-          </button>
-
           <button
             onClick={onEnterApp}
             className="px-5 py-2 rounded-full text-white text-xs font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
@@ -369,7 +429,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
       {/* ============================================================ */}
       {/* SEGMENT 1: CHAOS TO CLARITY */}
-      {/* When scrolling away, surrounding distractions move outwards */}
+      {/* Distractions come from outside when scrolling in, and move away when scrolling out */}
       {/* ============================================================ */}
       <section
         data-segment="1"
@@ -391,7 +451,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             There is always something asking for your attention.
           </h2>
 
-          {/* Clean Segment Visual Showcase with Outward Dispersal Distractions */}
+          {/* Clean Segment Visual Showcase with In/Out Distractions */}
           <div className="relative w-full max-w-2xl h-64 sm:h-72 flex items-center justify-center my-2">
             {DISTRACTION_ITEMS.map((item) => (
               <div
@@ -421,10 +481,10 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
               className="w-44 h-44 sm:w-48 sm:h-48 rounded-full border-2 flex flex-col items-center justify-center bg-surface-container-low shadow-2xl z-10 transition-transform duration-300"
               style={{
                 borderColor: theme.hex,
-                transform: `scale(${1 + distractionProgress * 0.08})`,
+                transform: `scale(${1 + (1 - distractionProgress) * 0.08})`,
                 boxShadow:
-                  distractionProgress > 0.05
-                    ? `0 0 ${distractionProgress * 45}px ${theme.hex}35`
+                  distractionProgress < 0.3
+                    ? `0 0 ${(1 - distractionProgress) * 45}px ${theme.hex}35`
                     : undefined,
               }}
             >
@@ -437,7 +497,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
               >
                 CALM CANVAS
               </span>
-              {distractionProgress > 0.25 && (
+              {distractionProgress < 0.3 && (
                 <span
                   className="text-[10px] font-bold uppercase tracking-wider mt-1 transition-opacity duration-300"
                   style={{ color: theme.hex }}
@@ -456,7 +516,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
       {/* ============================================================ */}
       {/* SEGMENT 2: "ONE THING AT A TIME" — Todo List Section */}
-      {/* As we scroll from it, the todos get checked sequentially */}
+      {/* Starts checking boxes as soon as there is a start of scrolling */}
       {/* ============================================================ */}
       <section
         data-segment="2"
@@ -479,7 +539,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             Your tasks. Your time. Your attention. Kept clean, intentional, and uncluttered.
           </p>
 
-          {/* Interactive Todo List Card (replaces previous single priority card) */}
+          {/* Interactive Todo List Card */}
           <div className="w-full max-w-lg mt-2 p-5 sm:p-6 rounded-3xl bg-surface-container-low/95 border border-surface-variant/60 shadow-2xl text-left flex flex-col gap-3.5 backdrop-blur-md">
             {/* Header & Status Indicator */}
             <div className="flex items-center justify-between pb-3 border-b border-surface-variant/40">
@@ -604,7 +664,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
       {/* ============================================================ */}
       {/* SEGMENT 3: ATMOSPHERIC SOUNDSCAPES */}
-      {/* When we scroll away from it, all music sliders scroll to end */}
+      {/* Pointers start at 0% and slide to current place; scroll to 100% when leaving */}
       {/* ============================================================ */}
       <section
         data-segment="3"
@@ -625,7 +685,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             Find your frequency.
           </h2>
 
-          {soundScrollProgress >= 0.95 && (
+          {soundScrollAwayProgress >= 0.95 && (
             <div
               className="mb-4 px-3.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border animate-in fade-in duration-300"
               style={{
@@ -643,8 +703,8 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             {SOUNDSCAPES.map((s) => {
               const Icon = s.icon;
               const baseVol = soundVolumes[s.id] ?? s.defaultVol;
-              // Smoothly scroll to 100% (the end) as the user scrolls away from this segment
-              const displayVol = Math.round(baseVol + (100 - baseVol) * soundScrollProgress);
+              // Pointers start at 0% when scrolling in, reach baseVol on this segment, and slide to 100% when leaving
+              const displayVol = getSoundDisplayVol(baseVol);
 
               return (
                 <div
@@ -688,12 +748,14 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
       {/* ============================================================ */}
       {/* SEGMENT 4: SHARED FOCUS GROUPS */}
+      {/* 3 timers of different colors with names inside at top. */}
+      {/* Middle comes from above, side ones from the side as you scroll. */}
       {/* ============================================================ */}
       <section
         data-segment="4"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center px-6 text-center bg-surface-container-low/40 border-t border-surface-variant/30 relative overflow-hidden pt-16"
       >
-        <div className="max-w-3xl flex flex-col items-center z-10">
+        <div className="max-w-4xl flex flex-col items-center z-10 w-full">
           <span
             className="text-[11px] font-bold uppercase tracking-widest mb-3 px-3 py-1 rounded-full border"
             style={{
@@ -704,35 +766,57 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
           >
             Shared Focus Groups
           </span>
-          <h2 className="text-3xl sm:text-5xl font-bold font-display text-on-surface mb-4">
+          <h2 className="text-3xl sm:text-5xl font-bold font-display text-on-surface mb-3">
             Focus together. Work separately.
           </h2>
-          <p className="text-sm sm:text-base text-outline max-w-xl mb-10 leading-relaxed">
+          <p className="text-sm sm:text-base text-outline max-w-xl mb-8 leading-relaxed">
             Independent timers sharing space. No pressure, no comparison, just quiet group
             accountability.
           </p>
 
-          {/* Member orbital bubbles demonstration */}
-          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 max-w-2xl">
-            {[
-              { name: 'Sarah', avatar: '👩🏻‍💻', color: '#9333ea', timer: '18:42 FOCUS' },
-              { name: 'David', avatar: '👨🏻‍🎨', color: '#f59e0b', timer: '34:12 FOCUS' },
-              { name: 'Elena', avatar: '👩🏼‍🔬', color: '#14b8a6', timer: '03:15 BREAK' },
-            ].map((m, idx) => (
+          {/* Three Timers with Distinct Colors & Dynamic Scroll Inward Motion */}
+          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 max-w-4xl w-full my-2">
+            {groupTimers.map((t) => (
               <div
-                key={idx}
-                className="p-4 rounded-3xl bg-surface-container-low border border-surface-variant/60 flex items-center gap-3.5 shadow-xl transition-transform hover:scale-105"
+                key={t.id}
+                className="w-48 h-48 sm:w-56 sm:h-56 rounded-full border-4 flex flex-col items-center justify-center p-4 shadow-2xl backdrop-blur-2xl bg-surface-container-low/90 select-none hover:scale-105 transition-transform duration-300"
+                style={{
+                  borderColor: t.color,
+                  boxShadow: `0 14px 35px -8px ${t.color}35`,
+                  transform: getTimerTransform(t.direction),
+                  opacity: 0.15 + 0.85 * timersProgress,
+                  transition: 'transform 0.15s ease-out, opacity 0.15s ease-out',
+                }}
               >
+                {/* Name inside at the top of the timer */}
                 <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-bold shadow-sm"
-                  style={{ backgroundColor: m.color + '20', borderColor: m.color }}
+                  className="flex items-center gap-1.5 px-3 py-0.5 rounded-full border text-xs font-bold tracking-wide mb-1 shadow-sm"
+                  style={{
+                    backgroundColor: t.color + '15',
+                    borderColor: t.color + '35',
+                    color: t.color,
+                  }}
                 >
-                  {m.avatar}
+                  <span className="text-sm">{t.avatar}</span>
+                  <span>{t.name}</span>
                 </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-on-surface">{m.name}</span>
-                  <span className="text-[11px] font-mono font-bold" style={{ color: theme.hex }}>
-                    {m.timer}
+
+                {/* Central Countdown Timer */}
+                <span className="font-mono text-3xl sm:text-4xl font-extrabold text-on-surface tracking-tight my-1">
+                  {t.time}
+                </span>
+
+                {/* Focus Status Indicator inside at the bottom of the timer */}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div
+                    className="w-2 h-2 rounded-full animate-ping"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-widest"
+                    style={{ color: t.color }}
+                  >
+                    {t.status}
                   </span>
                 </div>
               </div>

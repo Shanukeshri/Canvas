@@ -44,15 +44,44 @@ export function ProfileOverlay() {
   const [username, setUsername] = useState(currentUser?.handle || '@alex_s');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [userStats, setUserStats] = useState<{ streakDays: number; totalSessions: number }>({
+    streakDays: 0,
+    totalSessions: 0,
+  });
   const emojiPickerRef = useRef<HTMLDivElement>(null);
 
-  // Sync with currentUser
+  // Sync with currentUser and load color profile
   useEffect(() => {
     if (currentUser) {
       setDisplayName(currentUser.name);
       setUsername(currentUser.handle);
+      if (currentUser.themeColor) {
+        const found = presetThemes.find((p) => p.hex.toLowerCase() === currentUser.themeColor?.toLowerCase());
+        if (found) {
+          setTheme(found);
+        } else {
+          setCustomColor(currentUser.themeColor);
+        }
+      }
     }
   }, [currentUser]);
+
+  // Fetch real statistics when profile overlay is open
+  useEffect(() => {
+    if (overlay !== 'profile') return;
+    const userId = currentUser?.id || 'user-default';
+    fetch(`/api/statistics?userId=${encodeURIComponent(userId)}`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.success && res.data?.metrics) {
+          setUserStats({
+            streakDays: res.data.metrics.streakDays ?? 0,
+            totalSessions: res.data.metrics.totalSessions ?? 0,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [overlay, currentUser?.id]);
 
   // Close emoji tooltip when clicking outside
   useEffect(() => {
@@ -168,10 +197,10 @@ export function ProfileOverlay() {
             {/* User Stats Pill */}
             <div className="mt-0.5 flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-variant/50 text-[11px] font-semibold text-outline">
               <span className="flex items-center gap-1 text-amber-400">
-                <Flame className="w-3.5 h-3.5 fill-amber-400" /> 14 Day Streak
+                <Flame className="w-3.5 h-3.5 fill-amber-400" /> {userStats.streakDays} Day Streak
               </span>
               <span>•</span>
-              <span style={{ color: theme.hex }}>48 Total Sessions</span>
+              <span style={{ color: theme.hex }}>{userStats.totalSessions} Total Sessions</span>
             </div>
           </div>
 

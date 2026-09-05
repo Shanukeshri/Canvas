@@ -2,7 +2,10 @@ export type TabSyncMessage =
   | { type: 'TIMER_STATE_SYNC'; payload: any; userId?: string }
   | { type: 'TIMER_RESET'; payload: { newDurationMinutes?: number }; userId?: string }
   | { type: 'TAB_ACTIVE_PING'; tabId: string; userId?: string }
-  | { type: 'THEME_CHANGED'; themeId: string; userId?: string };
+  | { type: 'THEME_CHANGED'; themeId: string; userId?: string }
+  | { type: 'COWORK_ORBIT_SYNC'; payload: { attachedFriendIds: string[] }; userId: string }
+  | { type: 'COWORK_DISCONNECT_SYNC'; payload: { targetFriendId: string }; userId: string }
+  | { type: 'FRIEND_TIMER_SYNC'; payload: any; friendUserId: string; targetUserId?: string };
 
 class ZenBroadcastChannel {
   private channel: BroadcastChannel | null = null;

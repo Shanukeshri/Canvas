@@ -25,6 +25,7 @@ import {
   calculateFocusContributionMs,
 } from '@/features/timer/timer-engine';
 import { tabSync } from '@/lib/broadcast';
+import { useTheme } from '@/context/ThemeContext';
 import { audioEngine } from '@/features/sounds/audio-engine';
 import {
   createTaskAction,
@@ -166,6 +167,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { setTheme, setCustomColor, presetThemes } = useTheme();
+
   // Navigation & Overlays
   const [activeTab, setActiveTab] = useState<ActiveTab>('timer');
   const [overlay, setOverlay] = useState<OverlayType>(null);
@@ -177,6 +180,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  // Sync theme whenever currentUser loads with saved themeColor
+  useEffect(() => {
+    if (currentUser?.themeColor) {
+      const found = presetThemes.find((p) => p.hex.toLowerCase() === currentUser.themeColor?.toLowerCase());
+      if (found) {
+        setTheme(found);
+      } else {
+        setCustomColor(currentUser.themeColor);
+      }
+    }
+  }, [currentUser?.themeColor]);
 
   // Tasks
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -365,7 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isBreakPhase ? shortBreakMinutes : focusDurationMinutes
     );
     setEngineState(newState);
-    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: newState });
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: newState, userId: currentUser?.id || 'guest' });
   };
 
   const setTimerState = (status: TimerState) => {
@@ -395,17 +410,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [engineState]);
 
-  // Multi-tab sync subscription
+  // Multi-tab sync subscription - ONLY sync main timer if published by the SAME user!
   useEffect(() => {
     const unsubscribe = tabSync.subscribe((msg) => {
       if (msg.type === 'TIMER_STATE_SYNC') {
+        if (msg.userId && currentUser?.id && msg.userId !== currentUser.id) {
+          return;
+        }
         const snapshot = computeTimerSnapshot(msg.payload, Date.now());
         setEngineState(snapshot.state);
         setRemainingSeconds(snapshot.remainingSeconds);
       }
     });
     return unsubscribe;
-  }, []);
+  }, [currentUser?.id]);
 
   // Main High-Precision Timestamp Animation / Interval Loop
   useEffect(() => {
@@ -431,7 +449,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Check completion transition
         if (snapshot.isCompleted && (engineState.status as string) !== 'completed') {
           setEngineState(snapshot.state);
-          tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: snapshot.state });
+          tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: snapshot.state, userId: currentUser?.id || 'guest' });
 
           if (!isBreakPhase && engineState.mode === 'pomodoro') {
             setSessionsCompleted((s) => s + 1);
@@ -468,6 +486,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const friendInterval = setInterval(() => {
       setFriends((prevFriends) =>
         prevFriends.map((f) => {
+          // If friend has targetCompletionMs (real coworker timer synced), compute exact remaining time
+          if (f.targetCompletionMs && (f.status === 'focusing' || f.isFocusing)) {
+            const remMs = Math.max(0, f.targetCompletionMs - Date.now());
+            const totalSecs = Math.ceil(remMs / 1000);
+            return {
+              ...f,
+              timerMinutes: Math.floor(totalSecs / 60),
+              timerSeconds: totalSecs % 60,
+            };
+          }
+
+          // If friend is paused or online, do not decrement!
+          if (f.status === 'paused' || (f as any).status === 'online') {
+            return f;
+          }
+
           if (f.status === 'focusing' || f.status === 'break') {
             const mins = f.timerMinutes ?? 25;
             const secs = f.timerSeconds ?? 0;
@@ -529,7 +563,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEngineState(nextState);
     const snapshot = computeTimerSnapshot(nextState, now);
     setRemainingSeconds(snapshot.remainingSeconds);
-    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
 
     if (currentUser) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
@@ -542,7 +576,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setEngineState(nextState);
     const snapshot = computeTimerSnapshot(nextState, now);
     setRemainingSeconds(snapshot.remainingSeconds);
-    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
 
     if (currentUser) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
@@ -571,7 +605,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextState = engineResetTimer(engineState, durationMins);
     setEngineState(nextState);
     setRemainingSeconds(durationMins * 60);
-    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState });
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
 
     if (currentUser) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
@@ -584,7 +618,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const running = engineStartTimer(initial, Date.now());
     setEngineState(running);
     setRemainingSeconds(shortBreakMinutes * 60);
-    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: running });
+    tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: running, userId: currentUser?.id || 'guest' });
   };
 
   const closeOverlay = () => setOverlay(null);

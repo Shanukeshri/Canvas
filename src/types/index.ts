@@ -21,6 +21,7 @@ export interface User {
   email: string;
   handle: string;
   avatar: string;
+  themeColor?: string;
   provider: "email" | "google" | "guest";
   createdAt?: string;
 }
@@ -49,6 +50,10 @@ export interface Friend {
   timerSeconds?: number;
   mode?: TimerMode;
   isFocusing?: boolean;
+  durationMs?: number;
+  remainingMs?: number;
+  targetCompletionMs?: number | null;
+  lastUpdatedMs?: number;
 }
 
 export interface GroupMember {

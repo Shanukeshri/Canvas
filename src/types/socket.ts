@@ -16,6 +16,22 @@ export interface TimerEventPayload {
   eventId: string;
 }
 
+export interface ExactTimerStatePayload {
+  userId: string;
+  userName?: string;
+  userAvatar?: string;
+  userColor?: string;
+  mode: 'pomodoro' | 'stopwatch';
+  status: 'idle' | 'running' | 'paused' | 'completed';
+  phase: 'focus' | 'short_break' | 'long_break' | 'none';
+  durationMs: number;
+  remainingMs: number;
+  elapsedDurationMs: number;
+  targetCompletionMs?: number | null;
+  timestampMs: number;
+  currentTask?: string;
+}
+
 export interface ClientToServerEvents {
   // Timer Sync
   'timer:start': (payload: TimerEventPayload) => void;
@@ -24,6 +40,25 @@ export interface ClientToServerEvents {
   'timer:stop': (payload: TimerEventPayload) => void;
   'timer:complete': (payload: TimerEventPayload) => void;
   'timer:heartbeat': (payload: { userId: string; timestampMs: number; elapsedMs: number }) => void;
+  'timer:sync_state': (payload: ExactTimerStatePayload) => void;
+  'timer:request_state': (payload: { requesterId: string; targetUserId: string }) => void;
+
+  // Co-working Orbit Events
+  'cowork:request': (payload: {
+    senderId: string;
+    senderName: string;
+    senderAvatar: string;
+    senderColor: string;
+    receiverId: string;
+  }) => void;
+  'cowork:accept': (payload: {
+    senderId: string;
+    receiverId: string;
+    senderFriendData?: Friend;
+    receiverFriendData?: Friend;
+  }) => void;
+  'cowork:decline': (payload: { senderId: string; receiverId: string }) => void;
+  'cowork:disconnect': (payload: { userId: string; targetUserId: string }) => void;
 
   // Groups
   'group:join': (payload: { groupId: string; user: GroupMember }) => void;
@@ -45,6 +80,27 @@ export interface ServerToClientEvents {
   'timer:resumed': (payload: TimerEventPayload) => void;
   'timer:stopped': (payload: TimerEventPayload) => void;
   'timer:completed': (payload: TimerEventPayload) => void;
+  'timer:state_synced': (payload: ExactTimerStatePayload) => void;
+  'timer:state_requested': (payload: { requesterId: string; targetUserId: string }) => void;
+
+  // Co-working Orbit Broadcasts
+  'cowork:requested': (payload: {
+    senderId: string;
+    senderName: string;
+    senderAvatar: string;
+    senderColor: string;
+    receiverId: string;
+    timestampMs: number;
+  }) => void;
+  'cowork:accepted': (payload: {
+    senderId: string;
+    receiverId: string;
+    senderFriendData?: Friend;
+    receiverFriendData?: Friend;
+    timestampMs: number;
+  }) => void;
+  'cowork:declined': (payload: { senderId: string; receiverId: string; timestampMs: number }) => void;
+  'cowork:disconnected': (payload: { userId: string; targetUserId: string; timestampMs: number }) => void;
 
   // Groups Broadcasts
   'group:member_joined': (payload: { groupId: string; member: GroupMember; timestampMs: number }) => void;
