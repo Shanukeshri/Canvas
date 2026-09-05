@@ -108,6 +108,8 @@ interface AppContextType {
   attachedFriendIds: string[];
   setAttachedFriendIds: React.Dispatch<React.SetStateAction<string[]>>;
   toggleAttachFriend: (friendId: string) => void;
+  attachFriend: (friendId: string) => void;
+  detachFriend: (friendId: string) => void;
   acceptFriendRequest: (friendId: string) => void;
   declineFriendRequest: (friendId: string) => void;
 
@@ -374,13 +376,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser?.id]);
 
   const setTimerMode = (mode: TimerMode) => {
-    const newState = createInitialTimerState(
-      mode,
-      isBreakPhase ? 'short_break' : 'focus',
-      isBreakPhase ? shortBreakMinutes : focusDurationMinutes
-    );
+    if (engineState.mode === mode) return;
+
+    // Record partial session contribution before switching modes
+    const contributionMs = calculateFocusContributionMs(engineState, Date.now());
+    if (contributionMs >= 5000 && currentUser) {
+      const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
+      setTotalFocusMinutesToday((m) => m + addedMinutes);
+      recordFocusSessionAction(currentUser.id, {
+        type: engineState.mode,
+        taskId: selectedTask?.id || null,
+        groupId: activeGroupId || null,
+        startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : Date.now() - contributionMs,
+        endedAtMs: Date.now(),
+        elapsedDurationMs: contributionMs,
+        status: engineState.mode === 'stopwatch' ? 'completed' : 'interrupted',
+      }).catch(() => {});
+    }
+
+    setIsBreakPhase(false);
+    const durationMins = mode === 'stopwatch' ? 0 : focusDurationMinutes;
+    const newState = createInitialTimerState(mode, 'focus', durationMins);
     setEngineState(newState);
+    setRemainingSeconds(mode === 'stopwatch' ? 0 : durationMins * 60);
     tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: newState, userId: currentUser?.id || 'guest' });
+
+    if (currentUser) {
+      saveTimerStateCheckpointAction(currentUser.id, newState).catch(() => {});
+    }
   };
 
   const setTimerState = (status: TimerState) => {
@@ -392,6 +415,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Sync Timer on duration changes in IDLE
   useEffect(() => {
     if (engineState.status === 'idle') {
+      if (engineState.mode === 'stopwatch') {
+        setRemainingSeconds(0);
+        return;
+      }
       const durationMins = isBreakPhase ? shortBreakMinutes : focusDurationMinutes;
       const newState = createInitialTimerState(
         engineState.mode,
@@ -399,7 +426,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         durationMins
       );
       setEngineState(newState);
-      setRemainingSeconds(durationMins * 60);
+      setRemainingSeconds(Math.max(0, durationMins * 60));
     }
   }, [focusDurationMinutes, shortBreakMinutes, isBreakPhase, engineState.status, engineState.mode]);
 
@@ -419,7 +446,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         const snapshot = computeTimerSnapshot(msg.payload, Date.now());
         setEngineState(snapshot.state);
-        setRemainingSeconds(snapshot.remainingSeconds);
+        const displaySecs =
+          snapshot.state.mode === 'stopwatch'
+            ? Math.max(0, snapshot.elapsedSeconds)
+            : Math.max(0, snapshot.remainingSeconds);
+        setRemainingSeconds(displaySecs);
       }
     });
     return unsubscribe;
@@ -435,9 +466,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const snapshot = computeTimerSnapshot(engineState, now);
 
       if (engineState.status === 'running') {
-        if (snapshot.remainingSeconds !== lastSecondReported) {
-          lastSecondReported = snapshot.remainingSeconds;
-          setRemainingSeconds(snapshot.remainingSeconds);
+        const currentSecs =
+          engineState.mode === 'stopwatch'
+            ? Math.max(0, snapshot.elapsedSeconds)
+            : Math.max(0, snapshot.remainingSeconds);
+
+        if (currentSecs !== lastSecondReported) {
+          lastSecondReported = currentSecs;
+          setRemainingSeconds(currentSecs);
         }
 
         // Periodic checkpoint to DB / statistics (every 30s)
@@ -453,7 +489,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (!isBreakPhase && engineState.mode === 'pomodoro') {
             setSessionsCompleted((s) => s + 1);
-            const addedMinutes = Math.round(snapshot.elapsedMs / (60 * 1000));
+            const addedMinutes = Math.max(1, Math.round(snapshot.elapsedMs / (60 * 1000)));
             setTotalFocusMinutesToday((m) => m + addedMinutes);
 
             // Record authoritative FocusSession in DB
@@ -480,62 +516,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => cancelAnimationFrame(animationId);
   }, [engineState, isBreakPhase, currentUser, selectedTask, activeGroupId]);
 
-
   // Friends Autonomous Independent Focus Sessions Loop
   useEffect(() => {
     const friendInterval = setInterval(() => {
       setFriends((prevFriends) =>
         prevFriends.map((f) => {
-          // If friend has targetCompletionMs (real coworker timer synced), compute exact remaining time
-          if (f.targetCompletionMs && (f.status === 'focusing' || f.isFocusing)) {
-            const remMs = Math.max(0, f.targetCompletionMs - Date.now());
-            const totalSecs = Math.ceil(remMs / 1000);
+          // If friend is paused, offline, or online (idle), do not tick
+          if (f.status === 'paused' || f.status === 'offline' || (f as any).status === 'online') {
+            return f;
+          }
+
+          const isRunning = f.status === 'focusing' || f.status === 'break' || f.isFocusing;
+          if (!isRunning) return f;
+
+          const isStopwatch = f.mode === 'stopwatch' || f.timerType === 'stopwatch';
+
+          if (isStopwatch) {
+            let elapsedMs = 0;
+            if (f.startedAtMs) {
+              elapsedMs = Math.max(0, Date.now() - f.startedAtMs);
+            } else if (f.lastUpdatedMs) {
+              const delta = Math.max(0, Date.now() - f.lastUpdatedMs);
+              elapsedMs = Math.max(0, (f.elapsedDurationMs || 0) + delta);
+            } else {
+              const curSecs = (f.timerMinutes ?? 0) * 60 + (f.timerSeconds ?? 0);
+              elapsedMs = Math.max(0, (curSecs + 1) * 1000);
+            }
+            const totalSecs = Math.max(0, Math.floor(elapsedMs / 1000));
             return {
               ...f,
+              elapsedDurationMs: elapsedMs,
+              currentTimeMs: elapsedMs,
+              timerMinutes: Math.floor(totalSecs / 60),
+              timerSeconds: totalSecs % 60,
+            };
+          } else {
+            // Pomodoro countdown
+            let remainingMs = 0;
+            if (f.targetCompletionMs) {
+              remainingMs = Math.max(0, f.targetCompletionMs - Date.now());
+            } else {
+              const curSecs = (f.timerMinutes ?? 25) * 60 + (f.timerSeconds ?? 0);
+              remainingMs = Math.max(0, (curSecs - 1) * 1000);
+            }
+            const totalSecs = Math.max(0, Math.ceil(remainingMs / 1000));
+            if (totalSecs <= 0 && f.targetCompletionMs) {
+              return {
+                ...f,
+                status: f.status === 'focusing' ? 'break' : 'online',
+                isFocusing: false,
+                timerMinutes: 0,
+                timerSeconds: 0,
+                remainingMs: 0,
+                currentTimeMs: 0,
+              };
+            }
+            return {
+              ...f,
+              remainingMs,
+              currentTimeMs: remainingMs,
               timerMinutes: Math.floor(totalSecs / 60),
               timerSeconds: totalSecs % 60,
             };
           }
-
-          // If friend is paused or online, do not decrement!
-          if (f.status === 'paused' || (f as any).status === 'online') {
-            return f;
-          }
-
-          if (f.status === 'focusing' || f.status === 'break') {
-            const mins = f.timerMinutes ?? 25;
-            const secs = f.timerSeconds ?? 0;
-            const totalSecs = mins * 60 + secs;
-            if (totalSecs > 1) {
-              const nextTotal = totalSecs - 1;
-              return {
-                ...f,
-                timerMinutes: Math.floor(nextTotal / 60),
-                timerSeconds: nextTotal % 60,
-              };
-            } else {
-              if (f.status === 'focusing') {
-                return {
-                  ...f,
-                  status: 'break',
-                  isFocusing: false,
-                  timerMinutes: 5,
-                  timerSeconds: 0,
-                  currentTask: 'Taking a 5m break',
-                };
-              } else {
-                return {
-                  ...f,
-                  status: 'focusing',
-                  isFocusing: true,
-                  timerMinutes: 25,
-                  timerSeconds: 0,
-                  currentTask: 'Deep Focus Session',
-                };
-              }
-            }
-          }
-          return f;
         })
       );
     }, 1000);
@@ -549,7 +592,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let nextState = engineState;
 
     if (engineState.status === 'completed' || engineState.status === 'idle') {
-      const durationMins = isBreakPhase ? shortBreakMinutes : focusDurationMinutes;
+      const durationMins = engineState.mode === 'stopwatch' ? 0 : (isBreakPhase ? shortBreakMinutes : focusDurationMinutes);
       const initial = createInitialTimerState(
         engineState.mode,
         isBreakPhase ? 'short_break' : 'focus',
@@ -562,7 +605,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setEngineState(nextState);
     const snapshot = computeTimerSnapshot(nextState, now);
-    setRemainingSeconds(snapshot.remainingSeconds);
+    const displaySecs = nextState.mode === 'stopwatch' ? Math.max(0, snapshot.elapsedSeconds) : Math.max(0, snapshot.remainingSeconds);
+    setRemainingSeconds(displaySecs);
     tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
 
     if (currentUser) {
@@ -575,8 +619,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const nextState = enginePauseTimer(engineState, now);
     setEngineState(nextState);
     const snapshot = computeTimerSnapshot(nextState, now);
-    setRemainingSeconds(snapshot.remainingSeconds);
+    const displaySecs = nextState.mode === 'stopwatch' ? Math.max(0, snapshot.elapsedSeconds) : Math.max(0, snapshot.remainingSeconds);
+    setRemainingSeconds(displaySecs);
     tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
+
+    // If in stopwatch mode, record contribution on pause if >= 5s
+    if (nextState.mode === 'stopwatch' && currentUser) {
+      const contributionMs = calculateFocusContributionMs(engineState, now);
+      if (contributionMs >= 5000) {
+        const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
+        setTotalFocusMinutesToday((m) => m + addedMinutes);
+        recordFocusSessionAction(currentUser.id, {
+          type: 'stopwatch',
+          taskId: selectedTask?.id || null,
+          groupId: activeGroupId || null,
+          startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : now - contributionMs,
+          endedAtMs: now,
+          elapsedDurationMs: contributionMs,
+          status: 'completed',
+        }).catch(() => {});
+      }
+    }
 
     if (currentUser) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
@@ -586,8 +649,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const resetTimer = () => {
     // Record partial session contribution before resetting
     const contributionMs = calculateFocusContributionMs(engineState, Date.now());
-    if (contributionMs > 10000 && currentUser) {
-      const addedMinutes = Math.round(contributionMs / (60 * 1000));
+    if (contributionMs >= 5000 && currentUser) {
+      const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
       setTotalFocusMinutesToday((m) => m + addedMinutes);
       recordFocusSessionAction(currentUser.id, {
         type: engineState.mode,
@@ -596,15 +659,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : Date.now() - contributionMs,
         endedAtMs: Date.now(),
         elapsedDurationMs: contributionMs,
-        status: 'interrupted',
+        status: engineState.mode === 'stopwatch' ? 'completed' : 'interrupted',
       }).catch(() => {});
     }
 
     setIsBreakPhase(false);
-    const durationMins = focusDurationMinutes;
+    const durationMins = engineState.mode === 'stopwatch' ? 0 : focusDurationMinutes;
     const nextState = engineResetTimer(engineState, durationMins);
     setEngineState(nextState);
-    setRemainingSeconds(durationMins * 60);
+    setRemainingSeconds(engineState.mode === 'stopwatch' ? 0 : Math.max(0, durationMins * 60));
     tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
 
     if (currentUser) {
@@ -680,6 +743,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Friends & Attached Bubbles
+  const attachFriend = (friendId: string) => {
+    setAttachedFriendIds((prev) => {
+      if (prev.includes(friendId)) return prev;
+      const next = [...prev, friendId];
+      if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
+  const detachFriend = (friendId: string) => {
+    setAttachedFriendIds((prev) => {
+      const next = prev.filter((id) => id !== friendId);
+      if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
+
   const toggleAttachFriend = (friendId: string) => {
     setAttachedFriendIds((prev) => {
       const next = prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId];
@@ -1083,6 +1167,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         attachedFriendIds,
         setAttachedFriendIds,
         toggleAttachFriend,
+        attachFriend,
+        detachFriend,
         acceptFriendRequest,
         declineFriendRequest,
         groups,

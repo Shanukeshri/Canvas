@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from '../types/socket';
 
-const PORT = parseInt(process.env.SOCKET_PORT || process.env.PORT || '3001', 10);
+const PORT = parseInt(process.env.SOCKET_PORT || process.env.PORT || '3002', 10);
 
 export function createSocketServer() {
   const httpServer = createServer((req, res) => {
@@ -30,12 +30,21 @@ export function createSocketServer() {
     console.log(`[Socket.IO] Client connected: ${socket.id}`);
 
     // User authentication / identification
-    const userId = socket.handshake.query.userId as string | undefined;
-    if (userId) {
-      socket.data.userId = userId;
-      onlineUsers.set(userId, { socketId: socket.id, lastSeen: Date.now() });
-      socket.join(`user:${userId}`);
+    const registerUserSocket = (uid: string, groupId?: string) => {
+      socket.data.userId = uid;
+      socket.join(`user:${uid}`);
+      const existing = onlineUsers.get(uid) || { socketId: socket.id, lastSeen: Date.now() };
+      existing.socketId = socket.id;
+      existing.lastSeen = Date.now();
+      if (groupId) existing.activeGroupId = groupId;
+      onlineUsers.set(uid, existing);
       io.emit('presence:update', { onlineUserIds: Array.from(onlineUsers.keys()) });
+      console.log(`[Socket.IO] User registered: ${uid} (socket ${socket.id}, room user:${uid})`);
+    };
+
+    const initialUserId = socket.handshake.query.userId as string | undefined;
+    if (initialUserId && initialUserId !== 'undefined' && initialUserId !== 'guest') {
+      registerUserSocket(initialUserId);
     }
 
     // --- Timer Events ---
@@ -63,12 +72,16 @@ export function createSocketServer() {
       socket.broadcast.emit('timer:state_synced', payload);
     });
 
+    socket.on('timer:event', (payload) => {
+      socket.broadcast.emit('timer:event_synced', payload);
+      socket.broadcast.emit('timer:state_synced', payload);
+    });
+
     socket.on('timer:request_state', (payload) => {
       if (payload.targetUserId) {
         io.to(`user:${payload.targetUserId}`).emit('timer:state_requested', payload);
-      } else {
-        socket.broadcast.emit('timer:state_requested', payload);
       }
+      socket.broadcast.emit('timer:state_requested', payload);
     });
 
     socket.on('timer:heartbeat', (payload) => {
@@ -80,10 +93,13 @@ export function createSocketServer() {
 
     // --- Co-working Orbit Events ---
     socket.on('cowork:request', (payload) => {
-      io.to(`user:${payload.receiverId}`).emit('cowork:requested', {
-        ...payload,
-        timestampMs: Date.now(),
-      });
+      console.log(`[Cowork] Request from ${payload.senderId} (${payload.senderName}) to ${payload.receiverId}`);
+      if (payload.receiverId) {
+        io.to(`user:${payload.receiverId}`).emit('cowork:requested', {
+          ...payload,
+          timestampMs: Date.now(),
+        });
+      }
       socket.broadcast.emit('cowork:requested', {
         ...payload,
         timestampMs: Date.now(),
@@ -91,10 +107,23 @@ export function createSocketServer() {
     });
 
     socket.on('cowork:accept', (payload) => {
+      console.log(`[Cowork] Accepted: ${payload.senderId} <-> ${payload.receiverId}`);
       io.emit('cowork:accepted', {
         ...payload,
         timestampMs: Date.now(),
       });
+      if (payload.senderId) {
+        io.to(`user:${payload.senderId}`).emit('timer:state_requested', {
+          requesterId: payload.receiverId,
+          targetUserId: payload.senderId,
+        });
+      }
+      if (payload.receiverId) {
+        io.to(`user:${payload.receiverId}`).emit('timer:state_requested', {
+          requesterId: payload.senderId,
+          targetUserId: payload.receiverId,
+        });
+      }
     });
 
     socket.on('cowork:decline', (payload) => {
@@ -153,10 +182,8 @@ export function createSocketServer() {
     });
 
     socket.on('presence:heartbeat', ({ userId, activeGroupId }) => {
-      const user = onlineUsers.get(userId);
-      if (user) {
-        user.lastSeen = Date.now();
-        user.activeGroupId = activeGroupId;
+      if (userId && userId !== 'undefined' && userId !== 'guest') {
+        registerUserSocket(userId, activeGroupId);
       }
     });
 

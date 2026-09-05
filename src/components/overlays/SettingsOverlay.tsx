@@ -17,6 +17,7 @@ import {
   Sparkles,
   Sliders,
   RotateCcw,
+  Clock,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -24,6 +25,8 @@ export function SettingsOverlay() {
   const {
     overlay,
     closeOverlay,
+    timerMode,
+    setTimerMode,
     focusDurationMinutes,
     setFocusDurationMinutes,
     shortBreakMinutes,
@@ -115,6 +118,63 @@ export function SettingsOverlay() {
                   <p className="text-xs text-outline">
                     Customize your deep work session and rest cycle durations.
                   </p>
+                </div>
+
+                {/* 1. First Option: Sliding Switch between Timer & Stopwatch */}
+                <div className="p-4 rounded-2xl bg-surface-container-low/80 border border-surface-variant/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-on-surface">Timer Mode</span>
+                      <span
+                        className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-0.5 rounded-full border border-surface-variant/60 shadow-xs"
+                        style={{ backgroundColor: theme.hex + '18', color: theme.hex }}
+                      >
+                        {timerMode === 'pomodoro' ? 'Countdown Timer' : 'Open Stopwatch'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-outline mt-1">
+                      {timerMode === 'pomodoro'
+                        ? 'Structured intervals counting down for focused deep work and timed rest cycles.'
+                        : 'Open-ended stopwatch counting up from 00:00 for flexible, uninterrupted flow sessions.'}
+                    </p>
+                  </div>
+
+                  {/* Sliding Switch Pill */}
+                  <div className="relative flex items-center p-1 bg-surface-container rounded-2xl border border-surface-variant/50 shadow-inner shrink-0 w-full sm:w-auto">
+                    {/* Animated Sliding Highlight Pill */}
+                    <div
+                      className="absolute top-1 bottom-1 rounded-xl transition-all duration-300 ease-out shadow-sm"
+                      style={{
+                        backgroundColor: theme.hex,
+                        width: 'calc(50% - 4px)',
+                        left: timerMode === 'pomodoro' ? '4px' : 'calc(50%)',
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setTimerMode('pomodoro')}
+                      className={clsx(
+                        'relative z-10 flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer select-none',
+                        timerMode === 'pomodoro' ? 'text-white' : 'text-outline hover:text-on-surface'
+                      )}
+                    >
+                      <Timer className="w-3.5 h-3.5" />
+                      <span>Timer</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTimerMode('stopwatch')}
+                      className={clsx(
+                        'relative z-10 flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer select-none',
+                        timerMode === 'stopwatch' ? 'text-white' : 'text-outline hover:text-on-surface'
+                      )}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Stopwatch</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">

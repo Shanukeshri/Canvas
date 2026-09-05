@@ -44,15 +44,19 @@ export interface Friend {
   handle: string;
   avatar: string;
   color: string;
-  status: "online" | "focusing" | "break" | "offline";
+  status: "online" | "focusing" | "break" | "offline" | "paused";
   currentTask?: string;
   timerMinutes?: number;
   timerSeconds?: number;
   mode?: TimerMode;
+  timerType?: 'timer' | 'stopwatch';
   isFocusing?: boolean;
   durationMs?: number;
   remainingMs?: number;
+  elapsedDurationMs?: number;
+  currentTimeMs?: number;
   targetCompletionMs?: number | null;
+  startedAtMs?: number | null;
   lastUpdatedMs?: number;
 }
 
@@ -115,7 +119,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   time: string;
-  type: "friend_request" | "group_invite" | "timer_complete" | "system";
+  type: "friend_request" | "group_invite" | "cowork_request" | "timer_complete" | "system";
   read: boolean;
   actionPayload?: any;
 }

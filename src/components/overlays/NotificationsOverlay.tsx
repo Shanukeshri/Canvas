@@ -34,6 +34,8 @@ export function NotificationsOverlay() {
     setActiveGroupId,
     currentUser,
     setAttachedFriendIds,
+    attachFriend,
+    setFriends,
   } = useApp();
   const { theme } = useTheme();
 
@@ -86,20 +88,55 @@ export function NotificationsOverlay() {
       closeOverlay();
     } else if (notif.type === 'cowork_request') {
       const senderId = notif.actionPayload?.senderId;
+      const senderName = notif.actionPayload?.senderName || 'Coworker';
+      const senderAvatar = notif.actionPayload?.senderAvatar || '🦊';
+      const senderColor = notif.actionPayload?.senderColor || '#6366f1';
+
       if (senderId) {
-        setAttachedFriendIds((prev) => (prev.includes(senderId) ? prev : [...prev, senderId]));
+        attachFriend(senderId);
+
+        setFriends((prev) => {
+          if (prev.some((f) => f.id === senderId)) return prev;
+          return [
+            ...prev,
+            {
+              id: senderId,
+              name: senderName,
+              handle: `@${senderName.toLowerCase().replace(/\s+/g, '_')}`,
+              avatar: senderAvatar,
+              color: senderColor,
+              status: 'focusing',
+              timerMinutes: 25,
+              timerSeconds: 0,
+              mode: 'pomodoro',
+              isFocusing: true,
+            } as any,
+          ];
+        });
+
+        const acceptPayload = {
+          senderId,
+          receiverId: currentUser?.id || 'guest',
+          senderName,
+          senderAvatar,
+          senderColor,
+          receiverName: currentUser?.name || 'Coworker',
+          receiverAvatar: currentUser?.avatar || '🦊',
+          receiverColor: currentUser?.themeColor || theme.hex,
+        };
+
         try {
-          const socket = getSocket();
-          socket.emit('cowork:accept', {
-            senderId,
-            receiverId: currentUser?.id || 'guest',
-          });
+          const socket = getSocket(currentUser?.id);
+          socket.emit('cowork:accept', acceptPayload);
         } catch {}
+
         tabSync.publish({
-          type: 'COWORK_ORBIT_SYNC',
-          payload: { attachedFriendIds: [senderId] },
+          type: 'COWORK_ACCEPTED_SYNC',
+          payload: acceptPayload,
           userId: currentUser?.id || '',
         });
+
+        removeNotification(notif.id);
       }
       setActiveTab('timer');
       closeOverlay();

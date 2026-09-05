@@ -55,8 +55,13 @@ export function ImmersiveTimer() {
 
   // SVG Progress Ring calculation
   const totalSecs = (isBreakPhase ? shortBreakMinutes : focusDurationMinutes) * 60;
-  const progressPercent = totalSecs > 0 ? ((totalSecs - remainingSeconds) / totalSecs) * 100 : 0;
-  const strokeDashoffset = 301.59 - (301.59 * progressPercent) / 100;
+  const isStopwatch = timerMode === 'stopwatch';
+  const progressPercent = isStopwatch
+    ? Math.min(100, Math.max(0, ((remainingSeconds % 60) / 60) * 100))
+    : totalSecs > 0
+    ? Math.min(100, Math.max(0, ((totalSecs - Math.max(0, remainingSeconds)) / totalSecs) * 100))
+    : 0;
+  const strokeDashoffset = Math.max(0, Math.min(301.59, 301.59 - (301.59 * progressPercent) / 100));
 
   const attachedFriends = friends.filter((f) => attachedFriendIds.includes(f.id));
 
@@ -160,8 +165,8 @@ export function ImmersiveTimer() {
             )}
             style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
           >
-            {timerState === 'idle' && 'FOCUS'}
-            {timerState === 'running' && (isBreakPhase ? 'REST' : 'FOCUS')}
+            {timerState === 'idle' && (isStopwatch ? 'STOPWATCH' : 'FOCUS')}
+            {timerState === 'running' && (isStopwatch ? 'FLOW' : isBreakPhase ? 'REST' : 'FOCUS')}
             {timerState === 'paused' && 'PAUSED'}
             {timerState === 'completed' && 'DONE'}
           </span>
@@ -173,11 +178,11 @@ export function ImmersiveTimer() {
             )}
             style={{ color: timerState === 'paused' ? 'var(--outline)' : 'var(--timer-digits, var(--primary))' }}
           >
-            {formatTime(remainingSeconds)}
+            {formatTime(Math.max(0, remainingSeconds))}
           </span>
 
-          {/* Session Indicator Dots in User Theme Color */}
-          {timerMode === 'pomodoro' && (
+          {/* Session Indicator Dots in User Theme Color or Stopwatch Flow Pill */}
+          {timerMode === 'pomodoro' ? (
             <div className="flex items-center gap-2 pt-3">
               {Array.from({ length: targetSessions }).map((_, idx) => (
                 <span
@@ -191,6 +196,11 @@ export function ImmersiveTimer() {
                   }}
                 />
               ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 pt-2 text-outline text-[11px] font-medium tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: theme.hex }} />
+              <span>Count Up Flow</span>
             </div>
           )}
         </div>

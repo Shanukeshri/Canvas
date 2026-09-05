@@ -44,7 +44,7 @@ export function formatErrorMessage(raw: unknown): string {
   }
 
   // Check if string contains JSON array inside
-  const jsonArrayMatch = rawStr.match(/\[\s*\{.*\}\s*\]/s);
+  const jsonArrayMatch = rawStr.match(/\[\s*\{[\s\S]*\}\s*\]/);
   if (jsonArrayMatch) {
     try {
       const parsed = JSON.parse(jsonArrayMatch[0]);

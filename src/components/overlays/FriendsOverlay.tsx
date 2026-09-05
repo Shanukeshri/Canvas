@@ -16,6 +16,7 @@ import {
 import clsx from 'clsx';
 import { sendFriendRequestAction } from '@/features/friends/actions';
 import { getSocket } from '@/lib/socket/socket-client';
+import { tabSync } from '@/lib/broadcast';
 import { Friend } from '@/types';
 
 export function FriendsOverlay() {
@@ -84,19 +85,28 @@ export function FriendsOverlay() {
       setSentCoworkMap((prev) => ({ ...prev, [friend.id]: true }));
       setCoworkToast(`Co-work request sent to ${friend.name}`);
 
-      // 1. Emit real-time co-work request via WebSockets
+      // 1. Emit real-time co-work request via WebSockets & BroadcastChannel
+      const requestPayload = {
+        senderId: currentUser?.id || 'guest',
+        senderName: currentUser?.name || 'Friend',
+        senderAvatar: currentUser?.avatar || '🦊',
+        senderColor: currentUser?.themeColor || theme.hex,
+        receiverId: friend.id,
+      };
+
       try {
-        const socket = getSocket();
-        socket.emit('cowork:request', {
-          senderId: currentUser?.id || 'guest',
-          senderName: currentUser?.name || 'Friend',
-          senderAvatar: currentUser?.avatar || '🦊',
-          senderColor: currentUser?.themeColor || theme.hex,
-          receiverId: friend.id,
-        });
+        const socket = getSocket(currentUser?.id);
+        socket.emit('cowork:request', requestPayload);
       } catch (err) {
         console.warn('Socket cowork emit:', err);
       }
+
+      tabSync.publish({
+        type: 'COWORK_REQUEST_SYNC',
+        payload: requestPayload,
+        senderId: currentUser?.id || 'guest',
+        receiverId: friend.id,
+      });
 
       // 2. Persist notification to database
       await fetch('/api/notifications', {

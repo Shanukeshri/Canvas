@@ -36,6 +36,13 @@ interface BubblePhysics {
 export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesProps) {
   const { toggleAttachFriend, setAttachedFriendIds, currentUser } = useApp();
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [, setTick] = useState(0);
+
+  // Re-render interval for high-precision live friend seconds
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => (t + 1) % 10000), 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleConfirmRemove = (friendId: string) => {
     // 1. Remove locally
@@ -372,25 +379,45 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
       {attachedFriends.map((friend) => {
         const isDragging = activeDragId === friend.id;
 
-        // High-precision remaining seconds: use exact targetCompletionMs if running
+        // High-precision remaining seconds: use exact targetCompletionMs if running timer, or startedAtMs if running stopwatch
         const isFriendFocusing = friend.status === 'focusing' || friend.isFocusing === true;
         const isFriendBreak = friend.status === 'break';
         const isInactive = !isFriendFocusing && !isFriendBreak;
+        const isFriendStopwatch = friend.timerType === 'stopwatch' || friend.mode === 'stopwatch';
 
-        let totalSeconds = (friend.timerMinutes ?? 25) * 60 + (friend.timerSeconds ?? 0);
-        if (isFriendFocusing && friend.targetCompletionMs) {
-          const remMs = Math.max(0, friend.targetCompletionMs - Date.now());
-          totalSeconds = Math.ceil(remMs / 1000);
-        } else if (friend.remainingMs !== undefined && !isFriendFocusing) {
-          totalSeconds = Math.ceil(friend.remainingMs / 1000);
+        let totalSeconds = 0;
+        if (isFriendStopwatch) {
+          // Stopwatch counts UP from startedAtMs or elapsedDurationMs, never negative
+          if (isFriendFocusing && friend.startedAtMs) {
+            const elapsedMs = Math.max(0, Date.now() - friend.startedAtMs);
+            totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+          } else if (friend.elapsedDurationMs !== undefined) {
+            totalSeconds = Math.max(0, Math.floor(friend.elapsedDurationMs / 1000));
+          } else if (friend.currentTimeMs !== undefined) {
+            totalSeconds = Math.max(0, Math.floor(friend.currentTimeMs / 1000));
+          } else {
+            totalSeconds = Math.max(0, (friend.timerMinutes ?? 0) * 60 + (friend.timerSeconds ?? 0));
+          }
+        } else {
+          // Timer counts DOWN from targetCompletionMs or remainingMs, never negative
+          if (isFriendFocusing && friend.targetCompletionMs) {
+            const remMs = Math.max(0, friend.targetCompletionMs - Date.now());
+            totalSeconds = Math.max(0, Math.ceil(remMs / 1000));
+          } else if (friend.remainingMs !== undefined && !isFriendFocusing) {
+            totalSeconds = Math.max(0, Math.ceil(friend.remainingMs / 1000));
+          } else {
+            totalSeconds = Math.max(0, (friend.timerMinutes ?? 25) * 60 + (friend.timerSeconds ?? 0));
+          }
         }
 
         const displayMinutes = Math.floor(totalSeconds / 60);
         const displaySeconds = totalSeconds % 60;
 
         const totalDurationSec = friend.durationMs ? Math.round(friend.durationMs / 1000) : 25 * 60;
-        const progressFraction = Math.max(0.05, Math.min(1, totalSeconds / totalDurationSec));
-        const strokeDashoffset = 301.59 - 301.59 * progressFraction;
+        const progressFraction = isFriendStopwatch
+          ? Math.max(0.05, Math.min(1, (totalSeconds % 60) / 60))
+          : Math.max(0.05, Math.min(1, totalSeconds / Math.max(1, totalDurationSec)));
+        const strokeDashoffset = Math.max(0, 301.59 - 301.59 * progressFraction);
 
         // Distinct harmonious theme palette matching main timer
         const themeTokens = FRIEND_THEMES[friend.id] || {
@@ -567,9 +594,9 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
               <div className="absolute top-full mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-surface-container-low border border-surface-variant px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap shadow-sm pointer-events-none z-30 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: friendColor }} />
                 <span className="text-on-surface-variant">
-                  {friend.status === 'break' ? 'Break: ' : friend.status === 'focusing' ? 'Focusing: ' : 'Status: '}
+                  {friend.status === 'break' ? 'Break: ' : isFriendStopwatch ? 'Stopwatch: ' : friend.status === 'focusing' ? 'Focusing: ' : 'Status: '}
                 </span>
-                <span style={{ color: friendColor }}>{friend.currentTask || (friend.status === 'break' ? '5m Break' : 'Focus Session')}</span>
+                <span style={{ color: friendColor }}>{friend.currentTask || (friend.status === 'break' ? '5m Break' : isFriendStopwatch ? 'Flow Session' : 'Focus Session')}</span>
               </div>
             </div>
           </div>

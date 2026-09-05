@@ -8,7 +8,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
-  NEXT_PUBLIC_SOCKET_URL: z.string().default('http://localhost:3000'),
+  NEXT_PUBLIC_SOCKET_URL: z.string().default('http://localhost:3002'),
+  SOCKET_PORT: z.string().default('3002'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
 });
 
@@ -20,6 +21,7 @@ export const env = envSchema.parse({
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN,
-  NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000',
+  NEXT_PUBLIC_SOCKET_URL: process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3002',
+  SOCKET_PORT: process.env.SOCKET_PORT || '3002',
   NODE_ENV: process.env.NODE_ENV || 'development',
 });

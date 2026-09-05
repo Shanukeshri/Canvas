@@ -104,4 +104,25 @@ describe('Timer Engine (Timestamp-driven State Machine)', () => {
 
     expect(contribution).toBe(workedMs);
   });
+
+  it('strictly ensures remaining and elapsed times never go negative', () => {
+    const initial = createInitialTimerState('pomodoro', 'focus', 25);
+    const startMs = 1000000;
+    const running = startTimer(initial, startMs);
+
+    // Snapshot far into the future (10 hours later)
+    const futureSnapshot = computeTimerSnapshot(running, startMs + 36000000);
+    expect(futureSnapshot.remainingMs).toBeGreaterThanOrEqual(0);
+    expect(futureSnapshot.remainingSeconds).toBeGreaterThanOrEqual(0);
+    expect(futureSnapshot.remainingMs).toBe(0);
+    expect(futureSnapshot.remainingSeconds).toBe(0);
+
+    // Stopwatch far into future
+    const stopwatch = createInitialTimerState('stopwatch', 'none', 0);
+    const swRunning = startTimer(stopwatch, startMs);
+    const swSnapshot = computeTimerSnapshot(swRunning, startMs + 125000);
+    expect(swSnapshot.elapsedSeconds).toBe(125);
+    expect(swSnapshot.remainingSeconds).toBe(0);
+    expect(swSnapshot.elapsedMs).toBeGreaterThanOrEqual(0);
+  });
 });

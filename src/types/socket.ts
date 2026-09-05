@@ -1,5 +1,7 @@
 import { Friend, Group, GroupMember, Task } from './index';
 
+export type TimerEventType = 'play' | 'pause' | 'reset' | 'mode_change' | 'sync';
+
 export interface TimerEventPayload {
   userId: string;
   userHandle: string;
@@ -7,11 +9,15 @@ export interface TimerEventPayload {
   userAvatar: string;
   userColor: string;
   sessionId: string;
+  event?: TimerEventType;
+  timerType?: 'timer' | 'stopwatch';
   mode: 'pomodoro' | 'stopwatch';
   phase: 'focus' | 'short_break' | 'long_break' | 'none';
   durationMs: number;
+  currentTimeMs?: number;
   elapsedDurationMs: number;
   targetCompletionMs?: number;
+  startedAtMs?: number;
   timestampMs: number;
   eventId: string;
 }
@@ -21,13 +27,17 @@ export interface ExactTimerStatePayload {
   userName?: string;
   userAvatar?: string;
   userColor?: string;
+  event?: TimerEventType;
+  timerType?: 'timer' | 'stopwatch';
   mode: 'pomodoro' | 'stopwatch';
   status: 'idle' | 'running' | 'paused' | 'completed';
   phase: 'focus' | 'short_break' | 'long_break' | 'none';
   durationMs: number;
   remainingMs: number;
+  currentTimeMs?: number;
   elapsedDurationMs: number;
   targetCompletionMs?: number | null;
+  startedAtMs?: number | null;
   timestampMs: number;
   currentTask?: string;
 }
@@ -41,6 +51,7 @@ export interface ClientToServerEvents {
   'timer:complete': (payload: TimerEventPayload) => void;
   'timer:heartbeat': (payload: { userId: string; timestampMs: number; elapsedMs: number }) => void;
   'timer:sync_state': (payload: ExactTimerStatePayload) => void;
+  'timer:event': (payload: ExactTimerStatePayload) => void;
   'timer:request_state': (payload: { requesterId: string; targetUserId: string }) => void;
 
   // Co-working Orbit Events
@@ -54,6 +65,12 @@ export interface ClientToServerEvents {
   'cowork:accept': (payload: {
     senderId: string;
     receiverId: string;
+    senderName?: string;
+    senderAvatar?: string;
+    senderColor?: string;
+    receiverName?: string;
+    receiverAvatar?: string;
+    receiverColor?: string;
     senderFriendData?: Friend;
     receiverFriendData?: Friend;
   }) => void;
@@ -81,6 +98,7 @@ export interface ServerToClientEvents {
   'timer:stopped': (payload: TimerEventPayload) => void;
   'timer:completed': (payload: TimerEventPayload) => void;
   'timer:state_synced': (payload: ExactTimerStatePayload) => void;
+  'timer:event_synced': (payload: ExactTimerStatePayload) => void;
   'timer:state_requested': (payload: { requesterId: string; targetUserId: string }) => void;
 
   // Co-working Orbit Broadcasts
@@ -95,6 +113,12 @@ export interface ServerToClientEvents {
   'cowork:accepted': (payload: {
     senderId: string;
     receiverId: string;
+    senderName?: string;
+    senderAvatar?: string;
+    senderColor?: string;
+    receiverName?: string;
+    receiverAvatar?: string;
+    receiverColor?: string;
     senderFriendData?: Friend;
     receiverFriendData?: Friend;
     timestampMs: number;
