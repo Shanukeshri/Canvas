@@ -1,19 +1,19 @@
-export type TimerMode = 'pomodoro' | 'stopwatch';
-export type TimerState = 'idle' | 'running' | 'paused' | 'completed';
-export type ActiveTab = 'timer' | 'todos' | 'groups';
-export type OverlayType = 
-  | null 
-  | 'stats' 
-  | 'settings' 
-  | 'profile' 
-  | 'sound' 
-  | 'timer-settings' 
-  | 'task-detail' 
-  | 'friends' 
-  | 'notifications' 
-  | 'groups'
-  | 'command-k'
-  | 'auth';
+export type TimerMode = "pomodoro" | "stopwatch";
+export type TimerState = "idle" | "running" | "paused" | "completed";
+export type ActiveTab = "timer" | "todos" | "groups";
+export type OverlayType =
+  | null
+  | "stats"
+  | "settings"
+  | "profile"
+  | "sound"
+  | "timer-settings"
+  | "task-detail"
+  | "friends"
+  | "notifications"
+  | "groups"
+  | "command-k"
+  | "auth";
 
 export interface User {
   id: string;
@@ -21,7 +21,7 @@ export interface User {
   email: string;
   handle: string;
   avatar: string;
-  provider: 'email' | 'google' | 'guest';
+  provider: "email" | "google" | "guest";
   createdAt?: string;
 }
 
@@ -29,7 +29,7 @@ export interface Task {
   id: string;
   title: string;
   project: string;
-  priority: 'low' | 'medium' | 'high';
+  priority: "low" | "medium" | "high";
   dueDate: string;
   completed: boolean;
   completedAt?: string;
@@ -43,7 +43,7 @@ export interface Friend {
   handle: string;
   avatar: string;
   color: string;
-  status: 'online' | 'focusing' | 'break' | 'offline';
+  status: "online" | "focusing" | "break" | "offline";
   currentTask?: string;
   timerMinutes?: number;
   timerSeconds?: number;
@@ -57,7 +57,7 @@ export interface GroupMember {
   handle: string;
   avatar: string;
   color: string;
-  status: 'focusing' | 'break' | 'idle' | 'offline';
+  status: "focusing" | "break" | "idle" | "offline";
   timerTime: string;
   currentTask: string;
   isUser?: boolean;
@@ -78,10 +78,18 @@ export interface Group {
 export interface SoundTrack {
   id: string;
   name: string;
-  category: 'Nature' | 'Ambient' | 'Noise';
+  category: "Nature" | "Ambient" | "Noise";
   volume: number; // 0 to 100
   isPlaying: boolean;
-  type: 'rain' | 'fireplace' | 'brown' | 'white' | 'pink' | 'ocean' | 'library' | 'cafe';
+  type:
+    | "rain"
+    | "fireplace"
+    | "brown"
+    | "white"
+    | "pink"
+    | "ocean"
+    | "library"
+    | "cafe";
 }
 
 export interface SoundMix {
@@ -102,7 +110,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   time: string;
-  type: 'friend_request' | 'group_invite' | 'timer_complete' | 'system';
+  type: "friend_request" | "group_invite" | "timer_complete" | "system";
   read: boolean;
   actionPayload?: any;
 }
@@ -112,7 +120,8 @@ export interface StatDayData {
   focusMinutes: number;
   stopwatchMinutes: number;
   sessions: number;
-  tasksCompleted: number;
+  tasksCompleted?: number;
+  date?: string;
 }
 
 export interface ProjectStat {

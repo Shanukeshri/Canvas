@@ -105,6 +105,7 @@ interface AppContextType {
   friends: Friend[];
   setFriends: React.Dispatch<React.SetStateAction<Friend[]>>;
   attachedFriendIds: string[];
+  setAttachedFriendIds: React.Dispatch<React.SetStateAction<string[]>>;
   toggleAttachFriend: (friendId: string) => void;
   acceptFriendRequest: (friendId: string) => void;
   declineFriendRequest: (friendId: string) => void;
@@ -1046,6 +1047,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         friends,
         setFriends,
         attachedFriendIds,
+        setAttachedFriendIds,
         toggleAttachFriend,
         acceptFriendRequest,
         declineFriendRequest,

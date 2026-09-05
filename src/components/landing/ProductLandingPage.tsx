@@ -6,46 +6,123 @@ import { useTheme } from '@/context/ThemeContext';
 import {
   Hourglass,
   ArrowRight,
-  ChevronDown,
+  Volume2,
+  Users,
+  LogIn,
+  CheckCircle2,
   Clock,
   Flame,
   CloudRain,
   Radio,
-  LogIn,
+  Sparkles,
+  Check,
+  ListTodo,
+  Waves,
+  Mail,
+  Bell,
+  Calendar,
+  MessageSquare,
+  Zap,
 } from 'lucide-react';
 import clsx from 'clsx';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { AuthModal } from '@/components/auth/AuthModal';
 
 const SEGMENTS = [
   { id: 'hero', name: 'Start' },
-  { id: 'chaos', name: 'Clarity' },
-  { id: 'focus', name: 'One Thing' },
-  { id: 'sound', name: 'Sound' },
-  { id: 'social', name: 'Groups' },
-  { id: 'cta', name: 'Launch' },
+  { id: 'attention', name: 'Clarity' },
+  { id: 'single-task', name: 'One Thing' },
+  { id: 'soundscapes', name: 'Sound' },
+  { id: 'presence', name: 'Groups' },
+  { id: 'launch', name: 'Launch' },
+];
+
+const DISTRACTION_ITEMS = [
+  {
+    id: 'emails',
+    icon: '📧',
+    label: 'Unread emails (42)',
+    className: 'top-2 left-2 sm:left-10',
+    dx: -280,
+    dy: -160,
+    rot: -12,
+  },
+  {
+    id: 'slack',
+    icon: '🔔',
+    label: '@channel urgent announcement',
+    className: 'top-3 right-2 sm:right-10',
+    dx: 290,
+    dy: -170,
+    rot: 10,
+  },
+  {
+    id: 'calendar',
+    icon: '📅',
+    label: 'Meeting starts in 5m',
+    className: 'bottom-4 left-4 sm:left-14',
+    dx: -270,
+    dy: 160,
+    rot: -8,
+  },
+  {
+    id: 'chat',
+    icon: '💬',
+    label: '12 unread direct messages',
+    className: 'bottom-3 right-4 sm:right-12',
+    dx: 300,
+    dy: 150,
+    rot: 14,
+  },
+  {
+    id: 'tabs',
+    icon: '⚡',
+    label: '38 open browser tabs',
+    className: '-top-7 left-1/2 -translate-x-1/2',
+    dx: 0,
+    dy: -200,
+    rot: -3,
+  },
+  {
+    id: 'pr',
+    icon: '🚨',
+    label: 'Review requested on PR #142',
+    className: '-bottom-7 left-1/2 -translate-x-1/2',
+    dx: 0,
+    dy: 200,
+    rot: 4,
+  },
+];
+
+const INITIAL_TODOS = [
+  { id: '1', title: 'Prioritize top high-impact objective', tag: 'Strategy', est: '15m' },
+  { id: '2', title: 'Draft core architecture specification', tag: 'Architecture', est: '30m' },
+  { id: '3', title: 'Conduct calm code review with team', tag: 'Review', est: '20m' },
+  { id: '4', title: 'Deep focus block: Ship canvas core updates', tag: 'Deep Work', est: '45m' },
+];
+
+const SOUNDSCAPES = [
+  { id: 'rain', name: 'Gentle Rain', icon: CloudRain, defaultVol: 65 },
+  { id: 'fire', name: 'Cozy Fireplace', icon: Flame, defaultVol: 40 },
+  { id: 'noise', name: 'Deep Brown Noise', icon: Radio, defaultVol: 25 },
+  { id: 'waves', name: 'Ocean Swell', icon: Waves, defaultVol: 50 },
 ];
 
 export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
   const { theme } = useTheme();
   const { openAuthModal, isAuthenticated, currentUser } = useApp();
-
   const containerRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const chaosRef = useRef<HTMLDivElement>(null);
-  const typographyRef = useRef<HTMLDivElement>(null);
-  const soundRef = useRef<HTMLDivElement>(null);
-  const socialRef = useRef<HTMLDivElement>(null);
-  const ctaRef = useRef<HTMLDivElement>(null);
-
   const [activeSegment, setActiveSegment] = useState<number>(0);
+  const [scrollRatio, setScrollRatio] = useState<number>(0);
 
-  // Soundscape volume preview
+  // Todo interactive checks (manual overrides)
+  const [manualCheckedTodos, setManualCheckedTodos] = useState<{ [id: string]: boolean }>({});
+
+  // Soundscape interactive base sliders
   const [soundVolumes, setSoundVolumes] = useState<{ [key: string]: number }>({
     rain: 65,
     fire: 40,
     noise: 25,
+    waves: 50,
   });
 
   const scrollToSegment = (index: number) => {
@@ -57,93 +134,28 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
     }
   };
 
+  // Continuous passive scroll listener to track scrollRatio smoothly
   useEffect(() => {
-    gsap.registerPlugin(ScrollTrigger);
-
     const container = containerRef.current;
     if (!container) return;
 
-    // Set container as default scroller for GSAP ScrollTrigger
-    ScrollTrigger.defaults({
-      scroller: container,
-    });
+    const onScroll = () => {
+      const height = container.clientHeight || window.innerHeight;
+      if (height > 0) {
+        setScrollRatio(container.scrollTop / height);
+      }
+    };
 
-    const ctx = gsap.context(() => {
-      // 1. Hero Timer entrance animation
-      gsap.from('.hero-timer-box', {
-        scale: 0.82,
-        opacity: 0,
-        duration: 1.3,
-        ease: 'power3.out',
-      });
+    container.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => container.removeEventListener('scroll', onScroll);
+  }, []);
 
-      // 2. Chaos section: tags disperse outward as you scroll into the section
-      gsap.fromTo(
-        '.chaos-tag',
-        {
-          x: 0,
-          opacity: 1,
-          scale: 1,
-        },
-        {
-          scrollTrigger: {
-            trigger: chaosRef.current,
-            start: 'top 75%',
-            end: 'top 15%',
-            scrub: 0.8,
-          },
-          x: (i) => (i % 2 === 0 ? -180 : 180),
-          opacity: 0.35,
-          scale: 0.9,
-          stagger: 0.1,
-        }
-      );
+  // IntersectionObserver for snap segment activation
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-      // 3. Typography words: reveal and rise with scroll
-      gsap.from('.typo-word', {
-        scrollTrigger: {
-          trigger: typographyRef.current,
-          start: 'top 80%',
-          end: 'top 20%',
-          scrub: 0.8,
-        },
-        y: 60,
-        opacity: 0,
-        stagger: 0.2,
-      });
-
-      // 4. Sound bars: dynamically expand with scroll
-      gsap.fromTo(
-        '.sound-bar-fill',
-        { width: '0%' },
-        {
-          scrollTrigger: {
-            trigger: soundRef.current,
-            start: 'top 75%',
-            end: 'top 20%',
-            scrub: 1,
-          },
-          width: (i) => (i === 0 ? '65%' : i === 1 ? '40%' : '25%'),
-          stagger: 0.15,
-        }
-      );
-
-      // 5. Social Presence: bubbles scale up and converge with scroll
-      gsap.from('.social-bubble', {
-        scrollTrigger: {
-          trigger: socialRef.current,
-          start: 'top 85%',
-          end: 'top 25%',
-          scrub: 1,
-        },
-        scale: 0.4,
-        opacity: 0,
-        y: 35,
-        stagger: 0.15,
-      });
-    }, container);
-
-    // Segment active tracking via IntersectionObserver
     const sections = container.querySelectorAll('[data-segment]');
     const observer = new IntersectionObserver(
       (entries) => {
@@ -164,15 +176,10 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
     sections.forEach((sec) => observer.observe(sec));
 
-    // Refresh ScrollTrigger after elements paint
-    ScrollTrigger.refresh();
-
-    return () => {
-      ctx.revert();
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
+  // Keyboard navigation support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
@@ -187,6 +194,55 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeSegment]);
+
+  // ============================================================
+  // Scroll Driven Computations
+  // ============================================================
+
+  // 1. Distractions Dispersal (Segment 1 -> Segment 2)
+  // When scrolling away from segment 1, distractions move outwards away from center
+  const distractionProgress =
+    activeSegment > 1
+      ? 1
+      : activeSegment === 1
+        ? Math.max(0, Math.min(1, (scrollRatio - 1.0) / 0.65))
+        : 0;
+
+  // 2. Todo List Sequential Checking (Segment 2 -> Segment 3)
+  // As we scroll from segment 2, todos get checked one by one
+  const todoScrollRatio =
+    activeSegment > 2
+      ? 1
+      : activeSegment === 2
+        ? Math.max(0, Math.min(1, (scrollRatio - 2.0) / 0.68))
+        : 0;
+
+  const scrollCheckedCount =
+    activeSegment > 2
+      ? INITIAL_TODOS.length
+      : Math.min(INITIAL_TODOS.length, Math.floor(todoScrollRatio * (INITIAL_TODOS.length + 0.4)));
+
+  const toggleTodoManual = (id: string) => {
+    setManualCheckedTodos((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const isTodoCompleted = (id: string, index: number) => {
+    return Boolean(manualCheckedTodos[id] || index < scrollCheckedCount);
+  };
+
+  const totalCompletedTodos = INITIAL_TODOS.filter((t, i) => isTodoCompleted(t.id, i)).length;
+
+  // 3. Soundscapes Maximize (Segment 3 -> Segment 4)
+  // When we scroll away from segment 3, all music sliders scroll to the end (100%)
+  const soundScrollProgress =
+    activeSegment > 3
+      ? 1
+      : activeSegment === 3
+        ? Math.max(0, Math.min(1, (scrollRatio - 3.0) / 0.65))
+        : 0;
 
   return (
     <div
@@ -265,7 +321,6 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       {/* SEGMENT 0: HERO — "Everything can wait." */}
       {/* ============================================================ */}
       <section
-        ref={heroRef}
         data-segment="0"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center relative px-6 text-center overflow-hidden pt-16"
       >
@@ -293,7 +348,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
 
           {/* Focal Timer Anchor */}
           <div
-            className="hero-timer-box mt-10 w-56 h-56 sm:w-60 sm:h-60 rounded-full border-4 flex flex-col items-center justify-center shadow-2xl backdrop-blur-2xl bg-surface-container-low/90 transition-transform hover:scale-105"
+            className="mt-10 w-56 h-56 sm:w-60 sm:h-60 rounded-full border-4 flex flex-col items-center justify-center shadow-2xl backdrop-blur-2xl bg-surface-container-low/90 transition-transform hover:scale-105"
             style={{ borderColor: theme.hex }}
           >
             <span className="font-mono text-5xl font-extrabold text-on-surface tracking-tight">
@@ -310,22 +365,13 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             </div>
           </div>
         </div>
-
-        {/* Snap Down Action */}
-        <button
-          onClick={() => scrollToSegment(1)}
-          className="absolute bottom-6 flex flex-col items-center gap-1 text-xs font-semibold text-outline hover:text-on-surface transition-colors cursor-pointer group"
-        >
-          <span>Scroll to snap through segments</span>
-          <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-        </button>
       </section>
 
       {/* ============================================================ */}
-      {/* SEGMENT 1: CHAOS TO CLARITY (Storytelling Dispersal) */}
+      {/* SEGMENT 1: CHAOS TO CLARITY */}
+      {/* When scrolling away, surrounding distractions move outwards */}
       {/* ============================================================ */}
       <section
-        ref={chaosRef}
         data-segment="1"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center relative px-6 text-center overflow-hidden border-t border-surface-variant/30 pt-16"
       >
@@ -345,33 +391,60 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             There is always something asking for your attention.
           </h2>
 
-          {/* Floating Chaos Badges that disperse on scroll */}
-          <div className="relative w-full max-w-2xl h-56 flex items-center justify-center my-4">
-            <span className="chaos-tag absolute top-2 left-4 sm:left-12 px-4 py-2 rounded-2xl bg-surface-container border border-surface-variant/70 text-xs text-outline shadow-md backdrop-blur-sm">
-              📧 Unread emails (42)
-            </span>
-            <span className="chaos-tag absolute top-4 right-4 sm:right-10 px-4 py-2 rounded-2xl bg-surface-container border border-surface-variant/70 text-xs text-outline shadow-md backdrop-blur-sm">
-              🔔 Slack notification
-            </span>
-            <span className="chaos-tag absolute bottom-4 left-6 sm:left-16 px-4 py-2 rounded-2xl bg-surface-container border border-surface-variant/70 text-xs text-outline shadow-md backdrop-blur-sm">
-              📅 Calendar reminder
-            </span>
-            <span className="chaos-tag absolute bottom-2 right-6 sm:right-14 px-4 py-2 rounded-2xl bg-surface-container border border-surface-variant/70 text-xs text-outline shadow-md backdrop-blur-sm">
-              💬 12 unread messages
-            </span>
+          {/* Clean Segment Visual Showcase with Outward Dispersal Distractions */}
+          <div className="relative w-full max-w-2xl h-64 sm:h-72 flex items-center justify-center my-2">
+            {DISTRACTION_ITEMS.map((item) => (
+              <div
+                key={item.id}
+                className={clsx(
+                  'absolute px-4 py-2.5 rounded-2xl bg-surface-container border border-surface-variant/70 text-xs font-medium text-outline shadow-lg backdrop-blur-md flex items-center gap-2 select-none',
+                  item.className
+                )}
+                style={{
+                  transform: `translate(${distractionProgress * item.dx}px, ${
+                    distractionProgress * item.dy
+                  }px) rotate(${distractionProgress * item.rot}deg) scale(${
+                    1 - distractionProgress * 0.25
+                  })`,
+                  opacity: Math.max(0, 1 - distractionProgress * 1.15),
+                  transition: 'transform 0.1s ease-out, opacity 0.15s ease-out',
+                  pointerEvents: distractionProgress > 0.4 ? 'none' : 'auto',
+                }}
+              >
+                <span className="text-sm">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
 
             {/* Calm Center Focus Island */}
             <div
-              className="w-44 h-44 rounded-full border-2 flex flex-col items-center justify-center bg-surface-container-low shadow-2xl z-10 transition-transform hover:scale-105"
-              style={{ borderColor: theme.hex }}
+              className="w-44 h-44 sm:w-48 sm:h-48 rounded-full border-2 flex flex-col items-center justify-center bg-surface-container-low shadow-2xl z-10 transition-transform duration-300"
+              style={{
+                borderColor: theme.hex,
+                transform: `scale(${1 + distractionProgress * 0.08})`,
+                boxShadow:
+                  distractionProgress > 0.05
+                    ? `0 0 ${distractionProgress * 45}px ${theme.hex}35`
+                    : undefined,
+              }}
             >
-              <span className="font-mono text-3xl font-extrabold text-on-surface">25:00</span>
+              <span className="font-mono text-3xl sm:text-4xl font-extrabold text-on-surface">
+                25:00
+              </span>
               <span
                 className="text-[11px] font-bold mt-1 uppercase tracking-widest"
                 style={{ color: theme.hex }}
               >
                 CALM CANVAS
               </span>
+              {distractionProgress > 0.25 && (
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider mt-1 transition-opacity duration-300"
+                  style={{ color: theme.hex }}
+                >
+                  Clear &amp; Centered
+                </span>
+              )}
             </div>
           </div>
 
@@ -379,88 +452,161 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             You don't have to give it.
           </p>
         </div>
-
-        <button
-          onClick={() => scrollToSegment(2)}
-          className="absolute bottom-6 flex flex-col items-center gap-1 text-xs font-semibold text-outline hover:text-on-surface transition-colors cursor-pointer group"
-        >
-          <span>Single Tasking</span>
-          <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-        </button>
       </section>
 
       {/* ============================================================ */}
-      {/* SEGMENT 2: "ONE THING AT A TIME" (Storytelling Typography) */}
+      {/* SEGMENT 2: "ONE THING AT A TIME" — Todo List Section */}
+      {/* As we scroll from it, the todos get checked sequentially */}
       {/* ============================================================ */}
       <section
-        ref={typographyRef}
         data-segment="2"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center px-6 text-center bg-surface-container-low/40 border-t border-surface-variant/30 relative overflow-hidden pt-16"
       >
-        <div className="flex flex-col items-center gap-6 max-w-4xl z-10">
+        <div className="flex flex-col items-center gap-5 max-w-4xl z-10 w-full">
           <div className="flex flex-col">
-            <span className="typo-word text-5xl sm:text-7xl md:text-8xl font-black font-display text-on-surface tracking-tight">
+            <span className="text-5xl sm:text-7xl md:text-8xl font-black font-display text-on-surface tracking-tight">
               One thing.
             </span>
             <span
-              className="typo-word text-5xl sm:text-7xl md:text-8xl font-black font-display tracking-tight"
+              className="text-5xl sm:text-7xl md:text-8xl font-black font-display tracking-tight"
               style={{ color: theme.hex }}
             >
               At a time.
             </span>
           </div>
 
-          <p className="typo-word text-base sm:text-lg text-outline max-w-xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-outline max-w-xl mx-auto leading-relaxed">
             Your tasks. Your time. Your attention. Kept clean, intentional, and uncluttered.
           </p>
 
-          {/* Minimalist Task Preview Card */}
-          <div className="typo-word w-full max-w-md mt-4 p-5 rounded-3xl bg-surface-container-low border border-surface-variant/60 shadow-xl text-left flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span
-                className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full"
-                style={{ backgroundColor: theme.hex + '20', color: theme.hex }}
-              >
-                Active Priority
-              </span>
-              <span className="text-xs font-mono text-outline flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> 18:40 remaining
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-5 h-5 rounded-md border flex items-center justify-center"
-                style={{ borderColor: theme.hex, color: theme.hex }}
-              >
-                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: theme.hex }} />
+          {/* Interactive Todo List Card (replaces previous single priority card) */}
+          <div className="w-full max-w-lg mt-2 p-5 sm:p-6 rounded-3xl bg-surface-container-low/95 border border-surface-variant/60 shadow-2xl text-left flex flex-col gap-3.5 backdrop-blur-md">
+            {/* Header & Status Indicator */}
+            <div className="flex items-center justify-between pb-3 border-b border-surface-variant/40">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border"
+                  style={{ backgroundColor: theme.hex + '15', borderColor: theme.hex + '35' }}
+                >
+                  <ListTodo className="w-4 h-4" style={{ color: theme.hex }} />
+                </div>
+                <span className="text-xs font-bold text-on-surface tracking-wide">
+                  Today's Single-Task Flow
+                </span>
               </div>
-              <span className="text-sm font-bold text-on-surface">
-                Complete system architecture refactor
-              </span>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-full transition-all"
+                  style={{
+                    backgroundColor:
+                      totalCompletedTodos === INITIAL_TODOS.length
+                        ? theme.hex
+                        : theme.hex + '20',
+                    color: totalCompletedTodos === INITIAL_TODOS.length ? '#ffffff' : theme.hex,
+                  }}
+                >
+                  {totalCompletedTodos} of {INITIAL_TODOS.length} completed
+                </span>
+              </div>
             </div>
-            <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mt-1">
+
+            {/* Todo Progress Bar */}
+            <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
-                style={{ width: '75%', backgroundColor: theme.hex }}
+                className="h-full rounded-full transition-all duration-300 ease-out"
+                style={{
+                  width: `${(totalCompletedTodos / INITIAL_TODOS.length) * 100}%`,
+                  backgroundColor: theme.hex,
+                }}
               />
             </div>
+
+            {/* Todo Items */}
+            <div className="flex flex-col gap-2 pt-1">
+              {INITIAL_TODOS.map((todo, idx) => {
+                const checked = isTodoCompleted(todo.id, idx);
+                return (
+                  <div
+                    key={todo.id}
+                    onClick={() => toggleTodoManual(todo.id)}
+                    className={clsx(
+                      'group p-3 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-3 cursor-pointer select-none',
+                      checked
+                        ? 'bg-surface-container/60 border-surface-variant/40 opacity-75'
+                        : 'bg-surface-container border-surface-variant/70 hover:border-surface-variant shadow-sm hover:scale-[1.01]'
+                    )}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={clsx(
+                          'w-5 h-5 rounded-full flex items-center justify-center transition-all duration-300 shrink-0',
+                          checked
+                            ? 'scale-110 shadow-sm'
+                            : 'border border-outline-variant group-hover:border-primary'
+                        )}
+                        style={{
+                          backgroundColor: checked ? theme.hex : 'transparent',
+                          borderColor: checked ? theme.hex : undefined,
+                        }}
+                      >
+                        {checked && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                      </div>
+
+                      <span
+                        className={clsx(
+                          'text-xs sm:text-sm font-semibold truncate transition-all duration-300',
+                          checked ? 'line-through text-outline' : 'text-on-surface'
+                        )}
+                      >
+                        {todo.title}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border"
+                        style={{
+                          backgroundColor: theme.hex + '10',
+                          borderColor: theme.hex + '25',
+                          color: theme.hex,
+                        }}
+                      >
+                        {todo.tag}
+                      </span>
+                      <span className="text-[11px] font-mono text-outline flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {todo.est}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Completed Celebration Message when all done */}
+            {totalCompletedTodos === INITIAL_TODOS.length && (
+              <div
+                className="mt-1 py-1.5 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all duration-500 animate-in fade-in"
+                style={{
+                  backgroundColor: theme.hex + '15',
+                  borderColor: theme.hex + '35',
+                  color: theme.hex,
+                }}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>All tasks completed • Mind at ease</span>
+              </div>
+            )}
           </div>
         </div>
-
-        <button
-          onClick={() => scrollToSegment(3)}
-          className="absolute bottom-6 flex flex-col items-center gap-1 text-xs font-semibold text-outline hover:text-on-surface transition-colors cursor-pointer group"
-        >
-          <span>Soundscapes</span>
-          <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-        </button>
       </section>
 
       {/* ============================================================ */}
-      {/* SEGMENT 3: ATMOSPHERIC SOUNDSCAPES (Storytelling Sound Wave) */}
+      {/* SEGMENT 3: ATMOSPHERIC SOUNDSCAPES */}
+      {/* When we scroll away from it, all music sliders scroll to end */}
       {/* ============================================================ */}
       <section
-        ref={soundRef}
         data-segment="3"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center px-6 text-center border-t border-surface-variant/30 relative overflow-hidden pt-16"
       >
@@ -475,18 +621,31 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
           >
             Atmospheric Soundscapes
           </span>
-          <h2 className="text-3xl sm:text-5xl font-bold font-display text-on-surface mb-8">
+          <h2 className="text-3xl sm:text-5xl font-bold font-display text-on-surface mb-6">
             Find your frequency.
           </h2>
 
-          <div className="w-full flex flex-col gap-3.5">
-            {[
-              { id: 'rain', name: 'Gentle Rain', icon: CloudRain, defaultVol: 65 },
-              { id: 'fire', name: 'Cozy Fireplace', icon: Flame, defaultVol: 40 },
-              { id: 'noise', name: 'Deep Brown Noise', icon: Radio, defaultVol: 25 },
-            ].map((s) => {
+          {soundScrollProgress >= 0.95 && (
+            <div
+              className="mb-4 px-3.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 border animate-in fade-in duration-300"
+              style={{
+                backgroundColor: theme.hex + '15',
+                borderColor: theme.hex + '35',
+                color: theme.hex,
+              }}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Full immersion reached • 100% Resonance</span>
+            </div>
+          )}
+
+          <div className="w-full flex flex-col gap-3">
+            {SOUNDSCAPES.map((s) => {
               const Icon = s.icon;
-              const vol = soundVolumes[s.id] ?? s.defaultVol;
+              const baseVol = soundVolumes[s.id] ?? s.defaultVol;
+              // Smoothly scroll to 100% (the end) as the user scrolls away from this segment
+              const displayVol = Math.round(baseVol + (100 - baseVol) * soundScrollProgress);
+
               return (
                 <div
                   key={s.id}
@@ -497,14 +656,27 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
                       <Icon className="w-4 h-4" style={{ color: theme.hex }} />
                       <span>{s.name}</span>
                     </div>
-                    <span className="font-mono text-xs font-bold" style={{ color: theme.hex }}>
-                      {vol}%
+                    <span
+                      className="font-mono text-xs font-bold transition-all duration-150"
+                      style={{ color: theme.hex }}
+                    >
+                      {displayVol}%
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                    <div
-                      className="sound-bar-fill h-full rounded-full transition-all"
-                      style={{ backgroundColor: theme.hex }}
+                  <div className="relative flex items-center">
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={displayVol}
+                      onChange={(e) =>
+                        setSoundVolumes((prev) => ({
+                          ...prev,
+                          [s.id]: Number(e.target.value),
+                        }))
+                      }
+                      className="w-full h-1.5 bg-surface-container rounded-lg appearance-none cursor-pointer transition-all duration-150"
+                      style={{ accentColor: theme.hex }}
                     />
                   </div>
                 </div>
@@ -512,21 +684,12 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             })}
           </div>
         </div>
-
-        <button
-          onClick={() => scrollToSegment(4)}
-          className="absolute bottom-6 flex flex-col items-center gap-1 text-xs font-semibold text-outline hover:text-on-surface transition-colors cursor-pointer group"
-        >
-          <span>Shared Focus Groups</span>
-          <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-        </button>
       </section>
 
       {/* ============================================================ */}
-      {/* SEGMENT 4: SHARED FOCUS GROUPS (Storytelling Bubble Convergence) */}
+      {/* SEGMENT 4: SHARED FOCUS GROUPS */}
       {/* ============================================================ */}
       <section
-        ref={socialRef}
         data-segment="4"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center px-6 text-center bg-surface-container-low/40 border-t border-surface-variant/30 relative overflow-hidden pt-16"
       >
@@ -549,7 +712,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             accountability.
           </p>
 
-          {/* Member orbital bubbles demonstration with storytelling convergence */}
+          {/* Member orbital bubbles demonstration */}
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 max-w-2xl">
             {[
               { name: 'Sarah', avatar: '👩🏻‍💻', color: '#9333ea', timer: '18:42 FOCUS' },
@@ -558,7 +721,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             ].map((m, idx) => (
               <div
                 key={idx}
-                className="social-bubble p-4 rounded-3xl bg-surface-container-low border border-surface-variant/60 flex items-center gap-3.5 shadow-xl transition-transform hover:scale-105"
+                className="p-4 rounded-3xl bg-surface-container-low border border-surface-variant/60 flex items-center gap-3.5 shadow-xl transition-transform hover:scale-105"
               >
                 <div
                   className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-bold shadow-sm"
@@ -576,21 +739,12 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
             ))}
           </div>
         </div>
-
-        <button
-          onClick={() => scrollToSegment(5)}
-          className="absolute bottom-6 flex flex-col items-center gap-1 text-xs font-semibold text-outline hover:text-on-surface transition-colors cursor-pointer group"
-        >
-          <span>Launch Canvas</span>
-          <ChevronDown className="w-4 h-4 group-hover:translate-y-1 transition-transform" />
-        </button>
       </section>
 
       {/* ============================================================ */}
       {/* SEGMENT 5: LAUNCH CANVAS (FINAL CTA) */}
       {/* ============================================================ */}
       <section
-        ref={ctaRef}
         data-segment="5"
         className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center px-6 text-center border-t border-surface-variant/30 relative overflow-hidden pt-16"
       >
