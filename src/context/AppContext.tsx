@@ -173,7 +173,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { setTheme, setCustomColor, presetThemes } = useTheme();
+  const { setTheme, setCustomColor, setIsDarkMode, presetThemes } = useTheme();
 
   // Navigation & Overlays
   const [activeTab, setActiveTab] = useState<ActiveTab>('timer');
@@ -275,6 +275,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (prefs.shortBreakMinutes) setShortBreakMinutes(prefs.shortBreakMinutes);
             if (prefs.longBreakMinutes) setLongBreakMinutes(prefs.longBreakMinutes);
             if (prefs.targetSessions) setTargetSessions(prefs.targetSessions);
+            // Restore dark mode preference from DB
+            if (typeof prefs.isDarkMode === 'boolean') setIsDarkMode(prefs.isDarkMode);
+            // Restore timer mode from DB
+            if (prefs.timerMode === 'stopwatch') {
+              const durationMins = 0;
+              const initial = createInitialTimerState('stopwatch', 'focus', durationMins);
+              setEngineState(initial);
+              setRemainingSeconds(0);
+            }
           } catch {}
         }
         if (typeof window !== 'undefined') {
