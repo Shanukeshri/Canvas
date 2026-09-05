@@ -37,3 +37,8 @@ next-env.d.ts
 .DS_Store
 *.pem
 *.db
+*.db-journal
+*.sqlite
+*.sqlite3
+prisma/*.db
+prisma/*.db-journal
