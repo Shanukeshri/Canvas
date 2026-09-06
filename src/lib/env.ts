@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().default('file:./dev.db'),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().optional(),
   REDIS_URL: z.string().optional(),
   AUTH_SECRET: z.string().default('zen-productivity-secret-key-development-32-chars-long!'),
@@ -14,7 +14,7 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse({
-  DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db',
+  DATABASE_URL: process.env.DATABASE_URL || '',
   DIRECT_URL: process.env.DIRECT_URL,
   REDIS_URL: process.env.REDIS_URL,
   AUTH_SECRET: process.env.AUTH_SECRET || 'zen-productivity-secret-key-development-32-chars-long!',
