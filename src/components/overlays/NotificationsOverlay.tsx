@@ -37,6 +37,7 @@ export function NotificationsOverlay() {
     setAttachedFriendIds,
     attachFriend,
     setFriends,
+    acceptGroupInvitation,
   } = useApp();
   const { theme } = useTheme();
 
@@ -85,6 +86,19 @@ export function NotificationsOverlay() {
   const handleAction = async (notif: (typeof notifications)[0]) => {
     markNotificationRead(notif.id);
     if (notif.type === 'group_invite') {
+      const groupId = notif.actionPayload?.groupId;
+      const invitee = {
+        id: notif.actionPayload?.inviteeId || currentUser?.id,
+        name: notif.actionPayload?.inviteeName || currentUser?.name || 'Member',
+        handle: notif.actionPayload?.inviteeHandle || currentUser?.handle || '@member',
+        avatar: notif.actionPayload?.inviteeAvatar || currentUser?.avatar || '🦊',
+        color: notif.actionPayload?.inviteeColor || currentUser?.themeColor || '#6366f1',
+      };
+
+      if (groupId) {
+        acceptGroupInvitation(groupId, invitee);
+      }
+
       if (notif.actionPayload?.invitationId && currentUser) {
         try {
           await acceptGroupInvitationAction(currentUser.id, notif.actionPayload.invitationId);
@@ -92,10 +106,6 @@ export function NotificationsOverlay() {
           console.warn('Accept group invitation error:', e);
         }
       }
-      if (notif.actionPayload?.groupId) {
-        setActiveGroupId(notif.actionPayload.groupId);
-      }
-      setActiveTab('groups');
       closeOverlay();
     } else if (notif.type === 'friend_request') {
       const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
@@ -300,7 +310,7 @@ export function NotificationsOverlay() {
                           className="px-3 py-1 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity"
                           style={{ backgroundColor: theme.hex }}
                         >
-                          Join Focus Group <ArrowRight className="w-3 h-3" />
+                          <Check className="w-3 h-3" /> Accept & Join Room
                         </button>
                         <button
                           onClick={(e) => {

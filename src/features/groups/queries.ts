@@ -46,10 +46,11 @@ export async function getUserGroups(userId: string): Promise<Group[]> {
       handle: mem.user.handle,
       avatar: mem.user.avatar,
       color: mem.user.themeColor || '#6366f1',
-      status: 'focusing',
+      status: mem.user.id === userId ? 'focusing' : 'offline',
       timerTime: '25:00',
-      currentTask: 'Deep focus work',
+      currentTask: mem.user.id === userId ? 'Deep focus work' : 'Offline',
       isUser: mem.user.id === userId,
+      isConnected: mem.user.id === userId,
     }));
 
     const tasks: Task[] = g.tasks.map((t) => ({

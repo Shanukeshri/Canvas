@@ -60,7 +60,7 @@ export function ZenTodoListBoard({
   defaultProject,
   hideHeader = false,
 }: ZenTodoListBoardProps) {
-  const { setOverlay, setSelectedTaskDetail, setSelectedTask, setActiveTab } = useApp();
+  const { setOverlay, setSelectedTaskDetail, setSelectedTask, setActiveTab, groups, setActiveGroupId } = useApp();
 
   // UI state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -803,9 +803,23 @@ export function ZenTodoListBoard({
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedTask(task);
-                                    setActiveTab('timer');
+                                    if (isGroupMode) {
+                                      setActiveTab('groups');
+                                    } else {
+                                      const matchingGroup = groups.find(
+                                        (g) =>
+                                          g.tasks.some((t) => t.id === task.id) ||
+                                          (task.project && g.name.toLowerCase() === task.project.toLowerCase())
+                                      );
+                                      if (matchingGroup) {
+                                        setActiveGroupId(matchingGroup.id);
+                                        setActiveTab('groups');
+                                      } else {
+                                        setActiveTab('timer');
+                                      }
+                                    }
                                   }}
-                                  title="Focus in Timer"
+                                  title={isGroupMode ? "Focus in Group Timer" : "Focus in Timer"}
                                   className="p-1 text-primary/80 hover:text-primary hover:scale-110 rounded-lg hover:bg-surface-container/60 transition-all"
                                 >
                                   <ArrowRight className="w-3.5 h-3.5" />

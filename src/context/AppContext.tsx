@@ -39,6 +39,7 @@ import {
   createGroupAction,
   joinGroupByCodeAction,
   leaveGroupAction,
+  inviteFriendToGroupAction,
 } from '@/features/groups/actions';
 import {
   acceptFriendRequestAction,
@@ -132,6 +133,8 @@ interface AppContextType {
   leaveGroup: (groupId: string) => void;
   joinGroup: (code: string) => boolean;
   generateGroupCode: () => string;
+  inviteMemberToGroup: (groupId: string, member: { id?: string; name: string; handle?: string; avatar?: string; color?: string }) => void;
+  acceptGroupInvitation: (groupId: string, memberData?: Partial<GroupMember>) => void;
 
   // Sound Mixer State
   sounds: SoundTrack[];
@@ -1020,8 +1023,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           timerTime: '25:00',
           currentTask: 'Focusing in room',
           isUser: true,
+          isConnected: true,
         },
       ],
+      pendingInvites: [],
       tasks: [],
     };
 
@@ -1061,6 +1066,155 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser) {
       leaveGroupAction(currentUser.id, groupId).catch((e) => console.error(e));
     }
+  };
+
+  const inviteMemberToGroup = (
+    groupId: string,
+    member: { id?: string; name: string; handle?: string; avatar?: string; color?: string }
+  ) => {
+    const inviteeId = member.id || `member-${Date.now()}`;
+    const cleanHandle = member.handle || `@${member.name.toLowerCase().replace(/\s+/g, '')}`;
+    const cleanAvatar = member.avatar || '🦊';
+    const cleanColor = member.color || '#6366f1';
+
+    const targetGroup = groups.find((g) => g.id === groupId);
+    const groupName = targetGroup?.name || 'Focus Group';
+
+    const invitationItem = {
+      id: inviteeId,
+      name: member.name,
+      handle: cleanHandle,
+      avatar: cleanAvatar,
+      color: cleanColor,
+      invitedAt: Date.now(),
+    };
+
+    // 1. Add to pendingInvites ONLY - DO NOT add to group.members yet
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const currentPending = g.pendingInvites || [];
+        if (currentPending.some((p) => p.id === inviteeId || p.handle === cleanHandle)) {
+          return g;
+        }
+        return {
+          ...g,
+          pendingInvites: [...currentPending, invitationItem],
+        };
+      })
+    );
+
+    // 2. Create notification item
+    const notifId = `ginvite-${Date.now()}`;
+    const inviteNotification: NotificationItem = {
+      id: notifId,
+      title: 'Group Room Invitation',
+      message: `${currentUser?.name || 'You'} invited ${member.name} to join "${groupName}".`,
+      time: 'Just now',
+      read: false,
+      type: 'group_invite',
+      actionPayload: {
+        invitationId: notifId,
+        groupId,
+        groupName,
+        inviterId: currentUser?.id || 'host',
+        inviterName: currentUser?.name || 'Peer',
+        inviterAvatar: currentUser?.avatar || '🦊',
+        inviterColor: currentUser?.themeColor || '#6366f1',
+        inviteeId,
+        inviteeName: member.name,
+        inviteeHandle: cleanHandle,
+        inviteeAvatar: cleanAvatar,
+        inviteeColor: cleanColor,
+      },
+    };
+
+    setNotifications((prev) => [inviteNotification, ...prev]);
+
+    // 3. Broadcast notification
+    tabSync.publish({
+      type: 'GROUP_INVITE_SYNC',
+      payload: inviteNotification,
+      receiverId: inviteeId,
+      userId: currentUser?.id || 'guest',
+    });
+
+    try {
+      const socket = getSocket(currentUser?.id || 'guest');
+      socket.emit('cowork:request', {
+        senderId: currentUser?.id || 'host',
+        senderName: currentUser?.name || 'Peer',
+        senderAvatar: currentUser?.avatar || '🦊',
+        senderColor: currentUser?.themeColor || '#6366f1',
+        receiverId: inviteeId,
+      });
+    } catch {}
+
+    if (currentUser && member.id && !member.id.startsWith('member-') && !member.id.startsWith('invited-')) {
+      inviteFriendToGroupAction(currentUser.id, groupId, member.id).catch(() => {});
+    }
+  };
+
+  const acceptGroupInvitation = (groupId: string, memberData?: Partial<GroupMember>) => {
+    const memberId = memberData?.id || currentUser?.id || `user-${Date.now()}`;
+    const memberName = memberData?.name || currentUser?.name || 'Peer';
+    const memberHandle = memberData?.handle || currentUser?.handle || `@${memberName.toLowerCase().replace(/\s+/g, '')}`;
+    const memberAvatar = memberData?.avatar || currentUser?.avatar || '🦊';
+    const memberColor = memberData?.color || currentUser?.themeColor || '#6366f1';
+
+    const newMember: GroupMember = {
+      id: memberId,
+      name: memberName,
+      handle: memberHandle,
+      avatar: memberAvatar,
+      color: memberColor,
+      status: 'focusing',
+      timerTime: '25:00',
+      currentTask: 'Focusing with group',
+      isUser: memberId === (currentUser?.id || 'user-self'),
+      isConnected: true, // Mark connected upon accepting!
+    };
+
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const filteredPending = (g.pendingInvites || []).filter(
+          (p) => p.id !== memberId && p.handle !== memberHandle
+        );
+        if (g.members.some((m) => m.id === memberId)) {
+          return {
+            ...g,
+            members: g.members.map((m) =>
+              m.id === memberId ? { ...m, isConnected: true, status: 'focusing' } : m
+            ),
+            pendingInvites: filteredPending,
+          };
+        }
+        return {
+          ...g,
+          members: [...g.members, newMember],
+          activeCount: g.members.length + 1,
+          pendingInvites: filteredPending,
+        };
+      })
+    );
+
+    setActiveGroupId(groupId);
+    setActiveTab('groups');
+
+    tabSync.publish({
+      type: 'GROUP_MEMBER_JOINED_SYNC',
+      payload: { groupId, member: newMember },
+      userId: memberId,
+    });
+
+    try {
+      const socket = getSocket(currentUser?.id || 'guest');
+      socket.emit('group:join', {
+        groupId,
+        user: newMember,
+      });
+    } catch {}
   };
 
   const joinGroup = (code: string): boolean => {
@@ -1312,6 +1466,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         leaveGroup,
         joinGroup,
         generateGroupCode,
+        inviteMemberToGroup,
+        acceptGroupInvitation,
         sounds,
         setSoundVolume,
         toggleSoundPlay,

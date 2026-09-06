@@ -11,8 +11,11 @@ import {
   ArrowLeftRight,
   PanelRightClose,
   PanelRightOpen,
+  UserPlus,
+  X,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { GroupInviteModal } from './GroupInviteModal';
 
 export function ZenGroupsPage() {
   const {
@@ -25,6 +28,8 @@ export function ZenGroupsPage() {
     reorderGroupTasks,
     addGroupCustomList,
     deleteGroupCustomList,
+    selectedTask,
+    setSelectedTask,
     timerState,
     timerMode,
     remainingSeconds,
@@ -43,6 +48,9 @@ export function ZenGroupsPage() {
 
   // Collapsible right todo list panel state
   const [isTodoListOpen, setIsTodoListOpen] = useState(true);
+
+  // Group Invite Modal state
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
   // Find active group or default to first group
   const currentGroup = groups.find((g) => g.id === activeGroupId) || groups[0];
@@ -117,8 +125,9 @@ export function ZenGroupsPage() {
   }
 
   // Convert other group members to Friend items for OrbitBubbles
+  // ONLY show when they are actually connected from the other side!
   const groupFriends: Friend[] = (currentGroup.members || [])
-    .filter((m) => !m.isUser)
+    .filter((m) => !m.isUser && m.isConnected === true && m.status !== 'offline')
     .map((m) => {
       const parts = m.timerTime?.split(':') || ['25', '00'];
       const mins = parseInt(parts[0], 10) || 25;
@@ -144,8 +153,8 @@ export function ZenGroupsPage() {
     <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
       {/* ================= PART 1: TIMER PART (Clean, No Top Heading) ================= */}
       <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
-        {/* Floating Quick Action: Switch Group (Top Left) */}
-        <div className="absolute top-5 left-6 z-30">
+        {/* Floating Quick Actions: Switch Group & Invite (Top Left) */}
+        <div className="absolute top-5 left-6 z-30 flex items-center gap-2">
           <button
             onClick={() => setOverlay('groups')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-high/80 hover:bg-surface-container backdrop-blur-md border border-outline-variant text-xs font-semibold text-primary transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
@@ -154,6 +163,35 @@ export function ZenGroupsPage() {
             <ArrowLeftRight className="w-3.5 h-3.5 text-primary" />
             <span>Switch Group</span>
           </button>
+
+          <button
+            onClick={() => setIsInviteModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 backdrop-blur-md border border-primary/30 text-xs font-semibold text-primary transition-all shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+            title="Invite others to this group"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-primary" />
+            <span>Invite</span>
+          </button>
+
+          {/* Connected Peers Status */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-high/60 backdrop-blur-md border border-outline-variant/60 text-xs text-on-surface-variant font-medium">
+            <span
+              className={clsx(
+                'w-2 h-2 rounded-full',
+                groupFriends.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-outline/60'
+              )}
+            />
+            <span>
+              {groupFriends.length > 0
+                ? `${groupFriends.length + 1} connected`
+                : '1 in room'}
+            </span>
+            {Boolean(currentGroup.pendingInvites?.length) && (
+              <span className="text-[10px] text-amber-500 font-semibold ml-1 px-1.5 py-0.5 rounded-md bg-amber-500/10">
+                {currentGroup.pendingInvites?.length} pending
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Floating Quick Action: Open Sidebar (Top Right, when collapsed) */}
@@ -175,6 +213,32 @@ export function ZenGroupsPage() {
             </button>
           </div>
         )}
+
+        {/* Focus Task Heading / Active Task in Group */}
+        <div className="absolute top-[calc((50vh-170px)/2)] lg:top-[calc((50vh-210px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-20 pointer-events-auto w-full max-w-lg px-4 flex flex-col items-center gap-0.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-center gap-2 max-w-full">
+            <span
+              className="font-body-lg text-sm md:text-base font-semibold tracking-wide truncate block"
+              style={{ color: 'var(--primary)' }}
+              title={selectedTask ? selectedTask.title : currentGroup.name}
+            >
+              {selectedTask ? selectedTask.title : currentGroup.name}
+            </span>
+            {selectedTask && (
+              <button
+                type="button"
+                onClick={() => setSelectedTask(null)}
+                className="p-1 rounded-lg text-outline hover:text-primary hover:bg-surface-container/60 transition-colors"
+                title="Clear active task"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          <span className="text-[11px] text-on-surface-variant font-medium">
+            {selectedTask ? `Group Task • ${currentGroup.name}` : 'Group Deep Focus Room'}
+          </span>
+        </div>
 
         {/* Main Immersive Canvas Area */}
         <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4 md:p-6">
@@ -319,6 +383,13 @@ export function ZenGroupsPage() {
           />
         </div>
       </section>
+
+      {/* Group Invite Modal */}
+      <GroupInviteModal
+        group={currentGroup}
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+      />
     </div>
   );
 }

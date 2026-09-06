@@ -71,6 +71,16 @@ export interface GroupMember {
   timerTime: string;
   currentTask: string;
   isUser?: boolean;
+  isConnected?: boolean;
+}
+
+export interface GroupPendingInvite {
+  id: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  color: string;
+  invitedAt: number;
 }
 
 export interface Group {
@@ -80,6 +90,7 @@ export interface Group {
   description: string;
   category: string;
   members: GroupMember[];
+  pendingInvites?: GroupPendingInvite[];
   tasks: Task[];
   customLists?: string[];
   activeCount: number;

@@ -371,6 +371,66 @@ export function useRealtime() {
         );
       };
 
+      // Group member joined (connected from other side)
+      const handleGroupMemberJoined = (payload: { groupId: string; member: any }) => {
+        if (!payload?.groupId || !payload?.member) return;
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id !== payload.groupId) return g;
+            const exists = g.members.some((m) => m.id === payload.member.id);
+            if (exists) {
+              return {
+                ...g,
+                members: g.members.map((m) =>
+                  m.id === payload.member.id ? { ...m, ...payload.member, isConnected: true } : m
+                ),
+              };
+            }
+            return {
+              ...g,
+              members: [...g.members, { ...payload.member, isConnected: true }],
+              activeCount: g.members.length + 1,
+            };
+          })
+        );
+      };
+
+      // Group member left / disconnected
+      const handleGroupMemberLeft = (payload: { groupId: string; userId: string }) => {
+        if (!payload?.groupId || !payload?.userId) return;
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id !== payload.groupId) return g;
+            return {
+              ...g,
+              members: g.members.map((m) =>
+                m.id === payload.userId ? { ...m, isConnected: false, status: 'offline' } : m
+              ),
+            };
+          })
+        );
+      };
+
+      // Presence update to strictly synchronize whether peers are connected
+      const handlePresenceUpdate = (payload: { onlineUserIds: string[] }) => {
+        if (!payload?.onlineUserIds) return;
+        const onlineSet = new Set(payload.onlineUserIds);
+        setGroups((prev) =>
+          prev.map((g) => ({
+            ...g,
+            members: g.members.map((m) => {
+              if (m.isUser) return { ...m, isConnected: true };
+              const isOnline = onlineSet.has(m.id);
+              return {
+                ...m,
+                isConnected: isOnline,
+                status: isOnline ? (m.status === 'offline' ? 'focusing' : m.status) : 'offline',
+              };
+            }),
+          }))
+        );
+      };
+
       socket.on('timer:state_synced', handleTimerStateSynced);
       socket.on('timer:event_synced', handleTimerStateSynced);
       socket.on('timer:state_requested', handleTimerStateRequested);
@@ -379,6 +439,9 @@ export function useRealtime() {
       socket.on('cowork:disconnected', handleCoworkDisconnected);
       socket.on('friend:request_received', handleFriendRequestReceived);
       socket.on('user:color_changed', handleUserColorChanged);
+      socket.on('group:member_joined', handleGroupMemberJoined);
+      socket.on('group:member_left', handleGroupMemberLeft);
+      socket.on('presence:update', handlePresenceUpdate);
 
       // Multi-tab channel fallback for multi-user local testing
       unsubTab = tabSync.subscribe((msg) => {
@@ -407,6 +470,17 @@ export function useRealtime() {
               sender: msg.payload.sender,
             });
           }
+        } else if (msg.type === 'GROUP_INVITE_SYNC') {
+          if (!currentUser || msg.receiverId === currentUser.id || !msg.receiverId) {
+            setNotifications((prev) => {
+              if (prev.some((n) => n.id === msg.payload.id)) return prev;
+              return [msg.payload, ...prev];
+            });
+          }
+        } else if (msg.type === 'GROUP_MEMBER_JOINED_SYNC') {
+          handleGroupMemberJoined(msg.payload);
+        } else if (msg.type === 'GROUP_MEMBER_DISCONNECTED_SYNC') {
+          handleGroupMemberLeft(msg.payload);
         }
       });
     } catch (err) {
@@ -460,6 +534,9 @@ export function useRealtime() {
           socket.off('cowork:disconnected');
           socket.off('friend:request_received');
           socket.off('user:color_changed');
+          socket.off('group:member_joined');
+          socket.off('group:member_left');
+          socket.off('presence:update');
         } catch {}
       }
     };

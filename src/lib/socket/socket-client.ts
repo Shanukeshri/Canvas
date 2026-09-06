@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
 import { ClientToServerEvents, ServerToClientEvents } from '@/types/socket';
-import { env } from '@/lib/env';
 
 let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 
@@ -10,9 +9,10 @@ export function getSocket(userId?: string): Socket<ServerToClientEvents, ClientT
   }
 
   // Derive target URL: default to env or localhost:3002
+  const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
   const targetUrl =
-    env.NEXT_PUBLIC_SOCKET_URL && !env.NEXT_PUBLIC_SOCKET_URL.includes(':3000')
-      ? env.NEXT_PUBLIC_SOCKET_URL
+    socketUrl && !socketUrl.includes(':3000')
+      ? socketUrl
       : `${window.location.protocol}//${window.location.hostname}:3002`;
 
   if (!socket) {

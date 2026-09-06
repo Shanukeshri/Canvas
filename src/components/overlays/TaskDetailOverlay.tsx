@@ -25,6 +25,9 @@ export function TaskDetailOverlay() {
     toggleTaskComplete,
     setSelectedTask,
     setActiveTab,
+    activeTab,
+    groups,
+    setActiveGroupId,
   } = useApp();
 
   const [title, setTitle] = useState('');
@@ -69,7 +72,29 @@ export function TaskDetailOverlay() {
     };
     updateTask(updated);
     setSelectedTask(updated);
-    setActiveTab('timer');
+
+    const isGroupTask =
+      activeTab === 'groups' ||
+      groups.some(
+        (g) =>
+          g.tasks.some((t) => t.id === selectedTaskDetail.id) ||
+          (project && g.name.toLowerCase() === project.toLowerCase())
+      );
+
+    if (isGroupTask) {
+      const match = groups.find(
+        (g) =>
+          g.tasks.some((t) => t.id === selectedTaskDetail.id) ||
+          (project && g.name.toLowerCase() === project.toLowerCase())
+      );
+      if (match) {
+        setActiveGroupId(match.id);
+      }
+      setActiveTab('groups');
+    } else {
+      setActiveTab('timer');
+    }
+
     closeOverlay();
   };
 
