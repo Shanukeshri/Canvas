@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { ZenTodoListBoard } from './ZenTodoListBoard';
+import { CanvasTodoListBoard } from './ZenTodoListBoard';
 
-export function ZenTodosPage() {
+export function CanvasTodosPage() {
   const {
     tasks,
     addTask,
@@ -17,7 +17,9 @@ export function ZenTodosPage() {
   const [customLists, setCustomLists] = useState<string[]>(() => {
     if (typeof window !== 'undefined' && currentUser?.id) {
       try {
-        const saved = localStorage.getItem(`zen_custom_lists_${currentUser.id}`);
+        const saved =
+          localStorage.getItem(`canvas_custom_lists_${currentUser.id}`) ||
+          localStorage.getItem(`zen_custom_lists_${currentUser.id}`);
         if (saved) return JSON.parse(saved);
       } catch {}
     }
@@ -33,7 +35,7 @@ export function ZenTodosPage() {
     setCustomLists((prev) => {
       const merged = Array.from(new Set([...prev, ...uniqueProjects]));
       if (merged.length !== prev.length && currentUser?.id && typeof window !== 'undefined') {
-        localStorage.setItem(`zen_custom_lists_${currentUser.id}`, JSON.stringify(merged));
+        localStorage.setItem(`canvas_custom_lists_${currentUser.id}`, JSON.stringify(merged));
       }
       return merged;
     });
@@ -46,7 +48,7 @@ export function ZenTodosPage() {
       setCustomLists((prev) => {
         const next = [...prev, trimmed];
         if (currentUser?.id && typeof window !== 'undefined') {
-          localStorage.setItem(`zen_custom_lists_${currentUser.id}`, JSON.stringify(next));
+          localStorage.setItem(`canvas_custom_lists_${currentUser.id}`, JSON.stringify(next));
         }
         return next;
       });
@@ -57,15 +59,15 @@ export function ZenTodosPage() {
     setCustomLists((prev) => {
       const next = prev.filter((l) => l !== name);
       if (currentUser?.id && typeof window !== 'undefined') {
-        localStorage.setItem(`zen_custom_lists_${currentUser.id}`, JSON.stringify(next));
+        localStorage.setItem(`canvas_custom_lists_${currentUser.id}`, JSON.stringify(next));
       }
       return next;
     });
   };
 
   return (
-    <div className="flex-1 h-screen flex flex-col overflow-hidden bg-zen-bg select-none">
-      <ZenTodoListBoard
+    <div className="flex-1 h-screen flex flex-col overflow-hidden bg-canvas-bg select-none">
+      <CanvasTodoListBoard
         title="Task Overview"
         tasks={tasks}
         onAddTask={addTask}
@@ -80,3 +82,5 @@ export function ZenTodosPage() {
     </div>
   );
 }
+
+export { CanvasTodosPage as ZenTodosPage };

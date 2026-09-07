@@ -27,7 +27,7 @@ export interface ColumnDef {
   isCustom?: boolean;
 }
 
-export interface ZenTodoListBoardProps {
+export interface CanvasTodoListBoardProps {
   title?: string;
   tasks: Task[];
   onAddTask: (task: Omit<Task, 'id'>) => void;
@@ -44,7 +44,9 @@ export interface ZenTodoListBoardProps {
   hideHeader?: boolean;
 }
 
-export function ZenTodoListBoard({
+export type ZenTodoListBoardProps = CanvasTodoListBoardProps;
+
+export function CanvasTodoListBoard({
   title = 'Task Overview',
   tasks,
   onAddTask,
@@ -59,7 +61,7 @@ export function ZenTodoListBoard({
   headerRightContent,
   defaultProject,
   hideHeader = false,
-}: ZenTodoListBoardProps) {
+}: CanvasTodoListBoardProps) {
   const { setOverlay, setSelectedTaskDetail, setSelectedTask, setActiveTab, groups, setActiveGroupId } = useApp();
 
   // UI state
@@ -154,10 +156,12 @@ export function ZenTodoListBoard({
     const handleQuickAdd = () => {
       setActiveInlineCol('today');
     };
+    window.addEventListener('canvas:quick-add-task', handleQuickAdd);
     window.addEventListener('zen:quick-add-task', handleQuickAdd);
 
     return () => {
       container.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('canvas:quick-add-task', handleQuickAdd);
       window.removeEventListener('zen:quick-add-task', handleQuickAdd);
     };
   }, [compactMode]);
@@ -1032,3 +1036,5 @@ export function ZenTodoListBoard({
     </div>
   );
 }
+
+export { CanvasTodoListBoard as ZenTodoListBoard };

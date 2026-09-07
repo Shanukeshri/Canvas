@@ -326,7 +326,7 @@ export function ProfileOverlay() {
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold text-on-surface">
-                      {currentUser.provider === 'google' ? 'Google Account' : 'Zen Account'}
+                      {currentUser.provider === 'google' ? 'Google Account' : 'Canvas Account'}
                     </span>
                     <span
                       className="px-1.5 py-0.5 rounded-full text-[9px] font-mono uppercase font-bold"
@@ -424,6 +424,7 @@ export function ProfileOverlay() {
                   };
                   setCurrentUser(updated);
                   if (typeof window !== 'undefined') {
+                    localStorage.setItem('canvas_current_user_v1', JSON.stringify(updated));
                     localStorage.setItem('zen_current_user_v1', JSON.stringify(updated));
                   }
                   try {

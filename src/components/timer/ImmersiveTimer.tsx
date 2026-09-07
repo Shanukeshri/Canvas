@@ -83,7 +83,7 @@ export function ImmersiveTimer() {
 
   return (
     <main className="flex-1 h-screen w-full relative bg-surface select-none overflow-hidden flex items-center justify-center p-6 md:p-8">
-      {/* Floating & Repelling Circular Friend Timers Layer (Zen Minimalist) */}
+      {/* Floating & Repelling Circular Friend Timers Layer (Canvas Minimalist) */}
       <OrbitBubbles attachedFriends={attachedFriends} />
 
       {/* Focus Task Heading */}
@@ -96,7 +96,7 @@ export function ImmersiveTimer() {
         </span>
       </div>
 
-      {/* Center Primary Timer Ring: Minimalist Zen Design with Rich Theme Presence */}
+      {/* Center Primary Timer Ring: Minimalist Canvas Design with Rich Theme Presence */}
       <button
         id="main-timer-ring"
         type="button"

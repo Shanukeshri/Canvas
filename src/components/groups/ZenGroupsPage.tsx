@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { OrbitBubbles } from '@/components/timer/OrbitBubbles';
-import { ZenTodoListBoard } from '@/components/todos/ZenTodoListBoard';
+import { CanvasTodoListBoard } from '@/components/todos/ZenTodoListBoard';
 import { Friend } from '@/types';
 import {
   Users,
@@ -17,7 +17,7 @@ import {
 import clsx from 'clsx';
 import { GroupInviteModal } from './GroupInviteModal';
 
-export function ZenGroupsPage() {
+export function CanvasGroupsPage() {
   const {
     groups,
     activeGroupId,
@@ -103,7 +103,7 @@ export function ZenGroupsPage() {
 
   if (!currentGroup) {
     return (
-      <div className="flex-1 h-screen flex flex-col items-center justify-center p-8 bg-zen-bg select-none animate-in fade-in duration-300 text-center gap-4">
+      <div className="flex-1 h-screen flex flex-col items-center justify-center p-8 bg-canvas-bg select-none animate-in fade-in duration-300 text-center gap-4">
         <div
           className="w-16 h-16 rounded-3xl flex items-center justify-center text-white shadow-xl"
           style={{ backgroundColor: theme.hex }}
@@ -150,7 +150,7 @@ export function ZenGroupsPage() {
   const uncompletedTasksCount = currentGroup.tasks.filter((t) => !t.completed).length;
 
   return (
-    <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-zen-bg select-none animate-in fade-in duration-300">
+    <div className="flex-1 h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-canvas-bg select-none animate-in fade-in duration-300">
       {/* ================= PART 1: TIMER PART (Clean, No Top Heading) ================= */}
       <section className={clsx('h-full relative bg-surface overflow-hidden flex flex-col transition-all duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]', isTodoListOpen ? 'flex-1 lg:flex-[2] lg:w-[65%]' : 'w-full flex-1')}>
         {/* Floating Quick Actions: Switch Group & Invite (Top Left) */}
@@ -357,7 +357,7 @@ export function ZenGroupsPage() {
         )}
       >
         <div className="w-full h-full min-h-0 flex flex-col overflow-hidden">
-          <ZenTodoListBoard
+          <CanvasTodoListBoard
             title="Group Tasks"
             tasks={currentGroup.tasks || []}
             onAddTask={(task) => addGroupTaskFull(currentGroup.id, task)}
@@ -393,3 +393,5 @@ export function ZenGroupsPage() {
     </div>
   );
 }
+
+export { CanvasGroupsPage as ZenGroupsPage };

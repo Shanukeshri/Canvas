@@ -377,7 +377,7 @@ export function AuthModal() {
             </button>
           </form>
 
-          {/* Zen Privacy Note */}
+          {/* Canvas Privacy Note */}
           <div className="flex items-center justify-center gap-1.5 pt-2 text-[11px] text-outline font-medium">
             <ShieldCheck className="w-3.5 h-3.5" style={{ color: theme.hex }} />
             <span>End-to-end quiet sync. No ads, no tracking.</span>

@@ -8,13 +8,13 @@ import {
 import { SignJWT } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || 'zen-productivity-secret-key-development-32-chars-long!'
+  process.env.AUTH_SECRET || 'canvas-productivity-secret-key-development-32-chars-long!'
 );
 
 describe('Authentication Token Lifecycle', () => {
   const mockUser = {
     id: 'user-test-123',
-    email: 'test@zenfocus.app',
+    email: 'test@canvasfocus.app',
     handle: '@testuser',
     name: 'Test User',
     avatar: '🦊',

@@ -73,7 +73,7 @@ export function useGlobalShortcuts() {
         return;
       }
 
-      // '2': Switch to Zen Todos
+      // '2': Switch to Canvas Todos
       if (e.key === '2') {
         e.preventDefault();
         setActiveTab('todos');
@@ -103,6 +103,7 @@ export function useGlobalShortcuts() {
           setActiveTab('todos');
           closeOverlay();
         }
+        window.dispatchEvent(new CustomEvent('canvas:quick-add-task'));
         window.dispatchEvent(new CustomEvent('zen:quick-add-task'));
         return;
       }

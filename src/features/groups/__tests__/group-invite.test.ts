@@ -189,7 +189,7 @@ describe('Focus Groups & Invite Flow', () => {
       },
     ];
 
-    // Filter rule used by ZenGroupsPage for OrbitBubbles
+    // Filter rule used by CanvasGroupsPage for OrbitBubbles
     const visibleOrbitFriends = testMembers.filter(
       (m) => !m.isUser && m.isConnected === true && m.status !== 'offline'
     );

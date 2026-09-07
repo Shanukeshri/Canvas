@@ -6,13 +6,17 @@ import {
   generateRefreshToken,
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
+  ZEN_ACCESS_COOKIE_NAME,
+  ZEN_REFRESH_COOKIE_NAME,
   ACCESS_TOKEN_TTL,
   REFRESH_TOKEN_TTL,
 } from '@/lib/auth/tokens';
 
 export async function POST(req: NextRequest) {
   try {
-    let refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value;
+    let refreshToken =
+      req.cookies.get(REFRESH_COOKIE_NAME)?.value ||
+      req.cookies.get(ZEN_REFRESH_COOKIE_NAME)?.value;
 
     if (!refreshToken) {
       const contentType = req.headers.get('content-type');
@@ -43,6 +47,8 @@ export async function POST(req: NextRequest) {
       );
       response.cookies.delete(ACCESS_COOKIE_NAME);
       response.cookies.delete(REFRESH_COOKIE_NAME);
+      response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+      response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
       return response;
     }
 
@@ -53,6 +59,8 @@ export async function POST(req: NextRequest) {
       );
       response.cookies.delete(ACCESS_COOKIE_NAME);
       response.cookies.delete(REFRESH_COOKIE_NAME);
+      response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+      response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
       return response;
     }
 

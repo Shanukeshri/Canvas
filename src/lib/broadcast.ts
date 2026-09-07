@@ -10,16 +10,19 @@ export type TabSyncMessage =
   | { type: 'FRIEND_TIMER_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
   | { type: 'TIMER_EVENT_SYNC'; payload: any; friendUserId: string; targetUserId?: string }
   | { type: 'USER_COLOR_SYNC'; payload: { userId: string; themeColor: string }; userId?: string }
-  | { type: 'FRIEND_REQUEST_SYNC'; payload: any; userId?: string };
+  | { type: 'FRIEND_REQUEST_SYNC'; payload: any; userId?: string }
+  | { type: 'GROUP_INVITE_SYNC'; payload: any; receiverId?: string; userId?: string }
+  | { type: 'GROUP_MEMBER_JOINED_SYNC'; payload: any; groupId?: string; userId?: string }
+  | { type: 'GROUP_MEMBER_DISCONNECTED_SYNC'; payload: any; groupId?: string; userId?: string };
 
-class ZenBroadcastChannel {
+class CanvasBroadcastChannel {
   private channel: BroadcastChannel | null = null;
   private listeners: Set<(msg: TabSyncMessage) => void> = new Set();
   public tabId: string = Math.random().toString(36).substring(2, 9);
 
   constructor() {
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      this.channel = new BroadcastChannel('zen_tabs_sync');
+      this.channel = new BroadcastChannel('canvas_tabs_sync');
       this.channel.onmessage = (event) => {
         const msg = event.data as TabSyncMessage;
         this.listeners.forEach((listener) => listener(msg));
@@ -41,4 +44,6 @@ class ZenBroadcastChannel {
   }
 }
 
-export const tabSync = new ZenBroadcastChannel();
+export const CanvasBroadcastChannelClass = CanvasBroadcastChannel;
+export const ZenBroadcastChannel = CanvasBroadcastChannel;
+export const tabSync = new CanvasBroadcastChannel();

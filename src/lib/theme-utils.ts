@@ -1,7 +1,7 @@
 import { ThemeColor } from "@/types";
 
 // Central theme mix percentages as defined in theme.txt
-// Tuned for richer user color presence while keeping a minimalist zen aesthetic
+// Tuned for richer user color presence while keeping a minimalist canvas aesthetic
 export const THEME_MIX = {
   primary: 0.08, // 8% tint on base background / canvas / cards
   secondary: 0.16, // 16% tint on secondary surfaces / cards / borders
@@ -42,7 +42,7 @@ export const PRESET_THEMES: ThemeColor[] = [
   },
   {
     id: "amber",
-    name: "Zen Amber",
+    name: "Canvas Amber",
     hex: "#D97706",
     hsl: { h: 32, s: 95, l: 44 },
   },
@@ -362,6 +362,20 @@ export function generateThemeCssVariables(
       "--background": bgTint,
       "--on-background": "#f5f5f7",
 
+      "--canvas-bg": bgTint,
+      "--canvas-surface": cardTint,
+      "--canvas-surface-hover": hoverTint,
+      "--canvas-card": cardTint,
+      "--canvas-border": borderTint,
+      "--canvas-border-strong": outlineVarTint,
+      "--canvas-text": "#f5f5f7",
+      "--canvas-text-muted": mutedTextTint,
+      "--canvas-accent": selectedHex,
+      "--canvas-accent-glow": "transparent",
+      "--canvas-accent-hover": primaryActiveTint,
+      "--canvas-accent-subtle": cardTint,
+      "--canvas-ring": primaryActiveTint,
+
       "--zen-bg": bgTint,
       "--zen-surface": cardTint,
       "--zen-surface-hover": hoverTint,
@@ -455,6 +469,20 @@ export function generateThemeCssVariables(
 
       "--background": bgTint,
       "--on-background": "#14141a",
+
+      "--canvas-bg": bgTint,
+      "--canvas-surface": surfaceLowTint,
+      "--canvas-surface-hover": surfaceHighTint,
+      "--canvas-card": cardTint,
+      "--canvas-border": borderTint,
+      "--canvas-border-strong": borderTint,
+      "--canvas-text": "#14141a",
+      "--canvas-text-muted": mutedTextTint,
+      "--canvas-accent": selectedHex,
+      "--canvas-accent-glow": "transparent",
+      "--canvas-accent-hover": primaryActiveTint,
+      "--canvas-accent-subtle": surfaceLowTint,
+      "--canvas-ring": primaryActiveTint,
 
       "--zen-bg": bgTint,
       "--zen-surface": surfaceLowTint,

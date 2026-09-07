@@ -12,7 +12,7 @@ export function createSocketServer() {
       return;
     }
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Zen Productivity Realtime Socket.IO Server');
+    res.end('Canvas Productivity Realtime Socket.IO Server');
   });
 
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
@@ -210,6 +210,6 @@ export function createSocketServer() {
 if (require.main === module) {
   const { httpServer } = createSocketServer();
   httpServer.listen(PORT, () => {
-    console.log(`⚡ Zen Realtime Socket.IO Server running on port ${PORT}`);
+    console.log(`⚡ Canvas Realtime Socket.IO Server running on port ${PORT}`);
   });
 }

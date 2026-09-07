@@ -89,7 +89,7 @@
 }
 
 :root {
-  /* Crimson Zen Light Theme Tokens */
+  /* Crimson Canvas Light Theme Tokens */
   --primary: #34100f;
   --on-primary: #ffffff;
   --primary-container: #eae0e0;
@@ -132,24 +132,39 @@
   --error-container: #ffdad6;
   --on-error-container: #93000a;
 
+  /* Canvas Theme Tokens */
+  --canvas-bg: #fff8f7;
+  --canvas-surface: #f5ecec;
+  --canvas-surface-hover: #eae0e0;
+  --canvas-card: #ffffff;
+  --canvas-border: #d6c2c0;
+  --canvas-border-strong: #847372;
+  --canvas-text: #1f1b1b;
+  --canvas-text-muted: #514342;
+  --canvas-accent: #34100f;
+  --canvas-accent-glow: transparent;
+  --canvas-accent-hover: #1A0505;
+  --canvas-accent-subtle: #eae0e0;
+  --canvas-ring: #34100f;
+
   /* Backward Compatibility Tokens */
-  --zen-bg: #fff8f7;
-  --zen-surface: #f5ecec;
-  --zen-surface-hover: #eae0e0;
-  --zen-card: #ffffff;
-  --zen-border: #d6c2c0;
-  --zen-border-strong: #847372;
-  --zen-text: #1f1b1b;
-  --zen-text-muted: #514342;
-  --zen-accent: #34100f;
-  --zen-accent-glow: transparent;
-  --zen-accent-hover: #1A0505;
-  --zen-accent-subtle: #eae0e0;
-  --zen-ring: #34100f;
+  --zen-bg: var(--canvas-bg);
+  --zen-surface: var(--canvas-surface);
+  --zen-surface-hover: var(--canvas-surface-hover);
+  --zen-card: var(--canvas-card);
+  --zen-border: var(--canvas-border);
+  --zen-border-strong: var(--canvas-border-strong);
+  --zen-text: var(--canvas-text);
+  --zen-text-muted: var(--canvas-text-muted);
+  --zen-accent: var(--canvas-accent);
+  --zen-accent-glow: var(--canvas-accent-glow);
+  --zen-accent-hover: var(--canvas-accent-hover);
+  --zen-accent-subtle: var(--canvas-accent-subtle);
+  --zen-ring: var(--canvas-ring);
 }
 
 .dark {
-  /* Crimson Zen Dark Theme Tokens */
+  /* Crimson Canvas Dark Theme Tokens */
   --primary: #f8b6b2;
   --on-primary: #34100f;
   --primary-container: #34100f;
@@ -192,20 +207,35 @@
   --error-container: #93000a;
   --on-error-container: #ffdad6;
 
+  /* Canvas Theme Tokens */
+  --canvas-bg: #140c0c;
+  --canvas-surface: #201313;
+  --canvas-surface-hover: #2b1c1c;
+  --canvas-card: #0c0505;
+  --canvas-border: #514342;
+  --canvas-border-strong: #9e8b89;
+  --canvas-text: #f8eeee;
+  --canvas-text-muted: #d6c2c0;
+  --canvas-accent: #f8b6b2;
+  --canvas-accent-glow: transparent;
+  --canvas-accent-hover: #ffdad7;
+  --canvas-accent-subtle: #34100f;
+  --canvas-ring: #f8b6b2;
+
   /* Backward Compatibility Tokens */
-  --zen-bg: #140c0c;
-  --zen-surface: #201313;
-  --zen-surface-hover: #2b1c1c;
-  --zen-card: #0c0505;
-  --zen-border: #514342;
-  --zen-border-strong: #9e8b89;
-  --zen-text: #f8eeee;
-  --zen-text-muted: #d6c2c0;
-  --zen-accent: #f8b6b2;
-  --zen-accent-glow: transparent;
-  --zen-accent-hover: #ffdad7;
-  --zen-accent-subtle: #34100f;
-  --zen-ring: #f8b6b2;
+  --zen-bg: var(--canvas-bg);
+  --zen-surface: var(--canvas-surface);
+  --zen-surface-hover: var(--canvas-surface-hover);
+  --zen-card: var(--canvas-card);
+  --zen-border: var(--canvas-border);
+  --zen-border-strong: var(--canvas-border-strong);
+  --zen-text: var(--canvas-text);
+  --zen-text-muted: var(--canvas-text-muted);
+  --zen-accent: var(--canvas-accent);
+  --zen-accent-glow: var(--canvas-accent-glow);
+  --zen-accent-hover: var(--canvas-accent-hover);
+  --zen-accent-subtle: var(--canvas-accent-subtle);
+  --zen-ring: var(--canvas-ring);
 }
 
 body {
@@ -216,8 +246,8 @@ body {
   transition: background-color 0.4s ease, color 0.4s ease;
 }
 
-/* Zero-CPU Compositor-driven Pure CSS Zen Floating Animations */
-@keyframes zenFloat0 {
+/* Zero-CPU Compositor-driven Pure CSS Canvas Floating Animations */
+@keyframes canvasFloat0 {
   0% { transform: translate3d(-380px, -200px, 0) translate(-50%, -50%); }
   25% { transform: translate3d(-330px, -240px, 0) translate(-50%, -50%); }
   50% { transform: translate3d(-400px, -165px, 0) translate(-50%, -50%); }
@@ -225,7 +255,7 @@ body {
   100% { transform: translate3d(-380px, -200px, 0) translate(-50%, -50%); }
 }
 
-@keyframes zenFloat1 {
+@keyframes canvasFloat1 {
   0% { transform: translate3d(380px, 200px, 0) translate(-50%, -50%); }
   25% { transform: translate3d(430px, 160px, 0) translate(-50%, -50%); }
   50% { transform: translate3d(345px, 235px, 0) translate(-50%, -50%); }
@@ -233,31 +263,37 @@ body {
   100% { transform: translate3d(380px, 200px, 0) translate(-50%, -50%); }
 }
 
-@keyframes zenFloat2 {
+@keyframes canvasFloat2 {
   0% { transform: translate3d(370px, -200px, 0) translate(-50%, -50%); }
   30% { transform: translate3d(420px, -240px, 0) translate(-50%, -50%); }
   60% { transform: translate3d(330px, -165px, 0) translate(-50%, -50%); }
   100% { transform: translate3d(370px, -200px, 0) translate(-50%, -50%); }
 }
 
-@keyframes zenFloat3 {
+@keyframes canvasFloat3 {
   0% { transform: translate3d(-370px, 200px, 0) translate(-50%, -50%); }
   30% { transform: translate3d(-420px, 240px, 0) translate(-50%, -50%); }
   60% { transform: translate3d(-330px, 165px, 0) translate(-50%, -50%); }
   100% { transform: translate3d(-370px, 200px, 0) translate(-50%, -50%); }
 }
 
-.zen-float-0 {
-  animation: zenFloat0 42s ease-in-out infinite;
+/* Backward compatibility keyframes */
+@keyframes zenFloat0 { 0%, 100% { transform: translate3d(-380px, -200px, 0) translate(-50%, -50%); } 50% { transform: translate3d(-400px, -165px, 0) translate(-50%, -50%); } }
+@keyframes zenFloat1 { 0%, 100% { transform: translate3d(380px, 200px, 0) translate(-50%, -50%); } 50% { transform: translate3d(345px, 235px, 0) translate(-50%, -50%); } }
+@keyframes zenFloat2 { 0%, 100% { transform: translate3d(370px, -200px, 0) translate(-50%, -50%); } 60% { transform: translate3d(330px, -165px, 0) translate(-50%, -50%); } }
+@keyframes zenFloat3 { 0%, 100% { transform: translate3d(-370px, 200px, 0) translate(-50%, -50%); } 60% { transform: translate3d(-330px, 165px, 0) translate(-50%, -50%); } }
+
+.canvas-float-0, .zen-float-0 {
+  animation: canvasFloat0 42s ease-in-out infinite;
 }
-.zen-float-1 {
-  animation: zenFloat1 48s ease-in-out infinite;
+.canvas-float-1, .zen-float-1 {
+  animation: canvasFloat1 48s ease-in-out infinite;
 }
-.zen-float-2 {
-  animation: zenFloat2 45s ease-in-out infinite;
+.canvas-float-2, .zen-float-2 {
+  animation: canvasFloat2 45s ease-in-out infinite;
 }
-.zen-float-3 {
-  animation: zenFloat3 52s ease-in-out infinite;
+.canvas-float-3, .zen-float-3 {
+  animation: canvasFloat3 52s ease-in-out infinite;
 }
 
 /* Custom Scrollbars */

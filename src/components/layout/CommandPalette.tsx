@@ -76,7 +76,7 @@ export function CommandPalette() {
     },
     {
       id: 'nav-todos',
-      title: 'Go to Zen Todos',
+      title: 'Go to Canvas Todos',
       category: 'Navigation',
       icon: CheckSquare,
       run: () => {

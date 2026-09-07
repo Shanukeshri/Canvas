@@ -5,8 +5,8 @@ import { useApp } from '@/context/AppContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { CommandPalette } from '@/components/layout/CommandPalette';
 import { ImmersiveTimer } from '@/components/timer/ImmersiveTimer';
-import { ZenTodosPage } from '@/components/todos/ZenTodosPage';
-import { ZenGroupsPage } from '@/components/groups/ZenGroupsPage';
+import { CanvasTodosPage } from '@/components/todos/ZenTodosPage';
+import { CanvasGroupsPage } from '@/components/groups/ZenGroupsPage';
 
 // Overlays
 import { TimerSettingsOverlay } from '@/components/overlays/TimerSettingsOverlay';
@@ -28,7 +28,7 @@ export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () =>
   useRealtime();
 
   return (
-    <div className="relative flex min-h-screen w-full bg-zen-bg text-zen-text overflow-hidden selection:bg-zen-accent selection:text-white">
+    <div className="relative flex min-h-screen w-full bg-canvas-bg text-canvas-text overflow-hidden selection:bg-canvas-accent selection:text-white">
       {/* Fixed Non-expanding Sidebar Navigation with Tooltips */}
       <Sidebar onOpenProductPage={onOpenProductPage} />
 
@@ -36,8 +36,8 @@ export function MainAppCanvas({ onOpenProductPage }: { onOpenProductPage?: () =>
       <main className="flex-1 ml-[72px] min-h-screen relative flex flex-col overflow-hidden">
         {/* Primary Page Render */}
         {activeTab === 'timer' && <ImmersiveTimer />}
-        {activeTab === 'todos' && <ZenTodosPage />}
-        {activeTab === 'groups' && <ZenGroupsPage />}
+        {activeTab === 'todos' && <CanvasTodosPage />}
+        {activeTab === 'groups' && <CanvasGroupsPage />}
       </main>
 
       {/* Global Overlays & Modals */}

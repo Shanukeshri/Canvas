@@ -55,7 +55,11 @@ export function SettingsOverlay() {
   >('timer');
   const [autoStartBreaks, setAutoStartBreaks] = useState(() => userPrefs.autoStartBreaks ?? true);
   const [autoStartFocus, setAutoStartFocus] = useState(() => userPrefs.autoStartFocus ?? false);
-  const [soundChime, setSoundChime] = useState(() => userPrefs.soundChime ?? 'tibetan');
+  const [soundChime, setSoundChime] = useState(() => {
+    const pref = userPrefs.soundChime;
+    if (pref === 'zen-bell') return 'canvas-bell';
+    return pref ?? 'tibetan';
+  });
 
   const handleSaveAndClose = () => {
     saveUserPreferences?.({
@@ -351,32 +355,35 @@ export function SettingsOverlay() {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { id: 'tibetan', label: 'Tibetan Singing Bowl', desc: 'Soft harmonic decay' },
-                        { id: 'zen-bell', label: 'Zen Temple Bell', desc: 'Deep single chime' },
+                        { id: 'canvas-bell', label: 'Canvas Temple Bell', desc: 'Deep single chime' },
                         { id: 'marimba', label: 'Soft Marimba', desc: 'Warm melodic chord' },
                         { id: 'silent', label: 'Muted / Visual Only', desc: 'Silent screen glow' },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setSoundChime(item.id)}
-                          className={clsx(
-                            'p-3 rounded-xl border text-left transition-all',
-                            soundChime === item.id
-                              ? 'bg-surface-container border-primary shadow-sm'
-                              : 'bg-surface-container-lowest/60 border-surface-variant/40 hover:bg-surface-container'
-                          )}
-                          style={soundChime === item.id ? { borderColor: theme.hex } : {}}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-on-surface">
-                              {item.label}
-                            </span>
-                            {soundChime === item.id && (
-                              <Check className="w-3.5 h-3.5" style={{ color: theme.hex }} />
+                      ].map((item) => {
+                        const isSelected = soundChime === item.id || (item.id === 'canvas-bell' && soundChime === 'zen-bell');
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => setSoundChime(item.id)}
+                            className={clsx(
+                              'p-3 rounded-xl border text-left transition-all',
+                              isSelected
+                                ? 'bg-surface-container border-primary shadow-sm'
+                                : 'bg-surface-container-lowest/60 border-surface-variant/40 hover:bg-surface-container'
                             )}
-                          </div>
-                          <span className="text-[10px] text-outline mt-0.5 block">{item.desc}</span>
-                        </button>
-                      ))}
+                            style={isSelected ? { borderColor: theme.hex } : {}}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-on-surface">
+                                {item.label}
+                              </span>
+                              {isSelected && (
+                                <Check className="w-3.5 h-3.5" style={{ color: theme.hex }} />
+                              )}
+                            </div>
+                            <span className="text-[10px] text-outline mt-0.5 block">{item.desc}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

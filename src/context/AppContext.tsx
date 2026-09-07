@@ -9,11 +9,13 @@ import {
   Task,
   Friend,
   Group,
+  GroupMember,
   SoundTrack,
   NotificationItem,
   StatDayData,
   User,
 } from '@/types';
+import { getSocket } from '@/lib/socket/socket-client';
 import { INITIAL_SOUNDS } from '@/lib/mock-data';
 import { SOUND_CATALOG } from '@/features/sounds/sounds';
 import {
@@ -59,7 +61,8 @@ export const EMPTY_WEEK_STATS: StatDayData[] = [
   { day: 'Sun', focusMinutes: 0, stopwatchMinutes: 0, sessions: 0, date: '' },
 ];
 
-const TIMER_STORAGE_KEY = 'zen_timer_engine_state_v1';
+const TIMER_STORAGE_KEY = 'canvas_timer_engine_state_v1';
+const LEGACY_TIMER_STORAGE_KEY = 'zen_timer_engine_state_v1';
 
 interface AppContextType {
   // Navigation & Overlays
@@ -220,7 +223,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [engineState, setEngineState] = useState<TimerEngineState>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+        const saved =
+          localStorage.getItem(TIMER_STORAGE_KEY) ||
+          localStorage.getItem(LEGACY_TIMER_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved) as TimerEngineState;
           // Reconcile snapshot against current timestamp nowMs
@@ -257,7 +262,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let savedVolumes: Record<string, number> = {};
     if (typeof window !== 'undefined') {
       try {
-        const raw = localStorage.getItem('zen_sound_volumes_v2');
+        const raw =
+          localStorage.getItem('canvas_sound_volumes_v2') ||
+          localStorage.getItem('zen_sound_volumes_v2');
         if (raw) savedVolumes = JSON.parse(raw);
       } catch {}
     }
@@ -305,12 +312,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } catch {}
         }
         if (typeof window !== 'undefined') {
+          localStorage.setItem('canvas_current_user_v1', JSON.stringify(data.user));
           localStorage.setItem('zen_current_user_v1', JSON.stringify(data.user));
         }
       } else if (data.status === 'expired_refresh') {
         setCurrentUser(null);
         setIsAuthenticated(false);
         if (typeof window !== 'undefined') {
+          localStorage.removeItem('canvas_current_user_v1');
           localStorage.removeItem('zen_current_user_v1');
         }
         setAuthNotice('Your session has expired. Please sign in to continue.');
@@ -319,6 +328,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(null);
         setIsAuthenticated(false);
         if (typeof window !== 'undefined') {
+          localStorage.removeItem('canvas_current_user_v1');
           localStorage.removeItem('zen_current_user_v1');
         }
       }
@@ -381,7 +391,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setFriends(res.data);
           let savedAttached: string[] = [];
           try {
-            const raw = localStorage.getItem(`zen_attached_friends_${userId}`);
+            const raw =
+              localStorage.getItem(`canvas_attached_friends_${userId}`) ||
+              localStorage.getItem(`zen_attached_friends_${userId}`);
             if (raw) savedAttached = JSON.parse(raw);
           } catch {}
           const validAttached = savedAttached.filter((id) => res.data.some((f: Friend) => f.id === id));
@@ -788,6 +800,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (prev.includes(friendId)) return prev;
       const next = [...prev, friendId];
       if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`canvas_attached_friends_${currentUser.id}`, JSON.stringify(next));
         localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
       }
       return next;
@@ -798,6 +811,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAttachedFriendIds((prev) => {
       const next = prev.filter((id) => id !== friendId);
       if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`canvas_attached_friends_${currentUser.id}`, JSON.stringify(next));
         localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
       }
       return next;
@@ -808,6 +822,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAttachedFriendIds((prev) => {
       const next = prev.includes(friendId) ? prev.filter((id) => id !== friendId) : [...prev, friendId];
       if (currentUser?.id && typeof window !== 'undefined') {
+        localStorage.setItem(`canvas_attached_friends_${currentUser.id}`, JSON.stringify(next));
         localStorage.setItem(`zen_attached_friends_${currentUser.id}`, JSON.stringify(next));
       }
       return next;
@@ -1243,6 +1258,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             acc[curr.id] = curr.volume;
             return acc;
           }, {});
+          localStorage.setItem('canvas_sound_volumes_v2', JSON.stringify(volumesObj));
           localStorage.setItem('zen_sound_volumes_v2', JSON.stringify(volumesObj));
         } catch {}
       }
@@ -1349,6 +1365,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     const loggedUser = data.user;
     if (typeof window !== 'undefined') {
+      localStorage.setItem('canvas_current_user_v1', JSON.stringify(loggedUser));
       localStorage.setItem('zen_current_user_v1', JSON.stringify(loggedUser));
     }
     setCurrentUser(loggedUser);
@@ -1371,6 +1388,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const registeredUser = result.user;
     if (data.avatar) setUserAvatar(data.avatar);
     if (typeof window !== 'undefined') {
+      localStorage.setItem('canvas_current_user_v1', JSON.stringify(registeredUser));
       localStorage.setItem('zen_current_user_v1', JSON.stringify(registeredUser));
     }
     setCurrentUser(registeredUser);
@@ -1385,6 +1403,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch {}
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('canvas_current_user_v1');
       localStorage.removeItem('zen_current_user_v1');
     }
     setCurrentUser(null);

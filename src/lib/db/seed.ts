@@ -14,7 +14,7 @@ export async function seedDatabase() {
     data: {
       id: 'user-default',
       name: 'Alex Serene',
-      email: 'alex.serene@zenfocus.app',
+      email: 'alex.serene@canvasfocus.app',
       handle: '@alex_s',
       avatar: '🦊',
       themeColor: '#6366f1',
@@ -26,7 +26,7 @@ export async function seedDatabase() {
     data: {
       id: 'friend-1',
       name: 'Sarah Chen',
-      email: 'sarah@zenfocus.app',
+      email: 'sarah@canvasfocus.app',
       handle: '@sarahc',
       avatar: '👩🏻‍💻',
       themeColor: '#7209B7',
@@ -37,7 +37,7 @@ export async function seedDatabase() {
     data: {
       id: 'friend-2',
       name: 'David Kim',
-      email: 'david@zenfocus.app',
+      email: 'david@canvasfocus.app',
       handle: '@davidk',
       avatar: '👨🏻‍🎨',
       themeColor: '#F77F00',
@@ -48,7 +48,7 @@ export async function seedDatabase() {
     data: {
       id: 'friend-3',
       name: 'Elena Rostova',
-      email: 'elena@zenfocus.app',
+      email: 'elena@canvasfocus.app',
       handle: '@elena_r',
       avatar: '👩🏼‍🔬',
       themeColor: '#2A9D8F',
@@ -59,7 +59,7 @@ export async function seedDatabase() {
     data: {
       id: 'friend-4',
       name: 'Marcus Vance',
-      email: 'marcus@zenfocus.app',
+      email: 'marcus@canvasfocus.app',
       handle: '@marcus_v',
       avatar: '👨🏽‍💻',
       themeColor: '#0077B6',

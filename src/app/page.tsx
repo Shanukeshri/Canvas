@@ -20,14 +20,11 @@ export default function Home() {
   // Serene initial auth check state (prevents visual flashing)
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-zen-bg select-none text-zen-text">
-        <div className="relative flex items-center justify-center mb-6">
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-canvas-bg select-none text-canvas-text">
+        <div className="relative flex items-center justify-center">
           <div className="w-14 h-14 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
           <Hourglass className="absolute w-5 h-5 text-indigo-400 animate-pulse" />
         </div>
-        <p className="text-xs font-mono tracking-widest text-outline uppercase animate-pulse">
-          Entering Canvas
-        </p>
       </div>
     );
   }

@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ThemeColor } from '@/types';
 import { PRESET_THEMES, hexToHsl, generateThemeCssVariables } from '@/lib/theme-utils';
 
-const THEME_STORAGE_KEY = 'zen_theme_prefs_v1';
+const THEME_STORAGE_KEY = 'canvas_theme_prefs_v1';
+const LEGACY_THEME_STORAGE_KEY = 'zen_theme_prefs_v1';
 
 interface ThemeContextType {
   theme: ThemeColor;
@@ -24,7 +25,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Restore from localStorage on mount (before auth completes)
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        const saved =
+          localStorage.getItem(THEME_STORAGE_KEY) ||
+          localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (parsed.themeHex) {
@@ -43,7 +46,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [customHex, setCustomHex] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        const saved =
+          localStorage.getItem(THEME_STORAGE_KEY) ||
+          localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           return parsed.themeHex || '#FF5722';
@@ -56,7 +61,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        const saved =
+          localStorage.getItem(THEME_STORAGE_KEY) ||
+          localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (typeof parsed.isDarkMode === 'boolean') return parsed.isDarkMode;

@@ -59,9 +59,9 @@ Instead of boring textbook definitions, here is a cheerful tour of how different
 - **Rendering Strategy**: **SSG (Static Site Generation) + RSC (React Server Components)**
 - **How it works here**: The overarching HTML frame, page titles, and rich social preview cards are prepared ahead of time on the server. When someone opens the link, the scaffolding arrives instantly with minimal JavaScript overhead, making the initial page paint virtually instantaneous.
 
-### ⏳ The "Entering Canvas" Serene Gateway
+### ⏳ The Serene Gateway Loading State
 - **Rendering Strategy**: **Streaming & Progressive Loading (with React Suspense)**
-- **How it works here**: Instead of staring at an awkward blank white screen while your saved preferences and session tokens are checked, Next.js progressively streams a calming hourglass spinner and pulsing message. As soon as your personal workspace data arrives, it glides into place without any jarring visual flicker.
+- **How it works here**: Instead of staring at an awkward blank white screen while your saved preferences and session tokens are checked, Next.js progressively streams a calming hourglass spinner. As soon as your personal workspace data arrives, it glides into place without any jarring visual flicker.
 
 ### 👥 Live Study Pods & Group Rooms
 - **Rendering Strategy**: **SSR (Dynamic Server-Side Rendering)**

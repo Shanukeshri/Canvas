@@ -38,7 +38,7 @@ export function GroupInviteModal({ group, isOpen, onClose }: GroupInviteModalPro
   const inviteUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/?join=${group.id}`
-      : `https://zenfocus.app/?join=${group.id}`;
+      : `https://canvasfocus.app/?join=${group.id}`;
 
   const handleCopyLink = () => {
     try {

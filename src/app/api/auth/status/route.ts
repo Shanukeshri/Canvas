@@ -5,13 +5,21 @@ import {
   generateAccessToken,
   ACCESS_COOKIE_NAME,
   REFRESH_COOKIE_NAME,
+  ZEN_ACCESS_COOKIE_NAME,
+  ZEN_REFRESH_COOKIE_NAME,
   ACCESS_TOKEN_TTL,
 } from '@/lib/auth/tokens';
 
 export async function GET(req: NextRequest) {
   try {
-    const accessToken = req.cookies.get(ACCESS_COOKIE_NAME)?.value || null;
-    const refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value || null;
+    const accessToken =
+      req.cookies.get(ACCESS_COOKIE_NAME)?.value ||
+      req.cookies.get(ZEN_ACCESS_COOKIE_NAME)?.value ||
+      null;
+    const refreshToken =
+      req.cookies.get(REFRESH_COOKIE_NAME)?.value ||
+      req.cookies.get(ZEN_REFRESH_COOKIE_NAME)?.value ||
+      null;
 
     const evaluation = await evaluateTokens(accessToken, refreshToken);
 
@@ -33,6 +41,8 @@ export async function GET(req: NextRequest) {
       });
       response.cookies.delete(ACCESS_COOKIE_NAME);
       response.cookies.delete(REFRESH_COOKIE_NAME);
+      response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+      response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
       return response;
     }
 
@@ -60,6 +70,8 @@ export async function GET(req: NextRequest) {
         });
         response.cookies.delete(ACCESS_COOKIE_NAME);
         response.cookies.delete(REFRESH_COOKIE_NAME);
+        response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+        response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
         return response;
       }
 
@@ -127,6 +139,8 @@ export async function GET(req: NextRequest) {
         });
         response.cookies.delete(ACCESS_COOKIE_NAME);
         response.cookies.delete(REFRESH_COOKIE_NAME);
+        response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+        response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
         return response;
       }
 

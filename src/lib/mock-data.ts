@@ -261,7 +261,7 @@ export const INITIAL_GROUPS: Group[] = [
   },
   {
     id: 'group-3',
-    name: 'Zen Design System',
+    name: 'Canvas Design System',
     code: '^DS4#vR!',
     description: 'Building ultra-minimalist, quiet user interfaces with maximum aesthetic power.',
     category: 'Design',

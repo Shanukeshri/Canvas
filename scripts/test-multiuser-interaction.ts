@@ -14,9 +14,9 @@ async function runMultiUserTest() {
 
   try {
     const timestamp = Date.now();
-    const aliceEmail = `alice_${timestamp}@zenfocus.app`;
+    const aliceEmail = `alice_${timestamp}@canvasfocus.app`;
     const aliceHandle = `@alice_${timestamp.toString().slice(-4)}`;
-    const bobEmail = `bob_${timestamp}@zenfocus.app`;
+    const bobEmail = `bob_${timestamp}@canvasfocus.app`;
     const bobHandle = `@bob_${timestamp.toString().slice(-4)}`;
 
     // ==========================================
@@ -193,6 +193,7 @@ async function runMultiUserTest() {
       await friendsNavBtn.click();
     } else {
       await page1.evaluate(() => {
+        window.dispatchEvent(new CustomEvent('canvas:open_overlay', { detail: 'friends' }));
         window.dispatchEvent(new CustomEvent('zen:open_overlay', { detail: 'friends' }));
       });
     }
@@ -208,6 +209,7 @@ async function runMultiUserTest() {
       // Direct state attachment with user-specific localStorage key
       console.log('Attaching Bob via direct localStorage state for Alice...');
       await page1.evaluate(({ aId, bId }) => {
+        localStorage.setItem(`canvas_attached_friends_${aId}`, JSON.stringify([bId]));
         localStorage.setItem(`zen_attached_friends_${aId}`, JSON.stringify([bId]));
         window.location.reload();
       }, { aId: aliceId, bId: bobId });

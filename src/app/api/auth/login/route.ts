@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // User without password (e.g. initial demo user) - allow login if password matches default
-      if (parsed.password !== 'zenpass123') {
+      if (parsed.password !== 'canvaspass123' && parsed.password !== 'zenpass123') {
         return NextResponse.json(
           { success: false, error: 'Invalid email or password.' },
           { status: 401 }

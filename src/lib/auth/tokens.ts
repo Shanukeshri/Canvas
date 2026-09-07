@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify, errors } from 'jose';
 
 const JWT_SECRET_STRING =
-  process.env.AUTH_SECRET || 'zen-productivity-secret-key-development-32-chars-long!';
+  process.env.AUTH_SECRET || 'canvas-productivity-secret-key-development-32-chars-long!';
 const JWT_SECRET = new TextEncoder().encode(JWT_SECRET_STRING);
 
 export interface TokenPayload {
@@ -13,8 +13,12 @@ export interface TokenPayload {
   type: 'access' | 'refresh';
 }
 
-export const ACCESS_COOKIE_NAME = 'zen_access_token';
-export const REFRESH_COOKIE_NAME = 'zen_refresh_token';
+export const ACCESS_COOKIE_NAME = 'canvas_access_token';
+export const REFRESH_COOKIE_NAME = 'canvas_refresh_token';
+
+// Backward compatibility aliases
+export const ZEN_ACCESS_COOKIE_NAME = 'zen_access_token';
+export const ZEN_REFRESH_COOKIE_NAME = 'zen_refresh_token';
 
 // Access token: 15 minutes
 export const ACCESS_TOKEN_TTL = 15 * 60; // 15 mins in seconds
