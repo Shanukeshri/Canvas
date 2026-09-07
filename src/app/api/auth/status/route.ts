@@ -117,48 +117,72 @@ export async function GET(req: NextRequest) {
 
     // Authenticated: valid access token
     if (evaluation.status === 'authenticated' && evaluation.userId) {
-      const user = await prisma.user.findUnique({
-        where: { id: evaluation.userId },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          handle: true,
-          avatar: true,
-          themeColor: true,
-          preferences: true,
-          createdAt: true,
-        },
-      });
-
-      if (!user) {
-        const response = NextResponse.json({
-          success: true,
-          status: 'no_token',
-          user: null,
+      let user: any = null;
+      try {
+        user = await prisma.user.findUnique({
+          where: { id: evaluation.userId },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            handle: true,
+            avatar: true,
+            themeColor: true,
+            preferences: true,
+            createdAt: true,
+          },
         });
-        response.cookies.delete(ACCESS_COOKIE_NAME);
-        response.cookies.delete(REFRESH_COOKIE_NAME);
-        response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
-        response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
-        return response;
+      } catch (err: any) {
+        console.warn('[auth/status] DB lookup failed, falling back to token payload:', err.message);
       }
 
-      return NextResponse.json({
+      if (user) {
+        return NextResponse.json({
+          success: true,
+          status: 'authenticated',
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            handle: user.handle,
+            avatar: user.avatar,
+            themeColor: user.themeColor || '#6366f1',
+            preferences: user.preferences,
+            provider: 'email',
+            createdAt: user.createdAt.toLocaleDateString(),
+          },
+        });
+      }
+
+      // Fallback: If DB is unreachable or user record wasn't found, trust the verified JWT payload
+      if (evaluation.payload) {
+        return NextResponse.json({
+          success: true,
+          status: 'authenticated',
+          user: {
+            id: evaluation.userId,
+            name: evaluation.payload.name || evaluation.payload.email.split('@')[0],
+            email: evaluation.payload.email,
+            handle: evaluation.payload.handle,
+            avatar: evaluation.payload.avatar || '🦊',
+            themeColor: '#6366f1',
+            preferences: {},
+            provider: 'google',
+            createdAt: new Date().toLocaleDateString(),
+          },
+        });
+      }
+
+      const response = NextResponse.json({
         success: true,
-        status: 'authenticated',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          handle: user.handle,
-          avatar: user.avatar,
-          themeColor: user.themeColor || '#6366f1',
-          preferences: user.preferences,
-          provider: 'email',
-          createdAt: user.createdAt.toLocaleDateString(),
-        },
+        status: 'no_token',
+        user: null,
       });
+      response.cookies.delete(ACCESS_COOKIE_NAME);
+      response.cookies.delete(REFRESH_COOKIE_NAME);
+      response.cookies.delete(ZEN_ACCESS_COOKIE_NAME);
+      response.cookies.delete(ZEN_REFRESH_COOKIE_NAME);
+      return response;
     }
 
     return NextResponse.json({

@@ -61,10 +61,7 @@ export function AuthModal() {
 
   const handleGoogleClick = () => {
     setIsLoadingGoogle(true);
-    setTimeout(() => {
-      setIsLoadingGoogle(false);
-      loginWithGoogle();
-    }, 400);
+    loginWithGoogle();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

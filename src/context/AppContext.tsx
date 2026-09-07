@@ -1347,10 +1347,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = () => {
-    openAuthModal(
-      'login',
-      'Google OAuth requires configured Google Client ID in .env. Please sign in or register with email below.'
-    );
+    if (typeof window !== 'undefined') {
+      window.location.href = '/api/auth/google';
+    }
   };
 
   const login = async (email: string, password?: string) => {
