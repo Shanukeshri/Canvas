@@ -279,6 +279,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Checkpoint ref to avoid DB spam
   const lastCheckpointTimeRef = useRef<number>(Date.now());
 
+  // Active focus session tracking refs for regular statistical checkpoints
+  const currentSessionIdRef = useRef<string | null>(null);
+  const sessionStartMsRef = useRef<number>(0);
+  const lastSessionSaveTimeRef = useRef<number>(Date.now());
+  const lastSavedMinutesRef = useRef<number>(0);
+
   // Derive timerMode and timerState from pure engineState
   const timerMode = engineState.mode;
   const timerState = engineState.status;
@@ -314,6 +320,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (typeof window !== 'undefined') {
           localStorage.setItem('canvas_current_user_v1', JSON.stringify(data.user));
           localStorage.setItem('zen_current_user_v1', JSON.stringify(data.user));
+
+          // Sync any guest focus sessions recorded while offline/unauthenticated to the user account
+          try {
+            const guestRaw = localStorage.getItem('canvas_guest_focus_sessions_v1');
+            if (guestRaw && data.user.id) {
+              const guestSessions: any[] = JSON.parse(guestRaw);
+              if (Array.isArray(guestSessions) && guestSessions.length > 0) {
+                guestSessions.forEach((s) => {
+                  recordFocusSessionAction(data.user.id, {
+                    id: s.id,
+                    type: s.type,
+                    taskId: s.taskId || null,
+                    groupId: s.groupId || null,
+                    startedAtMs: s.startedAtMs,
+                    endedAtMs: s.endedAtMs,
+                    elapsedDurationMs: s.elapsedDurationMs,
+                    status: s.status || 'completed',
+                  }).catch(() => {});
+                });
+                localStorage.removeItem('canvas_guest_focus_sessions_v1');
+              }
+            }
+          } catch {}
         }
       } else if (data.status === 'expired_refresh') {
         setCurrentUser(null);
@@ -356,7 +385,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActiveGroupId('');
       setNotifications([]);
       setWeeklyStats(EMPTY_WEEK_STATS);
-      setTotalFocusMinutesToday(0);
+      // Load real local focus minutes for guests/offline
+      try {
+        const raw =
+          localStorage.getItem('canvas_focus_sessions_v1') ||
+          localStorage.getItem('canvas_guest_focus_sessions_v1');
+        if (raw) {
+          const sessions: any[] = JSON.parse(raw);
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const todayMins = sessions
+            .filter((s) => new Date(s.createdAt || s.startedAtMs).toISOString().slice(0, 10) === todayStr)
+            .reduce((acc, s) => acc + Math.round(Number(s.elapsedDurationMs || 0) / 60000), 0);
+          setTotalFocusMinutesToday(todayMins);
+        } else {
+          setTotalFocusMinutesToday(0);
+        }
+      } catch {
+        setTotalFocusMinutesToday(0);
+      }
       return;
     }
     const userId = currentUser.id;
@@ -427,24 +473,96 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => console.warn('Failed to fetch stats:', e));
   }, [currentUser?.id]);
 
+  // Persist focus session regularly to DB and LocalStorage for both Timer and Stopwatch
+  const persistFocusSessionCheckpoint = (
+    status: 'running' | 'completed' | 'interrupted',
+    explicitElapsedMs?: number
+  ) => {
+    if (isBreakPhase) return;
+    const now = Date.now();
+    const elapsedMs =
+      explicitElapsedMs !== undefined
+        ? explicitElapsedMs
+        : calculateFocusContributionMs(engineState, now);
+
+    if (elapsedMs < 3000) return; // Disregard clicks under 3 seconds
+
+    if (!currentSessionIdRef.current) {
+      currentSessionIdRef.current =
+        'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      sessionStartMsRef.current =
+        'startedAtMs' in engineState && (engineState as any).startedAtMs
+          ? (engineState as any).startedAtMs
+          : now - elapsedMs;
+      lastSavedMinutesRef.current = 0;
+    }
+
+    const sessionId = currentSessionIdRef.current;
+    const startedAt = sessionStartMsRef.current || now - elapsedMs;
+    const currentTotalMinutes = Math.floor(elapsedMs / 60000);
+    const minuteDelta = currentTotalMinutes - lastSavedMinutesRef.current;
+
+    if (minuteDelta > 0) {
+      setTotalFocusMinutesToday((prev) => prev + minuteDelta);
+      lastSavedMinutesRef.current = currentTotalMinutes;
+    }
+
+    const payload = {
+      id: sessionId,
+      type: engineState.mode,
+      taskId: selectedTask?.id || null,
+      groupId: activeGroupId || null,
+      startedAtMs: startedAt,
+      endedAtMs: now,
+      elapsedDurationMs: elapsedMs,
+      status,
+    };
+
+    // 1. Authoritative DB upsert if logged in
+    if (currentUser?.id) {
+      recordFocusSessionAction(currentUser.id, payload).catch((err) =>
+        console.warn('Failed to checkpoint focus session to server:', err)
+      );
+    }
+
+    // 2. Persist locally in localStorage for offline & guest resilience
+    try {
+      const storageKey = currentUser?.id
+        ? 'canvas_focus_sessions_v1'
+        : 'canvas_guest_focus_sessions_v1';
+      const raw = localStorage.getItem(storageKey);
+      const sessions: any[] = raw ? JSON.parse(raw) : [];
+      const existingIdx = sessions.findIndex((s) => s.id === sessionId);
+
+      const sessionRecord = {
+        ...payload,
+        projectName: selectedTask?.project || 'General Focus',
+        createdAt: new Date(startedAt).toISOString(),
+      };
+
+      if (existingIdx >= 0) {
+        sessions[existingIdx] = sessionRecord;
+      } else {
+        sessions.push(sessionRecord);
+      }
+      localStorage.setItem(storageKey, JSON.stringify(sessions.slice(-200)));
+    } catch (err) {
+      console.warn('Failed to save session locally:', err);
+    }
+
+    // 3. Dispatch event for instant update in open statistics modal
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('canvas_stats_updated'));
+    }
+  };
+
   const setTimerMode = (mode: TimerMode) => {
     if (engineState.mode === mode) return;
 
-    // Record partial session contribution before switching modes
-    const contributionMs = calculateFocusContributionMs(engineState, Date.now());
-    if (contributionMs >= 5000 && currentUser) {
-      const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
-      setTotalFocusMinutesToday((m) => m + addedMinutes);
-      recordFocusSessionAction(currentUser.id, {
-        type: engineState.mode,
-        taskId: selectedTask?.id || null,
-        groupId: activeGroupId || null,
-        startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : Date.now() - contributionMs,
-        endedAtMs: Date.now(),
-        elapsedDurationMs: contributionMs,
-        status: engineState.mode === 'stopwatch' ? 'completed' : 'interrupted',
-      }).catch(() => {});
-    }
+    // Finalize previous session before switching
+    persistFocusSessionCheckpoint('completed');
+    currentSessionIdRef.current = null;
+    lastSavedMinutesRef.current = 0;
 
     setIsBreakPhase(false);
     const durationMins = mode === 'stopwatch' ? 0 : focusDurationMinutes;
@@ -528,10 +646,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setRemainingSeconds(currentSecs);
         }
 
-        // Periodic checkpoint to DB / statistics (every 30s)
-        if (now - lastCheckpointTimeRef.current > 30000 && currentUser) {
-          lastCheckpointTimeRef.current = now;
-          saveTimerStateCheckpointAction(currentUser.id, snapshot.state).catch(() => {});
+        // Periodic regular checkpoint to DB & statistics (every 15s)
+        if (now - lastSessionSaveTimeRef.current >= 15000) {
+          lastSessionSaveTimeRef.current = now;
+          if (!isBreakPhase) {
+            persistFocusSessionCheckpoint('running');
+          }
+          if (currentUser) {
+            saveTimerStateCheckpointAction(currentUser.id, snapshot.state).catch(() => {});
+          }
         }
 
         // Check completion transition
@@ -541,21 +664,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (!isBreakPhase && engineState.mode === 'pomodoro') {
             setSessionsCompleted((s) => s + 1);
-            const addedMinutes = Math.max(1, Math.round(snapshot.elapsedMs / (60 * 1000)));
-            setTotalFocusMinutesToday((m) => m + addedMinutes);
-
-            // Record authoritative FocusSession in DB
-            if (currentUser) {
-              recordFocusSessionAction(currentUser.id, {
-                type: 'pomodoro',
-                taskId: selectedTask?.id || null,
-                groupId: activeGroupId || null,
-                startedAtMs: 'startedAtMs' in snapshot.state ? snapshot.state.startedAtMs : now,
-                endedAtMs: now,
-                elapsedDurationMs: snapshot.elapsedMs,
-                status: 'completed',
-              }).catch(() => {});
-            }
+            persistFocusSessionCheckpoint('completed', snapshot.elapsedMs);
+            currentSessionIdRef.current = null;
+            lastSavedMinutesRef.current = 0;
           }
           return;
         }
@@ -655,6 +766,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       nextState = engineStartTimer(engineState, now);
     }
 
+    // Initialize session ID and timestamp if not already active
+    if (!currentSessionIdRef.current) {
+      currentSessionIdRef.current =
+        'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      sessionStartMsRef.current = now;
+      lastSessionSaveTimeRef.current = now;
+      lastSavedMinutesRef.current = 0;
+    }
+
     setEngineState(nextState);
     const snapshot = computeTimerSnapshot(nextState, now);
     const displaySecs = nextState.mode === 'stopwatch' ? Math.max(0, snapshot.elapsedSeconds) : Math.max(0, snapshot.remainingSeconds);
@@ -670,28 +790,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     const nextState = enginePauseTimer(engineState, now);
     setEngineState(nextState);
+
+    // Regular statistical save on pause for BOTH stopwatch and timer
+    persistFocusSessionCheckpoint(nextState.mode === 'stopwatch' ? 'completed' : 'interrupted');
+
     const snapshot = computeTimerSnapshot(nextState, now);
     const displaySecs = nextState.mode === 'stopwatch' ? Math.max(0, snapshot.elapsedSeconds) : Math.max(0, snapshot.remainingSeconds);
     setRemainingSeconds(displaySecs);
     tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: nextState, userId: currentUser?.id || 'guest' });
-
-    // If in stopwatch mode, record contribution on pause if >= 5s
-    if (nextState.mode === 'stopwatch' && currentUser) {
-      const contributionMs = calculateFocusContributionMs(engineState, now);
-      if (contributionMs >= 5000) {
-        const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
-        setTotalFocusMinutesToday((m) => m + addedMinutes);
-        recordFocusSessionAction(currentUser.id, {
-          type: 'stopwatch',
-          taskId: selectedTask?.id || null,
-          groupId: activeGroupId || null,
-          startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : now - contributionMs,
-          endedAtMs: now,
-          elapsedDurationMs: contributionMs,
-          status: 'completed',
-        }).catch(() => {});
-      }
-    }
 
     if (currentUser) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
@@ -699,21 +805,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetTimer = () => {
-    // Record partial session contribution before resetting
-    const contributionMs = calculateFocusContributionMs(engineState, Date.now());
-    if (contributionMs >= 5000 && currentUser) {
-      const addedMinutes = Math.max(1, Math.round(contributionMs / (60 * 1000)));
-      setTotalFocusMinutesToday((m) => m + addedMinutes);
-      recordFocusSessionAction(currentUser.id, {
-        type: engineState.mode,
-        taskId: selectedTask?.id || null,
-        groupId: activeGroupId || null,
-        startedAtMs: 'startedAtMs' in engineState ? (engineState as any).startedAtMs : Date.now() - contributionMs,
-        endedAtMs: Date.now(),
-        elapsedDurationMs: contributionMs,
-        status: engineState.mode === 'stopwatch' ? 'completed' : 'interrupted',
-      }).catch(() => {});
-    }
+    // Record final focus session contribution before resetting
+    persistFocusSessionCheckpoint(engineState.mode === 'stopwatch' ? 'completed' : 'interrupted');
+    currentSessionIdRef.current = null;
+    lastSavedMinutesRef.current = 0;
 
     setIsBreakPhase(false);
     const durationMins = engineState.mode === 'stopwatch' ? 0 : focusDurationMinutes;
@@ -726,6 +821,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveTimerStateCheckpointAction(currentUser.id, nextState).catch(() => {});
     }
   };
+
+  // Flush active session on page refresh or browser close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (engineState.status === 'running' && !isBreakPhase) {
+        persistFocusSessionCheckpoint('interrupted');
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [engineState, isBreakPhase, selectedTask, activeGroupId, currentUser]);
 
   const startBreak = () => {
     setIsBreakPhase(true);

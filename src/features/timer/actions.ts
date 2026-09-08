@@ -8,6 +8,42 @@ import { TimerEngineState } from './timer-engine';
 export async function recordFocusSessionAction(userId: string, data: unknown) {
   const parsed = FocusSessionSchema.parse(data);
 
+  // Ensure user exists in database to avoid foreign key constraint violations
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!user) {
+    return { success: false, error: 'User not found' };
+  }
+
+  if (parsed.id) {
+    const session = await prisma.focusSession.upsert({
+      where: { id: parsed.id },
+      update: {
+        taskId: parsed.taskId || null,
+        groupId: parsed.groupId || null,
+        endedAtMs: BigInt(parsed.endedAtMs),
+        elapsedDurationMs: BigInt(parsed.elapsedDurationMs),
+        status: parsed.status,
+      },
+      create: {
+        id: parsed.id,
+        userId,
+        type: parsed.type,
+        taskId: parsed.taskId || null,
+        groupId: parsed.groupId || null,
+        startedAtMs: BigInt(parsed.startedAtMs),
+        endedAtMs: BigInt(parsed.endedAtMs),
+        elapsedDurationMs: BigInt(parsed.elapsedDurationMs),
+        status: parsed.status,
+      },
+    });
+
+    return { success: true, sessionId: session.id };
+  }
+
   const session = await prisma.focusSession.create({
     data: {
       userId,
@@ -21,7 +57,6 @@ export async function recordFocusSessionAction(userId: string, data: unknown) {
     },
   });
 
-  revalidatePath('/app');
   return { success: true, sessionId: session.id };
 }
 

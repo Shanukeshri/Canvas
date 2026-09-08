@@ -53,31 +53,46 @@ export function FriendsOverlay() {
   const [sentFriendRequestMap, setSentFriendRequestMap] = useState<Record<string, boolean>>({});
   const [coworkToast, setCoworkToast] = useState<string | null>(null);
 
-  // Debounced user search suggestions for real matching users
+  // Debounced user search suggestions fetching top 10 matches on every key press
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
       setSuggestions([]);
+      setIsSearchingSuggestions(false);
       return;
     }
 
+    // Immediately mark search as in-progress on keystroke to avoid layout flash
+    setIsSearchingSuggestions(true);
+
+    const controller = new AbortController();
     const timer = setTimeout(async () => {
-      setIsSearchingSuggestions(true);
       try {
         const userId = currentUser?.id || 'guest';
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}&userId=${encodeURIComponent(userId)}`);
+        const res = await fetch(
+          `/api/users/search?q=${encodeURIComponent(q)}&userId=${encodeURIComponent(userId)}`,
+          { signal: controller.signal }
+        );
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
           setSuggestions(data.data);
         }
-      } catch {
-        setSuggestions([]);
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.warn('User search error:', err);
+          setSuggestions([]);
+        }
       } finally {
-        setIsSearchingSuggestions(false);
+        if (!controller.signal.aborted) {
+          setIsSearchingSuggestions(false);
+        }
       }
     }, 200);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [searchQuery, currentUser?.id]);
 
   if (overlay !== 'friends') return null;
@@ -199,10 +214,12 @@ export function FriendsOverlay() {
                 onClick={() => {
                   setSearchQuery('');
                   setSuggestions([]);
+                  setIsSearchingSuggestions(false);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface text-xs p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface text-xs p-1 cursor-pointer"
+                title="Clear search"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -224,17 +241,17 @@ export function FriendsOverlay() {
               <div className="flex items-center justify-between px-1">
                 <span className="text-[11px] font-bold text-outline uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  {isSearchingSuggestions ? 'Searching...' : `Search Results (${suggestions.length})`}
+                  {isSearchingSuggestions ? 'Searching...' : `Top Matches (${suggestions.length})`}
                 </span>
                 {isSearchingSuggestions && (
-                  <span className="text-[10px] text-outline animate-pulse">Finding users...</span>
+                  <span className="text-[10px] text-outline animate-pulse">Finding top matches...</span>
                 )}
               </div>
 
               {isSearchingSuggestions && suggestions.length === 0 ? (
                 <div className="py-10 flex flex-col items-center justify-center gap-2.5 text-outline">
                   <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs">Searching for users...</span>
+                  <span className="text-xs font-medium">Searching for top 10 matches...</span>
                 </div>
               ) : suggestions.length > 0 ? (
                 <div className="space-y-2">
@@ -360,13 +377,18 @@ export function FriendsOverlay() {
                     );
                   })}
                 </div>
-              ) : (
+              ) : !isSearchingSuggestions ? (
                 <div className="text-center py-10 px-4 flex flex-col items-center gap-2">
                   <span className="text-3xl">🔍</span>
                   <p className="text-sm font-semibold text-on-surface">No users found for &ldquo;{searchQuery}&rdquo;</p>
                   <p className="text-xs text-outline max-w-xs">
                     Make sure the spelling is correct, or try typing <code className="px-1 py-0.5 rounded bg-surface-container font-mono">@</code> to view all users.
                   </p>
+                </div>
+              ) : (
+                <div className="py-10 flex flex-col items-center justify-center gap-2.5 text-outline">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-medium">Finding top matches...</span>
                 </div>
               )}
             </section>

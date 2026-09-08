@@ -98,13 +98,14 @@ export const UserSearchSchema = z.object({
 });
 
 export const FocusSessionSchema = z.object({
+  id: z.string().optional(),
   type: TimerModeSchema,
   taskId: z.string().optional().nullable(),
   groupId: z.string().optional().nullable(),
   startedAtMs: z.number(),
   endedAtMs: z.number(),
   elapsedDurationMs: z.number(),
-  status: z.enum(['completed', 'interrupted']),
+  status: z.enum(['completed', 'interrupted', 'running']).default('completed'),
 });
 
 export type CreateTaskInput = z.infer<typeof CreateTaskSchema>;

@@ -38,8 +38,34 @@ export function CommandPalette() {
   } = useApp();
 
   const [query, setQuery] = useState('');
+  const [userMatches, setUserMatches] = useState<any[]>([]);
 
+  // Debounced search for users in command palette
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setUserMatches([]);
+      return;
+    }
 
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(q)}`, { signal: controller.signal });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.data)) {
+          setUserMatches(data.data);
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') setUserMatches([]);
+      }
+    }, 200);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
   if (overlay !== 'command-k') return null;
 
@@ -270,6 +296,35 @@ export function CommandPalette() {
                       <span className="font-medium">{group.name}</span>
                     </div>
                     <span className="text-label-md text-on-surface-variant">{group.activeCount} active</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* User Search Results */}
+          {userMatches.length > 0 && (
+            <div>
+              <span className="text-label-md font-label-md font-medium text-on-surface-variant uppercase tracking-wider px-3 py-1 block">
+                Users & Focus Buddies
+              </span>
+              <div className="flex flex-col gap-1 mt-1">
+                {userMatches.map((user) => (
+                  <button
+                    key={user.id}
+                    onClick={() => {
+                      setOverlay('friends');
+                    }}
+                    className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-body-md text-sm text-on-surface hover:bg-surface-container transition-all"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{user.avatar || '🦊'}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium leading-tight">{user.name}</span>
+                        <span className="text-xs text-on-surface-variant font-mono">{user.handle}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-primary font-medium">View in Friends</span>
                   </button>
                 ))}
               </div>

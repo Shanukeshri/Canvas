@@ -54,20 +54,23 @@ export async function searchUsers(query: string, currentUserId?: string) {
   const raw = query.trim();
   if (raw.length === 0) return [];
 
-  const cleanQuery = raw.startsWith('@') ? raw.slice(1).trim().toLowerCase() : raw.toLowerCase();
+  const cleanQuery = raw.startsWith('@') ? raw.slice(1).trim() : raw;
+  const cleanLower = cleanQuery.toLowerCase();
 
-  const whereClause = cleanQuery.length === 0
-    ? {}
-    : {
-        OR: [
-          { name: { contains: cleanQuery, mode: 'insensitive' as const } },
-          { handle: { contains: cleanQuery, mode: 'insensitive' as const } },
-          { handle: { contains: `@${cleanQuery}`, mode: 'insensitive' as const } },
-          { email: { contains: cleanQuery, mode: 'insensitive' as const } },
-        ],
-      };
+  // If user typed only "@", return the most recent 10 users
+  const whereClause =
+    cleanLower.length === 0
+      ? {}
+      : {
+          OR: [
+            { name: { contains: cleanLower, mode: 'insensitive' as const } },
+            { handle: { contains: cleanLower, mode: 'insensitive' as const } },
+            { handle: { contains: `@${cleanLower}`, mode: 'insensitive' as const } },
+            { email: { contains: cleanLower, mode: 'insensitive' as const } },
+          ],
+        };
 
-  const users = await prisma.user.findMany({
+  const candidates = await prisma.user.findMany({
     where: whereClause,
     select: {
       id: true,
@@ -76,10 +79,43 @@ export async function searchUsers(query: string, currentUserId?: string) {
       avatar: true,
       themeColor: true,
     },
-    orderBy: { createdAt: 'desc' },
-    take: 30,
+    take: 25,
   });
 
-  return users;
+  if (cleanLower.length === 0) {
+    return candidates.slice(0, 10);
+  }
+
+  // Score candidates to guarantee highest-relevance top 10 matches
+  const scored = candidates.map((u) => {
+    const nameLower = (u.name || '').toLowerCase();
+    const handleWithoutAt = (u.handle || '').toLowerCase().replace(/^@/, '');
+    const handleWithAt = (u.handle || '').toLowerCase();
+    let score = 0;
+
+    // Exact match
+    if (handleWithoutAt === cleanLower || handleWithAt === cleanLower || nameLower === cleanLower) {
+      score += 100;
+    }
+    // Prefix match
+    else if (handleWithoutAt.startsWith(cleanLower) || handleWithAt.startsWith(cleanLower)) {
+      score += 80;
+    } else if (nameLower.startsWith(cleanLower)) {
+      score += 70;
+    }
+    // Substring match
+    else if (handleWithoutAt.includes(cleanLower) || handleWithAt.includes(cleanLower)) {
+      score += 50;
+    } else if (nameLower.includes(cleanLower)) {
+      score += 40;
+    } else {
+      score += 10;
+    }
+
+    return { user: u, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 10).map((s) => s.user);
 }
 

@@ -20,6 +20,173 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+function calculateClientStats(sessions: any[], year: number, month: number) {
+  const now = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // 1. Last 7 Days
+  const weeklyDays: any[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(now.getDate() - i);
+    const dateStr = d.toISOString().slice(0, 10);
+    const day = dayNames[d.getDay()];
+    weeklyDays.push({
+      dateStr,
+      day,
+      focusMinutes: 0,
+      stopwatchMinutes: 0,
+      sessions: 0,
+      tasksCompleted: 0,
+    });
+  }
+
+  const weeklyMap = new Map(weeklyDays.map((d) => [d.dateStr, d]));
+
+  for (const s of sessions) {
+    const sDate = new Date(s.createdAt || s.endedAtMs || s.startedAtMs);
+    const dateStr = sDate.toISOString().slice(0, 10);
+    const entry = weeklyMap.get(dateStr);
+    if (entry) {
+      const minutes = Math.round(Number(s.elapsedDurationMs || 0) / (60 * 1000));
+      if (s.type === 'stopwatch') {
+        entry.stopwatchMinutes += minutes;
+      } else {
+        entry.focusMinutes += minutes;
+        entry.sessions += 1;
+      }
+    }
+  }
+
+  // 2. Monthly Stats
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dayMap = new Map<number, { minutes: number; sessions: number }>();
+  for (let d = 1; d <= daysInMonth; d++) {
+    dayMap.set(d, { minutes: 0, sessions: 0 });
+  }
+
+  for (const s of sessions) {
+    const sDate = new Date(s.createdAt || s.endedAtMs || s.startedAtMs);
+    if (sDate.getFullYear() === year && sDate.getMonth() === month) {
+      const day = sDate.getDate();
+      const entry = dayMap.get(day);
+      if (entry) {
+        const mins = Math.round(Number(s.elapsedDurationMs || 0) / (60 * 1000));
+        entry.minutes += mins;
+        entry.sessions += 1;
+      }
+    }
+  }
+
+  const monthlyStats = Array.from(dayMap.entries()).map(([dayNum, data]) => {
+    const hours = Number((data.minutes / 60).toFixed(1));
+    let level = 0;
+    if (hours > 4) level = 4;
+    else if (hours > 2.5) level = 3;
+    else if (hours > 1) level = 2;
+    else if (hours > 0) level = 1;
+
+    return { dayNum, hours, sessions: data.sessions, level };
+  });
+
+  // 3. Project Stats
+  const projectMap = new Map<string, number>();
+  for (const s of sessions) {
+    const projName = s.projectName || 'General Focus';
+    const mins = Math.round(Number(s.elapsedDurationMs || 0) / (60 * 1000));
+    if (mins > 0) {
+      projectMap.set(projName, (projectMap.get(projName) || 0) + mins);
+    }
+  }
+  const colors = ['#6366f1', '#7209B7', '#F77F00', '#2A9D8F', '#0077B6', '#E63946'];
+  let cIdx = 0;
+  const projectStats = Array.from(projectMap.entries()).map(([name, minutes]) => ({
+    name,
+    minutes,
+    color: colors[cIdx++ % colors.length],
+  }));
+
+  // 4. Summary Metrics
+  const totalSessions = sessions.length;
+  const totalDurationMs = sessions.reduce((acc, s) => acc + Number(s.elapsedDurationMs || 0), 0);
+  const totalMinutes = Math.round(totalDurationMs / (60 * 1000));
+  const avgFocusMinutes = totalSessions > 0 ? Math.round(totalMinutes / totalSessions) : 0;
+
+  let peakFlowHour = '--';
+  if (totalSessions > 0) {
+    const hourCounts = new Map<number, number>();
+    for (const s of sessions) {
+      const hr = new Date(s.createdAt || s.endedAtMs || s.startedAtMs).getHours();
+      hourCounts.set(hr, (hourCounts.get(hr) || 0) + 1);
+    }
+    let maxCount = 0;
+    let maxHr = 0;
+    hourCounts.forEach((cnt, hr) => {
+      if (cnt > maxCount) {
+        maxCount = cnt;
+        maxHr = hr;
+      }
+    });
+    const period = maxHr >= 12 ? 'PM' : 'AM';
+    const disp = maxHr % 12 === 0 ? 12 : maxHr % 12;
+    peakFlowHour = `${disp} ${period}`;
+  }
+
+  const activeDates = new Set(
+    sessions.map((s) => new Date(s.createdAt || s.endedAtMs || s.startedAtMs).toISOString().slice(0, 10))
+  );
+  let streak = 0;
+  if (activeDates.size > 0) {
+    const checkDate = new Date();
+    const todayKey = checkDate.toISOString().slice(0, 10);
+    if (activeDates.has(todayKey)) {
+      streak = 1;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      checkDate.setDate(checkDate.getDate() - 1);
+      if (activeDates.has(checkDate.toISOString().slice(0, 10))) {
+        streak = 1;
+        checkDate.setDate(checkDate.getDate() - 1);
+      }
+    }
+    if (streak > 0) {
+      while (true) {
+        const k = checkDate.toISOString().slice(0, 10);
+        if (activeDates.has(k)) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  let daysActivePastMonth = 0;
+  const rangeCheck = new Date();
+  for (let i = 0; i < 30; i++) {
+    if (activeDates.has(rangeCheck.toISOString().slice(0, 10))) {
+      daysActivePastMonth++;
+    }
+    rangeCheck.setDate(rangeCheck.getDate() - 1);
+  }
+  const consistencyRatePercent = Math.min(100, Math.round((daysActivePastMonth / 30) * 100));
+
+  return {
+    weeklyStats: weeklyDays,
+    monthlyStats,
+    projectStats,
+    metrics: {
+      totalSessions,
+      totalCompletedTasks: 0,
+      avgFocusMinutes,
+      peakFlowHour,
+      streakDays: streak,
+      consistencyRatePercent,
+    },
+  };
+}
+
 export function StatisticsOverlay() {
   const { overlay, closeOverlay, totalFocusMinutesToday, currentUser } = useApp();
   const { theme } = useTheme();
@@ -31,37 +198,65 @@ export function StatisticsOverlay() {
   // Month navigation for Calendar (defaults to current month)
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
-  // Real statistics fetched from API
+  // Real statistics fetched from API or local storage
   const [weeklyStats, setWeeklyStats] = useState<any[]>([]);
   const [projectStats, setProjectStats] = useState<any[]>([]);
   const [monthlyStats, setMonthlyStats] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({
-    totalSessions: 14,
-    totalCompletedTasks: 8,
-    avgFocusMinutes: 28,
-    peakFlowHour: '10 AM',
-    streakDays: 5,
-    consistencyRatePercent: 88,
+    totalSessions: 0,
+    totalCompletedTasks: 0,
+    avgFocusMinutes: 0,
+    peakFlowHour: '--',
+    streakDays: 0,
+    consistencyRatePercent: 0,
   });
 
-  // Fetch real statistics when overlay opens or month changes
-  useEffect(() => {
-    if (overlay !== 'stats') return;
-    const userId = currentUser?.id || 'user-default';
+  const loadStatistics = () => {
     const yr = currentDate.getFullYear();
     const mo = currentDate.getMonth();
 
-    fetch(`/api/statistics?userId=${encodeURIComponent(userId)}&year=${yr}&month=${mo}`)
-      .then((r) => r.json())
-      .then((res) => {
-        if (res.success && res.data) {
-          if (Array.isArray(res.data.weeklyStats)) setWeeklyStats(res.data.weeklyStats);
-          if (Array.isArray(res.data.projectStats)) setProjectStats(res.data.projectStats);
-          if (Array.isArray(res.data.monthlyStats)) setMonthlyStats(res.data.monthlyStats);
-          if (res.data.metrics) setMetrics(res.data.metrics);
-        }
-      })
-      .catch((err) => console.warn('Failed to load statistics:', err));
+    if (currentUser?.id) {
+      fetch(`/api/statistics?userId=${encodeURIComponent(currentUser.id)}&year=${yr}&month=${mo}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res.success && res.data) {
+            if (Array.isArray(res.data.weeklyStats)) setWeeklyStats(res.data.weeklyStats);
+            if (Array.isArray(res.data.projectStats)) setProjectStats(res.data.projectStats);
+            if (Array.isArray(res.data.monthlyStats)) setMonthlyStats(res.data.monthlyStats);
+            if (res.data.metrics) setMetrics(res.data.metrics);
+          }
+        })
+        .catch((err) => {
+          console.warn('Failed to load server statistics:', err);
+        });
+    } else {
+      try {
+        const raw =
+          localStorage.getItem('canvas_focus_sessions_v1') ||
+          localStorage.getItem('canvas_guest_focus_sessions_v1');
+        const localSessions: any[] = raw ? JSON.parse(raw) : [];
+        const clientStats = calculateClientStats(localSessions, yr, mo);
+        setWeeklyStats(clientStats.weeklyStats);
+        setProjectStats(clientStats.projectStats);
+        setMonthlyStats(clientStats.monthlyStats);
+        setMetrics(clientStats.metrics);
+      } catch (e) {
+        console.warn('Failed to parse local statistics:', e);
+      }
+    }
+  };
+
+  // Fetch real statistics when overlay opens or month changes, or on background stats update
+  useEffect(() => {
+    if (overlay !== 'stats') return;
+    loadStatistics();
+
+    const handleStatsUpdated = () => {
+      loadStatistics();
+    };
+
+    window.addEventListener('canvas_stats_updated', handleStatsUpdated);
+    return () => window.removeEventListener('canvas_stats_updated', handleStatsUpdated);
   }, [overlay, currentDate, currentUser?.id]);
 
   if (overlay !== 'stats') return null;
@@ -73,6 +268,24 @@ export function StatisticsOverlay() {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const todayDayName = dayNames[new Date().getDay()];
 
+  const defaultEmptyWeek = (() => {
+    const list = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const day = dayNames[d.getDay()];
+      list.push({
+        day,
+        hours: '0h 0m',
+        val: 0,
+        sessions: 0,
+        active: day === todayDayName,
+      });
+    }
+    return list;
+  })();
+
   const trendData =
     weeklyStats.length > 0
       ? weeklyStats.map((d) => {
@@ -83,27 +296,19 @@ export function StatisticsOverlay() {
           return {
             day: d.day,
             hours: `${hours}h ${mins}m`,
-            val: Math.max(val, 0.1),
+            val,
             sessions: d.sessions || 0,
             active: d.day === todayDayName,
           };
         })
-      : [
-          { day: 'Mon', hours: '2h 15m', val: 2.25, sessions: 5 },
-          { day: 'Tue', hours: '4h 30m', val: 4.5, sessions: 9 },
-          { day: 'Wed', hours: '3h 42m', val: 3.7, sessions: 7, active: true },
-          { day: 'Thu', hours: '5h 10m', val: 5.16, sessions: 11 },
-          { day: 'Fri', hours: '3h 20m', val: 3.33, sessions: 6 },
-          { day: 'Sat', hours: '1h 45m', val: 1.75, sessions: 3 },
-          { day: 'Sun', hours: '2h 00m', val: 2.0, sessions: 4 },
-        ];
+      : defaultEmptyWeek;
 
   // Real project distribution
   const totalProjectMinutes =
-    projectStats.reduce((acc, p) => acc + (p.minutes || 0), 0) || 1;
+    projectStats.reduce((acc, p) => acc + (p.minutes || 0), 0);
 
   const projectDistribution =
-    projectStats.length > 0
+    projectStats.length > 0 && totalProjectMinutes > 0
       ? projectStats.map((p) => {
           const hours = Math.floor(p.minutes / 60);
           const mins = p.minutes % 60;
@@ -111,16 +316,11 @@ export function StatisticsOverlay() {
           return {
             name: p.name,
             time: hours > 0 ? `${hours}h ${mins}m` : `${mins}m`,
-            percent: Math.max(percent, 5),
+            percent: Math.max(percent, 1),
             color: p.color || theme.hex,
           };
         })
-      : [
-          { name: 'Architecture & Core', time: '6h 40m', percent: 45, color: theme.hex },
-          { name: 'APIs & Backend', time: '4h 10m', percent: 28, color: '#3B82F6' },
-          { name: 'UI & Design System', time: '2h 30m', percent: 17, color: '#10B981' },
-          { name: 'Review & Docs', time: '1h 00m', percent: 10, color: '#8B5CF6' },
-        ];
+      : [];
 
   // Calendar calculations: 7 columns starting from Monday
   const monthNames = [
@@ -159,7 +359,7 @@ export function StatisticsOverlay() {
         sessions: realEntry.sessions,
       });
     } else {
-      // Fallback for days with zero recorded sessions
+      // Days with zero recorded sessions
       calendarCells.push({ isPadding: false, dayNum: d, level: 0, hours: 0, sessions: 0 });
     }
   }
@@ -180,7 +380,8 @@ export function StatisticsOverlay() {
   const padX = 28;
   const padYTop = 18;
   const padYBottom = 26;
-  const maxVal = Math.max(...trendData.map((d) => d.val), 4.0);
+  const rawMax = Math.max(...trendData.map((d) => d.val), 0);
+  const maxVal = Math.max(rawMax, 2.0);
 
   const points = trendData.map((d, i) => {
     const x = padX + (i * (svgWidth - padX * 2)) / Math.max(1, trendData.length - 1);
@@ -202,7 +403,6 @@ export function StatisticsOverlay() {
   const areaPath = points.length > 0
     ? `${linePath} L ${points[points.length - 1].x} ${svgHeight - padYBottom} L ${points[0].x} ${svgHeight - padYBottom} Z`
     : '';
-
 
   return (
     <div
@@ -449,8 +649,8 @@ export function StatisticsOverlay() {
                     ? `${hoursToday}h ${minutesToday}m`
                     : `${Math.floor(trendData.reduce((acc, d) => acc + (d.val || 0), 0))}h ${Math.round((trendData.reduce((acc, d) => acc + (d.val || 0), 0) % 1) * 60)}m`}
                 </span>
-                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-mono">
-                  +18%
+                <span className="text-[10px] font-semibold text-outline px-2 py-0.5 rounded-full font-mono bg-surface-container">
+                  last 7 days
                 </span>
               </div>
             </div>
@@ -574,7 +774,7 @@ export function StatisticsOverlay() {
               <div className="my-1">
                 <span className="text-2xl font-bold text-on-surface font-mono">{metrics.totalSessions}</span>
               </div>
-              <span className="text-[11px] text-emerald-400 font-medium font-mono">100% real</span>
+              <span className="text-[11px] text-outline font-medium font-mono">completed</span>
             </div>
 
             <div className="border border-surface-variant/35 rounded-2xl bg-surface-container-low/50 p-4 flex flex-col justify-between shadow-2xs">
@@ -631,37 +831,46 @@ export function StatisticsOverlay() {
               <span className="text-[11px] text-outline font-mono">{projectDistribution.length} projects</span>
             </div>
 
-
-            {/* Segmented Distribution Bar */}
-            <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container mb-4 shadow-inner">
-              {projectDistribution.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="h-full transition-opacity hover:opacity-85"
-                  style={{ width: `${p.percent}%`, backgroundColor: p.color }}
-                  title={`${p.name}: ${p.percent}% (${p.time})`}
-                />
-              ))}
-            </div>
-
-            {/* Project List Chips */}
-            <div className="grid grid-cols-2 gap-2.5">
-              {projectDistribution.map((p, idx) => (
-                <div
-                  key={idx}
-                  className="px-3 py-2 rounded-xl bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                    <span className="text-xs font-medium text-on-surface truncate">{p.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
-                    <span className="text-on-surface font-semibold">{p.time}</span>
-                    <span className="text-outline">({p.percent}%)</span>
-                  </div>
+            {projectDistribution.length === 0 ? (
+              <div className="py-8 px-4 rounded-xl bg-surface-container-lowest/40 border border-dashed border-surface-variant/30 flex flex-col items-center justify-center text-center my-auto">
+                <Layers className="w-6 h-6 text-outline/40 mb-2" />
+                <span className="text-xs font-medium text-outline">No project focus logged yet</span>
+                <span className="text-[11px] text-outline/60 mt-0.5">Select a task when focusing to categorize your time by project.</span>
+              </div>
+            ) : (
+              <>
+                {/* Segmented Distribution Bar */}
+                <div className="w-full h-3 rounded-full overflow-hidden flex bg-surface-container mb-4 shadow-inner">
+                  {projectDistribution.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="h-full transition-opacity hover:opacity-85"
+                      style={{ width: `${p.percent}%`, backgroundColor: p.color }}
+                      title={`${p.name}: ${p.percent}% (${p.time})`}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+
+                {/* Project List Chips */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {projectDistribution.map((p, idx) => (
+                    <div
+                      key={idx}
+                      className="px-3 py-2 rounded-xl bg-surface-container-lowest/80 border border-surface-variant/30 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                        <span className="text-xs font-medium text-on-surface truncate">{p.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                        <span className="text-on-surface font-semibold">{p.time}</span>
+                        <span className="text-outline">({p.percent}%)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

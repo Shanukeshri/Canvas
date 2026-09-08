@@ -6,6 +6,7 @@ import {
   FriendRequestSchema,
   TimerPresetSchema,
   ProfileSchema,
+  FocusSessionSchema,
 } from '../schemas';
 
 describe('Zod Validation Schemas', () => {
@@ -83,5 +84,29 @@ describe('Zod Validation Schemas', () => {
         themeColor: '#6366f1',
       })
     ).toThrow();
+  });
+
+  it('validates FocusSessionSchema for both timer and stopwatch with optional id', () => {
+    const validPomodoro = FocusSessionSchema.parse({
+      id: 'sess_123',
+      type: 'pomodoro',
+      startedAtMs: 1000,
+      endedAtMs: 25000,
+      elapsedDurationMs: 24000,
+      status: 'running',
+    });
+    expect(validPomodoro.id).toBe('sess_123');
+    expect(validPomodoro.type).toBe('pomodoro');
+    expect(validPomodoro.status).toBe('running');
+
+    const validStopwatch = FocusSessionSchema.parse({
+      type: 'stopwatch',
+      startedAtMs: 1000,
+      endedAtMs: 50000,
+      elapsedDurationMs: 49000,
+      status: 'completed',
+    });
+    expect(validStopwatch.type).toBe('stopwatch');
+    expect(validStopwatch.status).toBe('completed');
   });
 });
