@@ -16,6 +16,7 @@ import {
   Clock,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 interface GroupInviteModalProps {
   group: Group | null;
@@ -263,10 +264,10 @@ export function GroupInviteModal({ group, isOpen, onClose }: GroupInviteModalPro
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0"
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-sm shrink-0 overflow-hidden"
                         style={{ backgroundColor: friend.color }}
                       >
-                        {friend.avatar}
+                        <UserAvatar avatar={friend.avatar} name={friend.name} />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-semibold text-primary truncate">

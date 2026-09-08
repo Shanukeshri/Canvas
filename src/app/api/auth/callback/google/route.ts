@@ -113,11 +113,15 @@ export async function GET(req: NextRequest) {
             themeColor: '#6366f1',
           },
         });
-      } else if (!userRecord.emailVerified) {
-        userRecord = await prisma.user.update({
-          where: { id: userRecord.id },
-          data: { emailVerified: new Date() },
-        });
+        console.log(`[Google OAuth] Successfully created new user in DB: ${userRecord.email} (${userRecord.handle}, ID: ${userRecord.id})`);
+      } else {
+        if (!userRecord.emailVerified) {
+          userRecord = await prisma.user.update({
+            where: { id: userRecord.id },
+            data: { emailVerified: new Date() },
+          });
+        }
+        console.log(`[Google OAuth] Existing user logged in from DB: ${userRecord.email} (${userRecord.handle}, ID: ${userRecord.id})`);
       }
     } catch (dbError: any) {
       console.error('[Google OAuth] Database operation error (could not persist user to DB):', dbError);

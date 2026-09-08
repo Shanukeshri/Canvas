@@ -18,6 +18,7 @@ import { sendFriendRequestAction } from '@/features/friends/actions';
 import { getSocket } from '@/lib/socket/socket-client';
 import { tabSync } from '@/lib/broadcast';
 import { Friend } from '@/types';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 export function FriendsOverlay() {
   const {
@@ -269,10 +270,10 @@ export function FriendsOverlay() {
                       >
                         <div className="flex items-center gap-3">
                           <div
-                            className="w-10 h-10 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-lg shadow-sm"
+                            className="w-10 h-10 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-lg shadow-sm overflow-hidden"
                             style={{ backgroundColor: (user.themeColor || theme.hex) + '20' }}
                           >
-                            {user.avatar || '🦊'}
+                            <UserAvatar avatar={user.avatar} name={user.name} />
                           </div>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1.5">
@@ -439,13 +440,13 @@ export function FriendsOverlay() {
                           <div className="flex items-center gap-3">
                             <div className="relative">
                               <div
-                                className="w-10 h-10 rounded-2xl border flex items-center justify-center text-lg shadow-sm"
+                                className="w-10 h-10 rounded-2xl border flex items-center justify-center text-lg shadow-sm overflow-hidden"
                                 style={{
                                   backgroundColor: friend.color + '20',
                                   borderColor: friend.color + '60',
                                 }}
                               >
-                                {friend.avatar}
+                                <UserAvatar avatar={friend.avatar} name={friend.name} />
                               </div>
                               <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-surface-container-highest rounded-full flex items-center justify-center border border-surface-variant text-[9px]">
                                 <Timer className="w-2.5 h-2.5" style={{ color: theme.hex }} />
@@ -526,10 +527,10 @@ export function FriendsOverlay() {
                         <div className="flex items-center gap-3">
                           <div className="relative">
                             <div
-                              className="w-9 h-9 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-base"
+                              className="w-9 h-9 rounded-2xl border border-surface-variant/40 flex items-center justify-center text-base overflow-hidden"
                               style={{ backgroundColor: friend.color + '15' }}
                             >
-                              {friend.avatar}
+                              <UserAvatar avatar={friend.avatar} name={friend.name} />
                             </div>
                             <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-surface-container-lowest" />
                           </div>

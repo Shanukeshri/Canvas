@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 export function FocusGroupsOverlay() {
   const {
@@ -351,11 +352,11 @@ export function FocusGroupsOverlay() {
                           {group.members.map((m) => (
                             <div
                               key={m.id}
-                              className="w-7 h-7 rounded-full border-2 border-surface-container-lowest flex items-center justify-center text-xs text-white font-bold shadow-sm"
+                              className="w-7 h-7 rounded-full border-2 border-surface-container-lowest flex items-center justify-center text-xs text-white font-bold shadow-sm overflow-hidden"
                               style={{ backgroundColor: m.color }}
                               title={m.name}
                             >
-                              {m.avatar}
+                              <UserAvatar avatar={m.avatar} name={m.name} />
                             </div>
                           ))}
                         </div>

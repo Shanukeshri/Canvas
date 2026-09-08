@@ -18,6 +18,7 @@ import {
   LogOut,
   X,
 } from 'lucide-react';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 export function CommandPalette() {
   const {
@@ -318,7 +319,9 @@ export function CommandPalette() {
                     className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-body-md text-sm text-on-surface hover:bg-surface-container transition-all"
                   >
                     <div className="flex items-center gap-2.5">
-                      <span className="text-base">{user.avatar || '🦊'}</span>
+                      <div className="w-7 h-7 rounded-full overflow-hidden flex items-center justify-center text-sm bg-surface-container-high shrink-0">
+                        <UserAvatar avatar={user.avatar} name={user.name} />
+                      </div>
                       <div className="flex flex-col">
                         <span className="font-medium leading-tight">{user.name}</span>
                         <span className="text-xs text-on-surface-variant font-mono">{user.handle}</span>

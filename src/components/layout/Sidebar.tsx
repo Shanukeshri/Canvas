@@ -16,6 +16,7 @@ import {
   Hourglass,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 interface SidebarProps {
   onOpenProductPage?: () => void;
@@ -266,7 +267,10 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
             className="w-10 h-10 rounded-full border border-outline-variant overflow-hidden shadow-sm flex items-center justify-center text-lg bg-surface-container hover:scale-105 active:scale-95 transition-transform"
             style={{ borderColor: theme.hex + '70' }}
           >
-            {userAvatar || (isAuthenticated && currentUser ? currentUser.avatar : '🦊')}
+            <UserAvatar
+              avatar={userAvatar || (isAuthenticated && currentUser ? currentUser.avatar : '🦊')}
+              name={currentUser?.name}
+            />
           </button>
           <div className="absolute left-full ml-3 px-2.5 py-1 text-[11px] font-medium tracking-wide text-primary bg-surface-container-lowest border border-outline-variant rounded-md shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-50 transform -translate-x-1 group-hover:translate-x-0">
             {isAuthenticated && currentUser ? `${currentUser.name} & Themes` : 'Profile & Themes'}

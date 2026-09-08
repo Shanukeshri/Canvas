@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { updateProfileAction, updateUserThemeAction } from '@/features/users/actions';
+import { UserAvatar, isImageUrl } from '@/components/common/UserAvatar';
 
 
 
@@ -140,11 +141,11 @@ export function ProfileOverlay() {
               <button
                 type="button"
                 onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className="w-20 h-20 rounded-3xl border-2 flex items-center justify-center text-4xl shadow-md transition-all hover:scale-105 active:scale-95 group relative cursor-pointer"
+                className="w-20 h-20 rounded-3xl border-2 flex items-center justify-center text-4xl shadow-md transition-all hover:scale-105 active:scale-95 group relative cursor-pointer overflow-hidden p-1"
                 style={{ backgroundColor: theme.hex + '20', borderColor: theme.hex }}
                 title="Click to choose new profile icon"
               >
-                <span>{userAvatar}</span>
+                <UserAvatar avatar={userAvatar} name={currentUser?.name} className="w-full h-full rounded-2xl overflow-hidden" />
                 {/* Small subtle badge on avatar */}
                 <div
                   className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center bg-surface border border-surface-variant shadow-sm text-xs opacity-90 group-hover:scale-110 transition-transform"
@@ -163,6 +164,20 @@ export function ProfileOverlay() {
                     </span>
                     <span className="text-[10px] text-outline font-mono">32 Emojis</span>
                   </div>
+
+                  {currentUser?.avatar && isImageUrl(currentUser.avatar) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserAvatar(currentUser.avatar);
+                        setIsEmojiPickerOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 p-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-xs font-medium text-on-surface transition-all border border-surface-variant/50"
+                    >
+                      <UserAvatar avatar={currentUser.avatar} name={currentUser.name} className="w-6 h-6 rounded-full overflow-hidden" />
+                      <span>Use Google Profile Photo</span>
+                    </button>
+                  )}
 
                   <div className="grid grid-cols-8 gap-1.5 max-h-48 overflow-y-auto p-1 no-scrollbar">
                     {EMOJI_OPTIONS.map((emoji) => {
