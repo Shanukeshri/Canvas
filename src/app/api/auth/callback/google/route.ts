@@ -95,11 +95,12 @@ export async function GET(req: NextRequest) {
       });
 
       if (!userRecord) {
-        const baseHandle = `@${email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')}`.slice(0, 14);
+        // Keep full handle up to 29 characters to fit within schema limits without truncating normal handles
+        const baseHandle = `@${email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '')}`.slice(0, 29);
         let handle = baseHandle;
         const existingHandle = await prisma.user.findUnique({ where: { handle } });
         if (existingHandle) {
-          handle = `${baseHandle}_${Math.random().toString(36).substring(2, 6)}`;
+          handle = `${baseHandle.slice(0, 23)}_${Math.random().toString(36).substring(2, 6)}`;
         }
 
         userRecord = await prisma.user.create({
@@ -108,7 +109,7 @@ export async function GET(req: NextRequest) {
             name,
             handle,
             emailVerified: new Date(),
-            avatar: '🦊',
+            avatar,
             themeColor: '#6366f1',
           },
         });
@@ -119,14 +120,14 @@ export async function GET(req: NextRequest) {
         });
       }
     } catch (dbError: any) {
-      console.warn('[Google OAuth] Database operation warning (proceeding with session):', dbError.message);
+      console.error('[Google OAuth] Database operation error (could not persist user to DB):', dbError);
       // Construct fallback user so OAuth login succeeds even if DB is temporarily unreachable
       userRecord = {
         id: `google_${googleUser.id || Date.now()}`,
         email,
         name,
-        handle: `@${email.split('@')[0]}`,
-        avatar: '🦊',
+        handle: `@${email.split('@')[0]}`.slice(0, 29),
+        avatar,
         themeColor: '#6366f1',
       };
     }
