@@ -1,20 +1,20 @@
 import { createServer } from 'http';
+import { parse } from 'url';
+import next from 'next';
 import { Server } from 'socket.io';
-import { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from '../types/socket';
+import {
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData,
+} from '../types/socket';
 
-const PORT = parseInt(process.env.SOCKET_PORT || process.env.PORT || '3002', 10);
+const PORT = parseInt(process.env.PORT || process.env.SOCKET_PORT || '3000', 10);
+const dev = process.env.NODE_ENV !== 'production';
+const app = next({ dev });
+const handle = app.getRequestHandler();
 
-export function createSocketServer() {
-  const httpServer = createServer((req, res) => {
-    if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', time: new Date().toISOString() }));
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Canvas Productivity Realtime Socket.IO Server');
-  });
-
+export function setupSocketIO(httpServer: ReturnType<typeof createServer>) {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
     cors: {
       origin: '*',
@@ -27,7 +27,7 @@ export function createSocketServer() {
   const onlineUsers = new Map<string, { socketId: string; activeGroupId?: string; lastSeen: number }>();
 
   io.on('connection', (socket) => {
-    console.log(`[Socket.IO] Client connected: ${socket.id}`);
+    console.log(`⚡ [Socket.IO Server] Client connected: ${socket.id}`);
 
     // User authentication / identification
     const registerUserSocket = (uid: string, groupId?: string) => {
@@ -39,7 +39,7 @@ export function createSocketServer() {
       if (groupId) existing.activeGroupId = groupId;
       onlineUsers.set(uid, existing);
       io.emit('presence:update', { onlineUserIds: Array.from(onlineUsers.keys()) });
-      console.log(`[Socket.IO] User registered: ${uid} (socket ${socket.id}, room user:${uid})`);
+      console.log(`⚡ [Socket.IO Server] User registered: ${uid} (socket ${socket.id}, room: user:${uid})`);
     };
 
     const initialUserId = socket.handshake.query.userId as string | undefined;
@@ -212,7 +212,7 @@ export function createSocketServer() {
 
     // --- Theme & Color Broadcast Events ---
     socket.on('user:color_update', ({ userId, themeColor }) => {
-      console.log(`[Socket.IO] User ${userId} color changed to ${themeColor}`);
+      console.log(`[Socket.IO Server] User ${userId} color changed to ${themeColor}`);
       socket.broadcast.emit('user:color_changed', { userId, themeColor });
     });
 
@@ -232,22 +232,47 @@ export function createSocketServer() {
     });
 
     // Disconnect
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       if (socket.data.userId) {
         onlineUsers.delete(socket.data.userId);
         io.emit('presence:update', { onlineUserIds: Array.from(onlineUsers.keys()) });
       }
-      console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
+      console.log(`⚡ [Socket.IO Server] Client disconnected: ${socket.id} (Reason: ${reason})`);
     });
   });
 
-  return { httpServer, io };
+  return io;
 }
 
-// Direct execution when run via `node src/server/socket-server.ts` or `tsx`
-if (require.main === module) {
-  const { httpServer } = createSocketServer();
+// Start Unified Server
+export async function startServer() {
+  await app.prepare();
+
+  const httpServer = createServer((req, res) => {
+    // Health check endpoint
+    if (req.url === '/health' || req.url === '/api/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', serverTime: Date.now(), time: new Date().toISOString() }));
+      return;
+    }
+
+    const parsedUrl = parse(req.url!, true);
+    handle(req, res, parsedUrl);
+  });
+
+  setupSocketIO(httpServer);
+
   httpServer.listen(PORT, () => {
-    console.log(`⚡ Canvas Realtime Socket.IO Server running on port ${PORT}`);
+    console.log(`🚀 [Unified Server] Next.js + Socket.IO running on port ${PORT} (dev: ${dev})`);
+  });
+
+  return httpServer;
+}
+
+// Direct execution
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error('Fatal error starting unified server:', err);
+    process.exit(1);
   });
 }

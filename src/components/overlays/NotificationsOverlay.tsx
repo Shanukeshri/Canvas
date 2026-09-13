@@ -74,6 +74,8 @@ export function NotificationsOverlay() {
         return <Users className="w-4 h-4 text-purple-400" />;
       case 'friend_request':
         return <UserPlus className="w-4 h-4 text-blue-400" />;
+      case 'friend_accepted':
+        return <Check className="w-4 h-4 text-emerald-400" />;
       case 'cowork_request':
         return <Timer className="w-4 h-4 text-emerald-400" />;
       case 'timer_complete':
@@ -110,6 +112,7 @@ export function NotificationsOverlay() {
     } else if (notif.type === 'friend_request') {
       const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
       acceptFriendRequest(targetId);
+      removeNotification(notif.id);
       closeOverlay();
     } else if (notif.type === 'cowork_request') {
       const senderId = notif.actionPayload?.senderId;
@@ -347,6 +350,14 @@ export function NotificationsOverlay() {
                         >
                           Decline
                         </button>
+                      </div>
+                    )}
+
+                    {notif.type === 'friend_accepted' && (
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] font-semibold text-emerald-500 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                          <Check className="w-3 h-3" /> Focus Buddies Connected
+                        </span>
                       </div>
                     )}
 

@@ -31,6 +31,7 @@ export function useRealtime() {
   selectedTaskRef.current = selectedTask;
   const lastEmittedStatusRef = useRef<string>(engineState.status);
   const lastEmittedModeRef = useRef<string>(engineState.mode);
+  const serverClockOffsetRef = useRef<number>(0);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -161,9 +162,18 @@ export function useRealtime() {
           userId: currentUser.id,
           activeGroupId: activeGroupId || undefined,
         });
+        socket.emit('timer:ping', { clientTime: Date.now() });
+      };
+
+      const handleTimerPong = ({ clientTime, serverTime }: { clientTime: number; serverTime: number }) => {
+        const rtt = Math.max(0, Date.now() - clientTime);
+        const serverNowEstimated = serverTime + Math.round(rtt / 2);
+        const offset = serverNowEstimated - Date.now();
+        serverClockOffsetRef.current = offset;
       };
 
       socket.on('connect', emitHeartbeat);
+      socket.on('timer:pong', handleTimerPong);
       emitHeartbeat();
 
       if (activeGroupId) {
@@ -189,6 +199,7 @@ export function useRealtime() {
 
         const isRunning = payload.status === 'running';
         const isStopwatch = payload.timerType === 'stopwatch' || payload.mode === 'stopwatch';
+        const syncedNow = Date.now() + (serverClockOffsetRef.current || 0);
 
         let friendMinutes = 0;
         let friendSeconds = 0;
@@ -198,7 +209,7 @@ export function useRealtime() {
         if (isStopwatch) {
           if (isRunning) {
             const startedAt = payload.startedAtMs || (payload.timestampMs - (payload.currentTimeMs || 0));
-            elapsedMs = Math.max(0, Date.now() - startedAt);
+            elapsedMs = Math.max(0, syncedNow - startedAt);
           } else {
             elapsedMs = Math.max(0, payload.currentTimeMs ?? payload.elapsedDurationMs ?? 0);
           }
@@ -209,7 +220,7 @@ export function useRealtime() {
         } else {
           if (isRunning) {
             const targetComp = payload.targetCompletionMs || (payload.timestampMs + (payload.currentTimeMs || payload.remainingMs || 0));
-            remainingMs = Math.max(0, targetComp - Date.now());
+            remainingMs = Math.max(0, targetComp - syncedNow);
           } else {
             remainingMs = Math.max(0, payload.currentTimeMs ?? payload.remainingMs ?? 0);
           }
@@ -363,6 +374,42 @@ export function useRealtime() {
         ]);
       };
 
+      const handleFriendRequestAccepted = (payload: any) => {
+        console.log('🎉 [Socket.IO Client] Friend request accepted event received:', payload);
+        if (payload?.friend?.id) {
+          setFriends((prev) => {
+            if (prev.some((f) => f.id === payload.friend.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: payload.friend.id,
+                name: payload.friend.name || 'Friend',
+                handle: payload.friend.handle || `@${(payload.friend.name || 'friend').toLowerCase().replace(/\s+/g, '_')}`,
+                avatar: payload.friend.avatar || '🦊',
+                color: payload.friend.color || payload.friend.themeColor || '#6366f1',
+                status: 'focusing',
+                currentTask: 'Deep focus work',
+                timerMinutes: 25,
+                timerSeconds: 0,
+                mode: 'pomodoro',
+                isFocusing: true,
+              },
+            ];
+          });
+        }
+        setNotifications((prev) => [
+          {
+            id: `freq-acc-${Date.now()}`,
+            title: 'Friend Request Accepted',
+            message: `${payload.friend?.name || 'A user'} accepted your friend request! You are now friends.`,
+            type: 'friend_accepted' as any,
+            time: 'Just now',
+            read: false,
+          },
+          ...prev,
+        ]);
+      };
+
       // User color changed in real time
       const handleUserColorChanged = (payload: { userId: string; themeColor: string }) => {
         if (!payload?.userId || payload.userId === currentUser.id) return;
@@ -438,6 +485,7 @@ export function useRealtime() {
       socket.on('cowork:accepted', handleCoworkAccepted);
       socket.on('cowork:disconnected', handleCoworkDisconnected);
       socket.on('friend:request_received', handleFriendRequestReceived);
+      socket.on('friend:request_accepted', handleFriendRequestAccepted);
       socket.on('user:color_changed', handleUserColorChanged);
       socket.on('group:member_joined', handleGroupMemberJoined);
       socket.on('group:member_left', handleGroupMemberLeft);
@@ -526,6 +574,7 @@ export function useRealtime() {
       if (socket) {
         try {
           socket.off('connect');
+          socket.off('timer:pong');
           socket.off('timer:state_synced');
           socket.off('timer:event_synced');
           socket.off('timer:state_requested');
@@ -533,6 +582,7 @@ export function useRealtime() {
           socket.off('cowork:accepted');
           socket.off('cowork:disconnected');
           socket.off('friend:request_received');
+          socket.off('friend:request_accepted');
           socket.off('user:color_changed');
           socket.off('group:member_joined');
           socket.off('group:member_left');

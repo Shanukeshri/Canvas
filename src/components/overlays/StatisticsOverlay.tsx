@@ -20,16 +20,30 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-function calculateClientStats(sessions: any[], year: number, month: number) {
+function calculateClientStats(
+  sessions: any[],
+  year: number,
+  month: number,
+  timeRange: 'today' | 'week' | 'month' | 'all' = 'week'
+) {
   const now = new Date();
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const formatLocalDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const todayKey = formatLocalDate(now);
 
   // 1. Last 7 Days
   const weeklyDays: any[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(now.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(d);
     const day = dayNames[d.getDay()];
     weeklyDays.push({
       dateStr,
@@ -45,7 +59,7 @@ function calculateClientStats(sessions: any[], year: number, month: number) {
 
   for (const s of sessions) {
     const sDate = new Date(s.createdAt || s.endedAtMs || s.startedAtMs);
-    const dateStr = sDate.toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(sDate);
     const entry = weeklyMap.get(dateStr);
     if (entry) {
       const minutes = Math.round(Number(s.elapsedDurationMs || 0) / (60 * 1000));
@@ -214,9 +228,12 @@ export function StatisticsOverlay() {
   const loadStatistics = () => {
     const yr = currentDate.getFullYear();
     const mo = currentDate.getMonth();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
     if (currentUser?.id) {
-      fetch(`/api/statistics?userId=${encodeURIComponent(currentUser.id)}&year=${yr}&month=${mo}`)
+      fetch(
+        `/api/statistics?userId=${encodeURIComponent(currentUser.id)}&year=${yr}&month=${mo}&tz=${encodeURIComponent(tz)}&timeRange=${timeRange}`
+      )
         .then((r) => r.json())
         .then((res) => {
           if (res.success && res.data) {
@@ -235,7 +252,7 @@ export function StatisticsOverlay() {
           localStorage.getItem('canvas_focus_sessions_v1') ||
           localStorage.getItem('canvas_guest_focus_sessions_v1');
         const localSessions: any[] = raw ? JSON.parse(raw) : [];
-        const clientStats = calculateClientStats(localSessions, yr, mo);
+        const clientStats = calculateClientStats(localSessions, yr, mo, timeRange);
         setWeeklyStats(clientStats.weeklyStats);
         setProjectStats(clientStats.projectStats);
         setMonthlyStats(clientStats.monthlyStats);
@@ -246,7 +263,7 @@ export function StatisticsOverlay() {
     }
   };
 
-  // Fetch real statistics when overlay opens or month changes, or on background stats update
+  // Fetch real statistics when overlay opens or month changes, or on background stats update or timeRange changes
   useEffect(() => {
     if (overlay !== 'stats') return;
     loadStatistics();
@@ -257,7 +274,7 @@ export function StatisticsOverlay() {
 
     window.addEventListener('canvas_stats_updated', handleStatsUpdated);
     return () => window.removeEventListener('canvas_stats_updated', handleStatsUpdated);
-  }, [overlay, currentDate, currentUser?.id]);
+  }, [overlay, currentDate, currentUser?.id, timeRange]);
 
   if (overlay !== 'stats') return null;
 
@@ -639,7 +656,13 @@ export function StatisticsOverlay() {
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" style={{ color: theme.hex }} />
                 <span className="text-xs font-semibold text-on-surface tracking-wide">
-                  Weekly Focus Trend
+                  {timeRange === 'today'
+                    ? "Today's Focus"
+                    : timeRange === 'month'
+                    ? 'Monthly Focus Trend'
+                    : timeRange === 'all'
+                    ? 'All-Time Focus Trend'
+                    : 'Weekly Focus Trend'}
                 </span>
               </div>
 
@@ -650,7 +673,7 @@ export function StatisticsOverlay() {
                     : `${Math.floor(trendData.reduce((acc, d) => acc + (d.val || 0), 0))}h ${Math.round((trendData.reduce((acc, d) => acc + (d.val || 0), 0) % 1) * 60)}m`}
                 </span>
                 <span className="text-[10px] font-semibold text-outline px-2 py-0.5 rounded-full font-mono bg-surface-container">
-                  last 7 days
+                  {timeRange === 'today' ? 'today' : timeRange === 'month' ? 'monthly' : timeRange === 'all' ? 'all time' : 'last 7 days'}
                 </span>
               </div>
             </div>

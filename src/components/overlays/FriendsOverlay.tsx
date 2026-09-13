@@ -258,10 +258,11 @@ export function FriendsOverlay() {
                 <div className="space-y-2">
                   {suggestions.map((user) => {
                     const isMe = currentUser?.id === user.id;
-                    const friendMatch = friends.find((f) => f.id === user.id);
+                    const isAlreadyFriend = user.isFriend || friends.some((f) => f.id === user.id);
+                    const friendMatch = friends.find((f) => f.id === user.id) || (isAlreadyFriend ? (user as Friend) : null);
                     const isAttached = attachedFriendIds.includes(user.id);
                     const isSent = sentCoworkMap[user.id];
-                    const isFriendRequestSent = sentFriendRequestMap[user.id];
+                    const isFriendRequestSent = user.hasPendingRequest || sentFriendRequestMap[user.id];
 
                     return (
                       <div
@@ -283,7 +284,7 @@ export function FriendsOverlay() {
                                   You
                                 </span>
                               )}
-                              {friendMatch && !isMe && (
+                              {isAlreadyFriend && !isMe && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/15 text-primary font-semibold">
                                   Friend
                                 </span>
@@ -297,13 +298,13 @@ export function FriendsOverlay() {
                           <span className="px-3 py-1 rounded-xl text-xs font-semibold bg-surface-container text-outline border border-surface-variant">
                             You
                           </span>
-                        ) : friendMatch ? (
+                        ) : isAlreadyFriend ? (
                           <button
                             onClick={() => {
                               if (isAttached) {
                                 closeOverlay();
                                 setActiveTab('timer');
-                              } else {
+                              } else if (friendMatch) {
                                 handleSendCoworkRequest(friendMatch);
                               }
                             }}
@@ -344,11 +345,19 @@ export function FriendsOverlay() {
                                     setCoworkToast(`Friend request sent to ${user.name}!`);
                                     try {
                                       const socket = getSocket(currentUser.id);
-                                      socket.emit('friend:request', { receiverId: user.id, sender: currentUser });
+                                      socket.emit('friend:request', {
+                                        receiverId: user.id,
+                                        sender: currentUser,
+                                        requestId: data.data?.request?.id,
+                                      });
                                     } catch {}
                                     tabSync.publish({
                                       type: 'FRIEND_REQUEST_SYNC',
-                                      payload: { receiverId: user.id, sender: currentUser },
+                                      payload: {
+                                        receiverId: user.id,
+                                        sender: currentUser,
+                                        requestId: data.data?.request?.id,
+                                      },
                                       userId: currentUser.id,
                                     });
                                     setTimeout(() => setCoworkToast(null), 3000);

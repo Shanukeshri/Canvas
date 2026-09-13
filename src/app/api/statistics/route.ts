@@ -13,12 +13,14 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const year = Number(searchParams.get('year')) || now.getFullYear();
     const month = searchParams.has('month') ? Number(searchParams.get('month')) : now.getMonth();
+    const timeZone = searchParams.get('tz') || searchParams.get('timezone') || undefined;
+    const timeRange = (searchParams.get('timeRange') || 'week') as 'today' | 'week' | 'month' | 'all';
 
     const [weeklyStats, projectStats, monthlyStats, metrics] = await Promise.all([
-      getUserWeeklyStats(userId),
-      getUserProjectStats(userId),
-      getUserMonthlyStats(userId, year, month),
-      getUserSummaryMetrics(userId),
+      getUserWeeklyStats(userId, timeZone),
+      getUserProjectStats(userId, timeRange, timeZone),
+      getUserMonthlyStats(userId, year, month, timeZone),
+      getUserSummaryMetrics(userId, timeRange, timeZone),
     ]);
 
     return NextResponse.json({

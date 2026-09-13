@@ -8,21 +8,39 @@ export function getSocket(userId?: string): Socket<ServerToClientEvents, ClientT
     return null as any;
   }
 
-  // Derive target URL: default to env or localhost:3002
+  // Derive target URL: default to NEXT_PUBLIC_SOCKET_URL or window.location.origin
   const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
   const targetUrl =
-    socketUrl && !socketUrl.includes(':3000')
-      ? socketUrl
-      : `${window.location.protocol}//${window.location.hostname}:3002`;
+    socketUrl ||
+    (typeof window !== 'undefined'
+      ? window.location.origin
+      : 'http://localhost:3000');
 
   if (!socket) {
+    console.log(`🔌 [Socket.IO Client] Initializing connection to: ${targetUrl}`);
     socket = io(targetUrl, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 15,
+      reconnectionAttempts: 20,
       reconnectionDelay: 1000,
       transports: ['websocket', 'polling'],
       query: userId ? { userId } : undefined,
+    });
+
+    socket.on('connect', () => {
+      console.log(`✅ [Socket.IO Client] Connected successfully! Socket ID: ${socket?.id} | Target: ${targetUrl}`);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.warn(`⚠️ [Socket.IO Client] Disconnected from server. Reason: ${reason}`);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.warn(`⚠️ [Socket.IO Client] Connection error:`, error.message);
+    });
+
+    socket.io.on('reconnect', (attempt) => {
+      console.log(`🔄 [Socket.IO Client] Reconnected after ${attempt} attempts! Socket ID: ${socket?.id}`);
     });
   } else if (userId && (!socket.io.opts.query || (socket.io.opts.query as any).userId !== userId)) {
     socket.io.opts.query = { userId };

@@ -82,8 +82,57 @@ export async function searchUsers(query: string, currentUserId?: string) {
     take: 25,
   });
 
+  // Fetch friendship & pending request status for the current user
+  const friendIdSet = new Set<string>();
+  const pendingOutgoingSet = new Set<string>();
+  const pendingIncomingMap = new Map<string, string>();
+
+  if (currentUserId && currentUserId !== 'guest' && currentUserId !== 'user-default') {
+    const [friendships, requests] = await Promise.all([
+      prisma.friendship.findMany({
+        where: {
+          OR: [{ userId: currentUserId }, { friendId: currentUserId }],
+        },
+        select: { userId: true, friendId: true },
+      }),
+      prisma.friendRequest.findMany({
+        where: {
+          OR: [{ senderId: currentUserId }, { receiverId: currentUserId }],
+          status: 'pending',
+        },
+        select: { id: true, senderId: true, receiverId: true },
+      }),
+    ]);
+
+    for (const f of friendships) {
+      friendIdSet.add(f.userId === currentUserId ? f.friendId : f.userId);
+    }
+
+    for (const r of requests) {
+      if (r.senderId === currentUserId) {
+        pendingOutgoingSet.add(r.receiverId);
+      } else {
+        pendingIncomingMap.set(r.senderId, r.id);
+      }
+    }
+  }
+
+  const formatCandidate = (u: any) => {
+    const isFriend = friendIdSet.has(u.id);
+    const isPendingOutgoing = pendingOutgoingSet.has(u.id);
+    const incomingRequestId = pendingIncomingMap.get(u.id);
+
+    return {
+      ...u,
+      isFriend,
+      hasPendingRequest: isPendingOutgoing || !!incomingRequestId,
+      requestDirection: isPendingOutgoing ? 'outgoing' : incomingRequestId ? 'incoming' : null,
+      requestId: incomingRequestId || null,
+    };
+  };
+
   if (cleanLower.length === 0) {
-    return candidates.slice(0, 10);
+    return candidates.slice(0, 10).map(formatCandidate);
   }
 
   // Score candidates to guarantee highest-relevance top 10 matches
@@ -116,6 +165,6 @@ export async function searchUsers(query: string, currentUserId?: string) {
   });
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, 10).map((s) => s.user);
+  return scored.slice(0, 10).map((s) => formatCandidate(s.user));
 }
 

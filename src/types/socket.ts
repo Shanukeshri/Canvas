@@ -87,8 +87,17 @@ export interface ClientToServerEvents {
   'presence:status': (payload: { userId: string; status: 'online' | 'focusing' | 'break' | 'offline'; currentTask?: string }) => void;
 
   // Friend Events
-  'friend:request': (payload: { receiverId: string; sender: any }) => void;
-  'friend:accept': (payload: { requestId?: string; senderId: string; receiverId: string }) => void;
+  'friend:request': (payload: { receiverId: string; sender: any; requestId?: string }) => void;
+  'friend:accept': (payload: {
+    requestId?: string;
+    senderId: string;
+    receiverId: string;
+    senderFriendData?: Friend;
+    receiverFriendData?: Friend;
+  }) => void;
+
+  // Time Calibration / Clock Skew Ping-Pong
+  'timer:ping': (payload: { clientTime: number }) => void;
 
   // Theme / Color Broadcast
   'user:color_update': (payload: { userId: string; themeColor: string }) => void;
@@ -98,6 +107,9 @@ export interface ClientToServerEvents {
 }
 
 export interface ServerToClientEvents {
+  // Time Calibration Pong
+  'timer:pong': (payload: { clientTime: number; serverTime: number }) => void;
+
   // Timer Broadcasts
   'timer:started': (payload: TimerEventPayload) => void;
   'timer:paused': (payload: TimerEventPayload) => void;

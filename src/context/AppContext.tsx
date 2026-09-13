@@ -949,16 +949,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const acceptFriendRequest = async (friendId: string) => {
     if (currentUser) {
       try {
-        await fetch('/api/friends', {
+        const patchRes = await fetch('/api/friends', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: currentUser.id, requestId: friendId, action: 'accept' }),
         });
+        const patchData = await patchRes.json();
+
+        // 1. Fetch updated friends list
         const res = await fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`);
         const data = await res.json();
         if (data.success && Array.isArray(data.data)) {
           setFriends(data.data);
         }
+
+        // 2. Real-time emit to the requester over WebSockets
+        try {
+          const socket = getSocket(currentUser.id);
+          const targetSenderId = patchData?.data?.requesterId || friendId;
+          socket.emit('friend:accept', {
+            requestId: friendId,
+            senderId: targetSenderId,
+            receiverId: currentUser.id,
+            receiverFriendData: {
+              id: currentUser.id,
+              name: currentUser.name,
+              handle: currentUser.handle,
+              avatar: currentUser.avatar,
+              color: currentUser.themeColor || '#6366f1',
+              status: 'focusing',
+              currentTask: 'Deep focus work',
+              timerMinutes: 25,
+              timerSeconds: 0,
+              mode: 'pomodoro',
+              isFocusing: true,
+            },
+          });
+        } catch {}
+
+        // 3. Remove notification from active UI state
+        setNotifications((prev) =>
+          prev.filter(
+            (n) =>
+              n.id !== friendId &&
+              n.actionPayload?.requestId !== friendId &&
+              n.actionPayload?.senderId !== friendId
+          )
+        );
       } catch (e) {
         console.error('acceptFriendRequest error:', e);
       }
@@ -978,6 +1015,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (data.success && Array.isArray(data.data)) {
           setFriends(data.data);
         }
+        setNotifications((prev) =>
+          prev.filter(
+            (n) =>
+              n.id !== friendId &&
+              n.actionPayload?.requestId !== friendId &&
+              n.actionPayload?.senderId !== friendId
+          )
+        );
       } catch (e) {
         console.error('declineFriendRequest error:', e);
       }

@@ -27,7 +27,7 @@ export async function sendFriendRequestAction(senderId: string, data: unknown) {
 
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
-    select: { name: true },
+    select: { id: true, name: true, handle: true, avatar: true, themeColor: true },
   });
 
   const request = await prisma.friendRequest.upsert({
@@ -54,11 +54,11 @@ export async function sendFriendRequestAction(senderId: string, data: unknown) {
       title: 'New Friend Request',
       message: `${sender?.name || 'A user'} sent you a friend request.`,
       type: 'friend_request',
-      actionPayload: JSON.stringify({ requestId: request.id, senderId }),
+      actionPayload: JSON.stringify({ requestId: request.id, senderId, sender }),
     },
   });
 
-  return { success: true, request };
+  return { success: true, request, sender };
 }
 
 export async function acceptFriendRequestAction(userId: string, requestId: string) {
@@ -143,14 +143,25 @@ export async function acceptFriendRequestAction(userId: string, requestId: strin
         userId: request.senderId,
         title: 'Friend Request Accepted',
         message: `${request.receiver.name} accepted your friend request.`,
-        type: 'friend_request',
+        type: 'friend_accepted',
         actionPayload: JSON.stringify({ friendId: request.receiverId, friendName: request.receiver.name }),
       },
     });
   } catch {}
 
   revalidatePath('/app');
-  return { success: true };
+  return {
+    success: true,
+    friend: {
+      id: request.sender.id === userId ? request.receiver.id : request.sender.id,
+      name: request.sender.id === userId ? request.receiver.name : request.sender.name,
+      handle: request.sender.id === userId ? request.receiver.handle : request.sender.handle,
+      avatar: request.sender.id === userId ? request.receiver.avatar : request.sender.avatar,
+      color: (request.sender.id === userId ? request.receiver.themeColor : request.sender.themeColor) || '#6366f1',
+    },
+    requesterId: request.senderId,
+    receiverId: request.receiverId,
+  };
 }
 
 export async function declineFriendRequestAction(userId: string, requestId: string) {

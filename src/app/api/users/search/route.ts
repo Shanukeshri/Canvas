@@ -5,7 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q') || '';
-    const userId = searchParams.get('userId') || 'user-default';
+    const userId = searchParams.get('userId') || undefined;
 
     const results = await searchUsers(q, userId);
     return NextResponse.json({ success: true, data: results });
