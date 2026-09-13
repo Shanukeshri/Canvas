@@ -80,6 +80,16 @@ export interface ClientToServerEvents {
   // Groups
   'group:join': (payload: { groupId: string; user: GroupMember }) => void;
   'group:leave': (payload: { groupId: string; userId: string }) => void;
+  'group:invite': (payload: {
+    groupId: string;
+    groupName: string;
+    inviterId?: string;
+    inviterName: string;
+    inviterAvatar: string;
+    inviterColor: string;
+    inviteeId: string;
+    invitationId?: string;
+  }) => void;
   'group:task_update': (payload: { groupId: string; task: Task; action: 'create' | 'update' | 'delete' | 'complete' }) => void;
 
   // Presence
@@ -146,10 +156,19 @@ export interface ServerToClientEvents {
   'cowork:disconnected': (payload: { userId: string; targetUserId: string; timestampMs: number }) => void;
 
   // Groups Broadcasts
+  'group:room_state': (payload: { groupId: string; activeMembers: any[]; timestampMs: number }) => void;
   'group:member_joined': (payload: { groupId: string; member: GroupMember; timestampMs: number }) => void;
   'group:member_left': (payload: { groupId: string; userId: string; timestampMs: number }) => void;
   'group:task_changed': (payload: { groupId: string; task: Task; action: 'create' | 'update' | 'delete' | 'complete'; timestampMs: number }) => void;
   'group:sync': (payload: { group: Group }) => void;
+  'group:invite_received': (payload: {
+    id: string;
+    groupId: string;
+    groupName: string;
+    inviter: { id?: string; name: string; avatar: string; color: string };
+    invitationId?: string;
+    timestampMs: number;
+  }) => void;
 
   // Friends & Notifications
   'friend:request_received': (payload: { requestId: string; sender: Friend; timestampMs: number }) => void;

@@ -39,7 +39,6 @@ import {
 } from '@/features/tasks/actions';
 import {
   createGroupAction,
-  joinGroupByCodeAction,
   leaveGroupAction,
   inviteFriendToGroupAction,
 } from '@/features/groups/actions';
@@ -134,10 +133,9 @@ interface AppContextType {
   deleteGroupCustomList: (groupId: string, listName: string) => void;
   createGroup: (data: { name: string; description?: string; category?: string; code?: string }) => Group;
   leaveGroup: (groupId: string) => void;
-  joinGroup: (code: string) => boolean;
   generateGroupCode: () => string;
   inviteMemberToGroup: (groupId: string, member: { id?: string; name: string; handle?: string; avatar?: string; color?: string }) => void;
-  acceptGroupInvitation: (groupId: string, memberData?: Partial<GroupMember>) => void;
+  acceptGroupInvitation: (groupId: string, memberData?: Partial<GroupMember>, invitationId?: string) => Promise<void>;
 
   // Sound Mixer State
   sounds: SoundTrack[];
@@ -471,6 +469,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch((e) => console.warn('Failed to fetch stats:', e));
+  }, [currentUser?.id]);
+
+  // Handle URL share links (?join=<groupId>)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get('join');
+
+    if (joinId) {
+      acceptGroupInvitation(joinId);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, [currentUser?.id]);
 
   // Persist focus session regularly to DB and LocalStorage for both Timer and Stopwatch
@@ -987,7 +997,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           });
         } catch {}
 
-        // 3. Remove notification from active UI state
+        // 3. Remove notification from active UI state and database
         setNotifications((prev) =>
           prev.filter(
             (n) =>
@@ -996,6 +1006,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               n.actionPayload?.senderId !== friendId
           )
         );
+
+        removeNotificationAction(currentUser.id, friendId).catch(() => {});
+        if (patchData?.data?.requesterId) {
+          removeNotificationAction(currentUser.id, patchData.data.requesterId).catch(() => {});
+        }
       } catch (e) {
         console.error('acceptFriendRequest error:', e);
       }
@@ -1023,6 +1038,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               n.actionPayload?.senderId !== friendId
           )
         );
+        removeNotificationAction(currentUser.id, friendId).catch(() => {});
       } catch (e) {
         console.error('declineFriendRequest error:', e);
       }
@@ -1295,9 +1311,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     };
 
-    setNotifications((prev) => [inviteNotification, ...prev]);
-
-    // 3. Broadcast notification
+    // 3. Broadcast notification to invitee
     tabSync.publish({
       type: 'GROUP_INVITE_SYNC',
       payload: inviteNotification,
@@ -1307,21 +1321,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const socket = getSocket(currentUser?.id || 'guest');
-      socket.emit('cowork:request', {
-        senderId: currentUser?.id || 'host',
-        senderName: currentUser?.name || 'Peer',
-        senderAvatar: currentUser?.avatar || '🦊',
-        senderColor: currentUser?.themeColor || '#6366f1',
-        receiverId: inviteeId,
+      socket.emit('group:invite', {
+        groupId,
+        groupName,
+        inviterId: currentUser?.id,
+        inviterName: currentUser?.name || 'Peer',
+        inviterAvatar: currentUser?.avatar || '🦊',
+        inviterColor: currentUser?.themeColor || '#6366f1',
+        inviteeId,
+        invitationId: `inv-${Date.now()}`,
       });
     } catch {}
 
-    if (currentUser && member.id && !member.id.startsWith('member-') && !member.id.startsWith('invited-')) {
-      inviteFriendToGroupAction(currentUser.id, groupId, member.id).catch(() => {});
+    if (currentUser) {
+      inviteFriendToGroupAction(
+        currentUser.id,
+        groupId,
+        member.handle || member.name || member.id || inviteeId
+      ).catch(() => {});
     }
   };
 
-  const acceptGroupInvitation = (groupId: string, memberData?: Partial<GroupMember>) => {
+  const acceptGroupInvitation = async (
+    groupId: string,
+    memberData?: Partial<GroupMember>,
+    invitationId?: string
+  ) => {
     const memberId = memberData?.id || currentUser?.id || `user-${Date.now()}`;
     const memberName = memberData?.name || currentUser?.name || 'Peer';
     const memberHandle = memberData?.handle || currentUser?.handle || `@${memberName.toLowerCase().replace(/\s+/g, '')}`;
@@ -1338,35 +1363,82 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       timerTime: '25:00',
       currentTask: 'Focusing with group',
       isUser: memberId === (currentUser?.id || 'user-self'),
-      isConnected: true, // Mark connected upon accepting!
+      isConnected: true,
     };
 
-    setGroups((prev) =>
-      prev.map((g) => {
-        if (g.id !== groupId) return g;
-        const filteredPending = (g.pendingInvites || []).filter(
-          (p) => p.id !== memberId && p.handle !== memberHandle
-        );
-        if (g.members.some((m) => m.id === memberId)) {
+    // Ensure group exists in local state immediately so user sees the room without lag
+    setGroups((prev) => {
+      if (prev.some((g) => g.id === groupId)) {
+        return prev.map((g) => {
+          if (g.id !== groupId) return g;
+          const filteredPending = (g.pendingInvites || []).filter(
+            (p) => p.id !== memberId && p.handle !== memberHandle
+          );
           return {
             ...g,
-            members: g.members.map((m) =>
-              m.id === memberId ? { ...m, isConnected: true, status: 'focusing' } : m
-            ),
+            members: [...g.members.filter((m) => m.id !== memberId), newMember],
+            activeCount: g.members.filter((m) => m.id !== memberId).length + 1,
             pendingInvites: filteredPending,
           };
-        }
-        return {
-          ...g,
-          members: [...g.members, newMember],
-          activeCount: g.members.length + 1,
-          pendingInvites: filteredPending,
-        };
-      })
-    );
+        });
+      }
+      return [
+        ...prev,
+        {
+          id: groupId,
+          name: 'Focus Room',
+          code: '',
+          description: 'Shared focus room',
+          category: 'Focus Room',
+          members: [newMember],
+          tasks: [],
+          customLists: ['General'],
+          activeCount: 1,
+        },
+      ];
+    });
 
     setActiveGroupId(groupId);
     setActiveTab('groups');
+
+    // Remove notification from UI and delete from database
+    setNotifications((prev) =>
+      prev.filter(
+        (n) =>
+          n.id !== invitationId &&
+          n.actionPayload?.groupId !== groupId &&
+          n.actionPayload?.invitationId !== invitationId
+      )
+    );
+
+    if (currentUser) {
+      if (invitationId) {
+        removeNotificationAction(currentUser.id, invitationId).catch(() => {});
+      }
+      removeNotificationAction(currentUser.id, groupId).catch(() => {});
+
+      try {
+        await acceptGroupInvitationAction(currentUser.id, invitationId || groupId, groupId);
+      } catch (err) {
+        console.warn('acceptGroupInvitationAction warning:', err);
+      }
+
+      // Re-fetch groups to guarantee full sync
+      try {
+        const fetchRes = await fetch(`/api/groups?userId=${encodeURIComponent(currentUser.id)}`);
+        const data = await fetchRes.json();
+        if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setGroups(data.data);
+        } else {
+          // Fallback: fetch individual group
+          const singleRes = await fetch(`/api/groups/${groupId}`);
+          const singleData = await singleRes.json();
+          if (singleData.success && singleData.data) {
+            setGroups((prev) => [...prev.filter((g) => g.id !== groupId), singleData.data]);
+          }
+        }
+      } catch {}
+    }
 
     tabSync.publish({
       type: 'GROUP_MEMBER_JOINED_SYNC',
@@ -1381,19 +1453,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user: newMember,
       });
     } catch {}
-  };
-
-  const joinGroup = (code: string): boolean => {
-    const normalized = code.trim().toLowerCase();
-    const existing = groups.find((g) => g.code.toLowerCase() === normalized);
-    if (existing) {
-      setActiveGroupId(existing.id);
-      if (currentUser) {
-        joinGroupByCodeAction(currentUser.id, code).catch((e) => console.error(e));
-      }
-      return true;
-    }
-    return false;
   };
 
   // Sound Engine Controls - strictly local, no external server/socket sync
@@ -1633,7 +1692,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteGroupCustomList,
         createGroup,
         leaveGroup,
-        joinGroup,
         generateGroupCode,
         inviteMemberToGroup,
         acceptGroupInvitation,

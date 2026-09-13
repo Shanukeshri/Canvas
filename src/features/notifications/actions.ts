@@ -40,8 +40,11 @@ export async function markNotificationReadAction(userId: string, notificationId:
 export async function removeNotificationAction(userId: string, notificationId: string) {
   await prisma.notification.deleteMany({
     where: {
-      id: notificationId,
       userId,
+      OR: [
+        { id: notificationId },
+        { actionPayload: { contains: notificationId } },
+      ],
     },
   });
 

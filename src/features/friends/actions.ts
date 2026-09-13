@@ -149,6 +149,17 @@ export async function acceptFriendRequestAction(userId: string, requestId: strin
     });
   } catch {}
 
+  // Delete pending friend request notification from DB once accepted
+  await prisma.notification.deleteMany({
+    where: {
+      userId,
+      OR: [
+        { type: 'friend_request', actionPayload: { contains: request.id } },
+        { type: 'friend_request', actionPayload: { contains: request.senderId } },
+      ],
+    },
+  });
+
   revalidatePath('/app');
   return {
     success: true,
@@ -175,6 +186,17 @@ export async function declineFriendRequestAction(userId: string, requestId: stri
     data: { status: 'declined' },
   });
 
+  // Delete pending friend request notification from DB once declined
+  await prisma.notification.deleteMany({
+    where: {
+      userId,
+      OR: [
+        { type: 'friend_request', actionPayload: { contains: requestId } },
+      ],
+    },
+  });
+
+  revalidatePath('/app');
   return { success: true };
 }
 

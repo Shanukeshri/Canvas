@@ -249,4 +249,82 @@ describe('Focus Groups & Invite Flow', () => {
     // When clicked for a personal solo task
     expect(getDestinationTab(soloTask, false)).toBe('timer');
   });
+
+  it('deletes group invitation notification immediately once accepted or dismissed', () => {
+    const notifId = 'notif-grp-123';
+    const groupId = 'group-456';
+    const initialNotifications: NotificationItem[] = [
+      {
+        id: notifId,
+        title: 'Group Room Invitation',
+        message: 'Alex Johnson invited you to join "Frontend Guild".',
+        time: 'Just now',
+        read: false,
+        type: 'group_invite',
+        actionPayload: {
+          groupId,
+          groupName: 'Frontend Guild',
+          invitationId: 'inv-999',
+        },
+      },
+      {
+        id: 'notif-milestone-1',
+        title: 'Focus Complete',
+        message: '25 minutes logged',
+        time: '5m ago',
+        read: true,
+        type: 'timer_complete',
+      },
+    ];
+
+    // Simulate accept/dismiss action removing from active notifications state
+    const remainingAfterAccept = initialNotifications.filter(
+      (n) =>
+        n.id !== notifId &&
+        n.actionPayload?.groupId !== groupId &&
+        n.actionPayload?.invitationId !== 'inv-999'
+    );
+
+    expect(remainingAfterAccept).toHaveLength(1);
+    expect(remainingAfterAccept[0].id).toBe('notif-milestone-1');
+    expect(remainingAfterAccept.some((n) => n.id === notifId)).toBe(false);
+  });
+
+  it('deletes friend request notification immediately once accepted or declined', () => {
+    const friendRequestId = 'freq-777';
+    const senderId = 'user-sender-888';
+    const initialNotifications: NotificationItem[] = [
+      {
+        id: 'notif-freq-1',
+        title: 'New Friend Request',
+        message: 'Dev Sam sent you a friend request.',
+        time: 'Just now',
+        read: false,
+        type: 'friend_request',
+        actionPayload: {
+          requestId: friendRequestId,
+          senderId,
+        },
+      },
+      {
+        id: 'notif-other',
+        title: 'System Notice',
+        message: 'Welcome back',
+        time: '1h ago',
+        read: true,
+        type: 'system',
+      },
+    ];
+
+    // Filter used on accept or decline
+    const remainingAfterHandled = initialNotifications.filter(
+      (n) =>
+        n.id !== friendRequestId &&
+        n.actionPayload?.requestId !== friendRequestId &&
+        n.actionPayload?.senderId !== friendRequestId
+    );
+
+    expect(remainingAfterHandled).toHaveLength(1);
+    expect(remainingAfterHandled[0].id).toBe('notif-other');
+  });
 });

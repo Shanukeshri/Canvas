@@ -478,6 +478,51 @@ export function useRealtime() {
         );
       };
 
+      // Group room state containing all currently active peers
+      const handleGroupRoomState = (payload: { groupId: string; activeMembers: any[] }) => {
+        if (!payload?.groupId || !Array.isArray(payload.activeMembers)) return;
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id !== payload.groupId) return g;
+            const updatedMembers = [...g.members];
+            for (const activeMem of payload.activeMembers) {
+              const idx = updatedMembers.findIndex((m) => m.id === activeMem.id);
+              if (idx >= 0) {
+                updatedMembers[idx] = { ...updatedMembers[idx], ...activeMem, isConnected: true, status: 'focusing' };
+              } else {
+                updatedMembers.push({ ...activeMem, isConnected: true, status: 'focusing' });
+              }
+            }
+            return {
+              ...g,
+              members: updatedMembers,
+              activeCount: updatedMembers.filter((m) => m.isConnected).length,
+            };
+          })
+        );
+      };
+
+      // Group invite notification received
+      const handleGroupInviteReceived = (payload: any) => {
+        console.log('📬 [Socket.IO Client] Group invite received:', payload);
+        setNotifications((prev) => [
+          {
+            id: payload.id || `notif-grp-${Date.now()}`,
+            title: 'Group Room Invitation',
+            message: `${payload.inviter?.name || 'A coworker'} invited you to join "${payload.groupName || 'a focus room'}".`,
+            type: 'group_invite' as any,
+            time: 'Just now',
+            read: false,
+            actionPayload: {
+              groupId: payload.groupId,
+              invitationId: payload.invitationId,
+              inviteeId: currentUser?.id,
+            },
+          },
+          ...prev,
+        ]);
+      };
+
       socket.on('timer:state_synced', handleTimerStateSynced);
       socket.on('timer:event_synced', handleTimerStateSynced);
       socket.on('timer:state_requested', handleTimerStateRequested);
@@ -487,8 +532,10 @@ export function useRealtime() {
       socket.on('friend:request_received', handleFriendRequestReceived);
       socket.on('friend:request_accepted', handleFriendRequestAccepted);
       socket.on('user:color_changed', handleUserColorChanged);
+      socket.on('group:room_state', handleGroupRoomState);
       socket.on('group:member_joined', handleGroupMemberJoined);
       socket.on('group:member_left', handleGroupMemberLeft);
+      socket.on('group:invite_received', handleGroupInviteReceived);
       socket.on('presence:update', handlePresenceUpdate);
 
       // Multi-tab channel fallback for multi-user local testing
@@ -584,8 +631,10 @@ export function useRealtime() {
           socket.off('friend:request_received');
           socket.off('friend:request_accepted');
           socket.off('user:color_changed');
+          socket.off('group:room_state');
           socket.off('group:member_joined');
           socket.off('group:member_left');
+          socket.off('group:invite_received');
           socket.off('presence:update');
         } catch {}
       }

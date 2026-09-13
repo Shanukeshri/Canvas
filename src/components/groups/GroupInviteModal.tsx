@@ -81,7 +81,7 @@ export function GroupInviteModal({ group, isOpen, onClose }: GroupInviteModalPro
     const pickedAvatar = randomAvatars[Math.floor(Math.random() * randomAvatars.length)];
 
     inviteMemberToGroup(group.id, {
-      id: `invited-${Date.now()}`,
+      id: cleanName,
       name: cleanName,
       handle: val.startsWith('@') ? val : `@${cleanName.toLowerCase()}`,
       avatar: pickedAvatar,
@@ -156,17 +156,18 @@ export function GroupInviteModal({ group, isOpen, onClose }: GroupInviteModalPro
               type="text"
               readOnly
               value={inviteUrl}
-              className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface select-all font-mono focus:outline-none focus:border-primary"
+              className="flex-1 px-3.5 py-2.5 rounded-xl bg-surface border border-outline-variant text-xs text-on-surface select-all font-mono truncate focus:outline-none focus:border-primary"
             />
             <button
               type="button"
               onClick={handleCopyLink}
               className={clsx(
-                'flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm',
+                'flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm shrink-0 cursor-pointer',
                 copiedLink
                   ? 'bg-emerald-500 text-white'
                   : 'bg-primary text-on-primary hover:opacity-90'
               )}
+              style={!copiedLink ? { backgroundColor: theme.hex } : {}}
             >
               {copiedLink ? (
                 <>

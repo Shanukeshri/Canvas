@@ -19,8 +19,6 @@ import clsx from 'clsx';
 import { getSocket } from '@/lib/socket/socket-client';
 import { tabSync } from '@/lib/broadcast';
 
-import { acceptGroupInvitationAction } from '@/features/groups/actions';
-
 export function NotificationsOverlay() {
   const {
     overlay,
@@ -86,7 +84,11 @@ export function NotificationsOverlay() {
   };
 
   const handleAction = async (notif: (typeof notifications)[0]) => {
-    markNotificationRead(notif.id);
+    // 1. Immediately remove from local state so user sees it disappear right away
+    setNotifications((prev) => prev.filter((n) => n.id !== notif.id));
+    // 2. Immediately delete from DB
+    removeNotification(notif.id);
+
     if (notif.type === 'group_invite') {
       const groupId = notif.actionPayload?.groupId;
       const invitee = {
@@ -98,21 +100,12 @@ export function NotificationsOverlay() {
       };
 
       if (groupId) {
-        acceptGroupInvitation(groupId, invitee);
-      }
-
-      if (notif.actionPayload?.invitationId && currentUser) {
-        try {
-          await acceptGroupInvitationAction(currentUser.id, notif.actionPayload.invitationId);
-        } catch (e) {
-          console.warn('Accept group invitation error:', e);
-        }
+        await acceptGroupInvitation(groupId, invitee, notif.actionPayload?.invitationId || notif.id);
       }
       closeOverlay();
     } else if (notif.type === 'friend_request') {
       const targetId = notif.actionPayload?.requestId || notif.actionPayload?.senderId || notif.id;
       acceptFriendRequest(targetId);
-      removeNotification(notif.id);
       closeOverlay();
     } else if (notif.type === 'cowork_request') {
       const senderId = notif.actionPayload?.senderId;
@@ -163,8 +156,6 @@ export function NotificationsOverlay() {
           payload: acceptPayload,
           userId: currentUser?.id || '',
         });
-
-        removeNotification(notif.id);
       }
       setActiveTab('timer');
       closeOverlay();

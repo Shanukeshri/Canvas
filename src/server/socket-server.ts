@@ -151,24 +151,79 @@ export function createSocketServer() {
     // --- Group Events ---
     socket.on('group:join', ({ groupId, user }) => {
       socket.join(`group:${groupId}`);
-      const userInfo = onlineUsers.get(user.id);
-      if (userInfo) userInfo.activeGroupId = groupId;
+      const userInfo = onlineUsers.get(user.id) || {
+        userId: user.id,
+        name: user.name,
+        avatar: user.avatar,
+        color: user.color,
+        socketId: socket.id,
+        lastSeen: Date.now(),
+      };
+      userInfo.activeGroupId = groupId;
+      onlineUsers.set(user.id, userInfo);
 
-      io.to(`group:${groupId}`).emit('group:member_joined', {
+      // Collect existing active members in this group room
+      const activePeers: any[] = [];
+      for (const [uId, u] of onlineUsers.entries()) {
+        if (u.activeGroupId === groupId && uId !== user.id) {
+          activePeers.push({
+            id: u.userId || uId,
+            name: u.name,
+            avatar: u.avatar,
+            color: u.color,
+            status: 'focusing',
+            timerTime: '25:00',
+            isConnected: true,
+          });
+        }
+      }
+
+      // 1. Send existing room members back to joining user
+      socket.emit('group:room_state', {
         groupId,
-        member: user,
+        activeMembers: activePeers,
         timestampMs: Date.now(),
       });
-      console.log(`[Group] User ${user.name} (${user.id}) joined room group:${groupId}`);
+
+      // 2. Broadcast to other members in the room that this member joined
+      socket.to(`group:${groupId}`).emit('group:member_joined', {
+        groupId,
+        member: { ...user, isConnected: true },
+        timestampMs: Date.now(),
+      });
+      console.log(`[Group] User ${user.name} (${user.id}) joined room group:${groupId} (peers in room: ${activePeers.length})`);
     });
 
     socket.on('group:leave', ({ groupId, userId }) => {
       socket.leave(`group:${groupId}`);
+      const userInfo = onlineUsers.get(userId);
+      if (userInfo && userInfo.activeGroupId === groupId) {
+        userInfo.activeGroupId = undefined;
+      }
       io.to(`group:${groupId}`).emit('group:member_left', {
         groupId,
         userId,
         timestampMs: Date.now(),
       });
+    });
+
+    socket.on('group:invite', (payload) => {
+      console.log(`[Group] Invite from ${payload.inviterName} (${payload.inviterId}) to ${payload.inviteeId} for "${payload.groupName}"`);
+      if (payload.inviteeId) {
+        io.to(`user:${payload.inviteeId}`).emit('group:invite_received', {
+          id: `notif-grp-${Date.now()}`,
+          groupId: payload.groupId,
+          groupName: payload.groupName,
+          inviter: {
+            id: payload.inviterId,
+            name: payload.inviterName,
+            avatar: payload.inviterAvatar,
+            color: payload.inviterColor,
+          },
+          invitationId: payload.invitationId,
+          timestampMs: Date.now(),
+        });
+      }
     });
 
     socket.on('group:task_update', ({ groupId, task, action }) => {

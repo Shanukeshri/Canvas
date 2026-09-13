@@ -6,7 +6,6 @@ import { CreateGroupSchema } from '@/lib/validation/schemas';
 import {
   assertGroupMembership,
   assertGroupOwner,
-  assertFriendship,
 } from '@/lib/auth/authorization';
 
 function generateRandomCode(): string {
@@ -57,19 +56,36 @@ export async function createGroupAction(userId: string, data: unknown) {
   return { success: true, group };
 }
 
-export async function inviteFriendToGroupAction(userId: string, groupId: string, friendId: string) {
-  // 1. Enforce friend requirement
-  await assertFriendship(userId, friendId);
-
-  // 2. Enforce inviter membership
+export async function inviteFriendToGroupAction(userId: string, groupId: string, friendIdOrHandle: string) {
+  // 1. Enforce inviter membership
   await assertGroupMembership(groupId, userId);
+
+  // 2. Resolve target user by id, handle (with or without @), or email
+  const clean = friendIdOrHandle.trim();
+  const cleanWithoutAt = clean.replace(/^@/, '');
+  const cleanWithAt = clean.startsWith('@') ? clean : `@${clean}`;
+
+  let targetUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { id: clean },
+        { handle: clean },
+        { handle: cleanWithoutAt },
+        { handle: cleanWithAt },
+        { email: clean },
+      ],
+    },
+    select: { id: true, name: true, handle: true },
+  });
+
+  const inviteeId = targetUser?.id || clean;
 
   // 3. Create or update invitation
   const invitation = await prisma.groupInvitation.upsert({
     where: {
       groupId_inviteeId: {
         groupId,
-        inviteeId: friendId,
+        inviteeId,
       },
     },
     update: {
@@ -79,60 +95,98 @@ export async function inviteFriendToGroupAction(userId: string, groupId: string,
     create: {
       groupId,
       inviterId: userId,
-      inviteeId: friendId,
+      inviteeId,
       status: 'pending',
     },
     include: {
-      group: { select: { name: true } },
-      inviter: { select: { name: true } },
+      group: { select: { id: true, name: true } },
+      inviter: { select: { id: true, name: true, avatar: true, themeColor: true } },
     },
   });
 
   // Create persistent notification for invitee
-  await prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
-      userId: friendId,
+      userId: inviteeId,
       title: 'Group Room Invitation',
       message: `${invitation.inviter.name} invited you to join "${invitation.group.name}".`,
       type: 'group_invite',
-      actionPayload: JSON.stringify({ groupId, invitationId: invitation.id }),
+      actionPayload: JSON.stringify({
+        groupId,
+        groupName: invitation.group.name,
+        invitationId: invitation.id,
+        inviterId: userId,
+        inviterName: invitation.inviter.name,
+      }),
     },
   });
 
-  return { success: true, invitation };
+  revalidatePath('/app');
+  return { success: true, invitation, notification };
 }
 
-export async function acceptGroupInvitationAction(userId: string, invitationId: string) {
-  const invitation = await prisma.groupInvitation.findUnique({
-    where: { id: invitationId },
+export async function acceptGroupInvitationAction(
+  userId: string,
+  invitationId?: string,
+  fallbackGroupId?: string
+) {
+  let invitation = null;
+  if (invitationId && !invitationId.startsWith('inv-') && !invitationId.startsWith('ginvite-')) {
+    invitation = await prisma.groupInvitation.findUnique({
+      where: { id: invitationId },
+    });
+  }
+
+  const targetGroupId = invitation?.groupId || fallbackGroupId || invitationId;
+
+  if (!targetGroupId) {
+    throw new Error('Valid group ID or invitation ID is required.');
+  }
+
+  // Ensure target group exists
+  const group = await prisma.group.findUnique({
+    where: { id: targetGroupId },
+    select: { id: true, name: true },
   });
 
-  if (!invitation || invitation.inviteeId !== userId) {
-    throw new Error('Invitation not found or unauthorized.');
+  if (!group) {
+    throw new Error('Focus group was not found.');
   }
 
   await prisma.$transaction([
     prisma.groupMembership.upsert({
       where: {
         groupId_userId: {
-          groupId: invitation.groupId,
+          groupId: group.id,
           userId,
         },
       },
       update: {},
       create: {
-        groupId: invitation.groupId,
+        groupId: group.id,
         userId,
         role: 'member',
       },
     }),
-    prisma.groupInvitation.update({
-      where: { id: invitationId },
-      data: { status: 'accepted' },
-    }),
+    ...(invitation
+      ? [
+          prisma.groupInvitation.update({
+            where: { id: invitation.id },
+            data: { status: 'accepted' },
+          }),
+        ]
+      : [
+          prisma.groupInvitation.updateMany({
+            where: {
+              groupId: group.id,
+              inviteeId: userId,
+            },
+            data: { status: 'accepted' },
+          }),
+        ]),
     prisma.activityEvent.create({
       data: {
-        groupId: invitation.groupId,
+        groupId: group.id,
         actorId: userId,
         type: 'MEMBER_JOINED',
         payload: JSON.stringify({ role: 'member' }),
@@ -140,36 +194,20 @@ export async function acceptGroupInvitationAction(userId: string, invitationId: 
     }),
   ]);
 
-  revalidatePath('/app');
-  return { success: true };
-}
-
-export async function joinGroupByCodeAction(userId: string, code: string) {
-  const group = await prisma.group.findUnique({
-    where: { code },
-  });
-
-  if (!group) {
-    throw new Error('Group with this code was not found.');
-  }
-
-  await prisma.groupMembership.upsert({
+  // Once accepted, delete all matching group invite notifications for this user from the database
+  await prisma.notification.deleteMany({
     where: {
-      groupId_userId: {
-        groupId: group.id,
-        userId,
-      },
-    },
-    update: {},
-    create: {
-      groupId: group.id,
       userId,
-      role: 'member',
+      OR: [
+        { type: 'group_invite', actionPayload: { contains: group.id } },
+        ...(invitation ? [{ id: invitation.id }, { actionPayload: { contains: invitation.id } }] : []),
+        ...(invitationId ? [{ id: invitationId }, { actionPayload: { contains: invitationId } }] : []),
+      ],
     },
   });
 
   revalidatePath('/app');
-  return { success: true, groupId: group.id };
+  return { success: true, groupId: group.id, groupName: group.name };
 }
 
 export async function leaveGroupAction(userId: string, groupId: string) {

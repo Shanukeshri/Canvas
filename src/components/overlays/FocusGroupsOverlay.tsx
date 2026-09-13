@@ -116,7 +116,8 @@ export function FocusGroupsOverlay() {
               {!isCreatingGroup && (
                 <button
                   onClick={handleOpenCreateForm}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-md hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold shadow-md hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  style={{ backgroundColor: theme.hex }}
                 >
                   <Plus className="w-4 h-4" />
                   <span>Make Group</span>
@@ -125,7 +126,7 @@ export function FocusGroupsOverlay() {
 
               <button
                 onClick={closeOverlay}
-                className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                className="p-2 rounded-xl text-outline hover:text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                 title="Close overlay (Esc)"
               >
                 <X className="w-5 h-5" />
