@@ -1,0 +1,58 @@
+Here is the analysis of the socket syncing, caching, cache invalidation, and data persisting problems in the application:
+
+### 1. Caching Problem (Memory Leak)
+**What is the mistake:** 
+In `src/server/server.ts`, there is an in-memory `activeTimers` Map that stores the active timer states of users. Inside the 5-minute background cron job, the cleanup logic to remove disconnected/inactive users from this Map (`activeTimers.delete(userId)`) is placed entirely inside the `else` block that runs only when Redis is *not* configured (`if (!redis)`). 
+**Why it's there:** 
+The developer likely assumed that if Redis is used, `activeTimers` is bypassed. However, `socket.on('timer:sync_state')` unconditionally adds every user's state to `activeTimers` regardless of the Redis configuration.
+**How to fix it:** 
+Move the memory cleanup loop (`for (const [userId] of entries) { if (!onlineUsers.has(userId)) activeTimers.delete(userId); }`) outside of the `if (redis) / else` block so it always executes and garbage-collects disconnected users.
+
+### 2. Cache Invalidation Problem (Premature Redis Expiration & Stale State)
+**What is the mistake:** 
+There are two issues here. First, in `server.ts`, `redis.set(..., 'EX', 300)` sets a 5-minute expiration on timer states. Because the client (`useRealtime.ts`) only emits `timer:sync_state` on discrete events (play, pause) and not continuously, a 25-minute focus session will expire from Redis after 5 minutes and disappear from the cache. 
+Second, in the socket `disconnect` event, if the timer is `running`, it pauses it and updates Redis. But if the timer is already `paused` or `idle`, the cache is completely ignored and left to expire, meaning a user who pauses and closes the app leaves a stale state in Redis for up to 5 minutes.
+**Why it's there:** 
+The developer mistakenly assumed clients would emit high-frequency state syncs to keep the 300-second TTL alive, and assumed only running timers needed graceful shutdown on disconnect.
+**How to fix it:** 
+Remove the 300-second TTL (or increase it to a large value like 24 hours). In the `disconnect` handler, explicitly invalidate (delete) the Redis key when the user goes offline, or at least synchronize their final state regardless of whether they were running or paused.
+
+### 3. Data Persisting Problem (Race Conditions)
+**What is the mistake:** 
+The 5-minute background cron job flushes timer states from Redis (or memory) to Postgres using `prisma.timerState.upsert`. This blindly overwrites whatever is in the database. However, the Next.js client also makes direct REST API calls (`saveTimerStateCheckpointAction`) to persist state. Because the cron job's payload lacks a `lastUpdatedMs` timestamp check, an older state stuck in the Redis cache could overwrite a newer, authoritative state saved synchronously by the client REST API.
+**Why it's there:** 
+Batch background flushing was implemented to reduce database load, but it was not synchronized with the client-side REST API persisting logic.
+**How to fix it:** 
+Add a `lastUpdatedMs` timestamp field to the timer state payload. Update the Prisma upsert/update query in the cron job to include a condition (e.g., comparing timestamps) so it only overwrites the database if the cached state is strictly newer than the existing database record.
+
+### 4. Socket Syncing Problem (Redundant Double-Broadcasting)
+**What is the mistake:** 
+In `useRealtime.ts`, when the timer state changes, the client explicitly emits both `socket.emit('timer:event', payload)` and `socket.emit('timer:sync_state', payload)`. The server (`server.ts`) listens to both and blindly broadcasts them to all clients as `timer:event_synced` and `timer:state_synced`. The receiving clients then have duplicate event listeners that map both of these events to the exact same handler (`handleTimerStateSynced`), causing redundant network traffic and double-processing of every state change.
+**Why it's there:** 
+The developer likely intended `timer:event` for small notification events and `timer:sync_state` for full data synchronization, but ended up sending full payloads for both and hooking them to the same client-side logic.
+**How to fix it:** 
+Remove `socket.emit('timer:event', payload)` from the client in `useRealtime.ts`, and rely solely on `timer:sync_state`. Consequently, clean up the redundant listener `socket.on('timer:event_synced', ...)` from the client as well.
+
+### 5. Socket Syncing/Cache Invalidation Problem (Server Crash on Disconnect)
+**What is the mistake:** 
+In `server.ts`, inside the `socket.on('disconnect')` handler, there is a check `if (user) { user.socketIds.delete(socket.id); }`. However, the variable `user` is completely undefined (it is missing a declaration). This throws an unhandled `ReferenceError` exception every time a registered user disconnects. Because it crashes the handler, the user is never removed from the `onlineUsers` Map and the `"presence:update"` event is never emitted.
+**Why it's there:** 
+This is likely a refactoring or copy-paste error where the lookup `const user = onlineUsers.get(uid);` was accidentally deleted.
+**How to fix it:** 
+Add `const user = onlineUsers.get(uid);` immediately before the `if (user)` check in the disconnect handler.
+
+### 6. Socket Syncing Problem (Friends Presence Out of Sync)
+**What is the mistake:** 
+In `useRealtime.ts`, the `handlePresenceUpdate` function receives a list of `onlineUserIds` to synchronize who is currently connected. It correctly applies this connectivity status to the `groups` state but completely ignores the `friends` state. As a result, friends who disconnect will still appear as "online" or "focusing" indefinitely on the frontend.
+**Why it's there:** 
+The developer updated group presence logic but forgot to apply the same `Set(payload.onlineUserIds)` check to map over the `friends` state array.
+**How to fix it:** 
+Inside `handlePresenceUpdate`, add logic to update the `friends` state (e.g., `setFriends(prev => prev.map(f => ({ ...f, status: onlineSet.has(f.id) ? (f.status === 'offline' ? 'online' : f.status) : 'offline' })))`) so friends correctly reflect their offline presence.
+
+### 7. Socket Syncing / Caching Problem (Ghost Sockets on Logout)
+**What is the mistake:** 
+In `AppContext.tsx`, the `logout` function clears the local storage and resets the frontend state to `null`. However, it never explicitly disconnects the Socket.IO client. As a result, the socket remains open in the background without event listeners, meaning the server still considers the user online and keeps them in the `onlineUsers` cache indefinitely.
+**Why it's there:** 
+The developer handled the frontend state cleanup but forgot to tear down the underlying WebSocket connection during logout.
+**How to fix it:** 
+Add `getSocket(currentUser.id).disconnect();` inside the `logout` function to explicitly close the connection so the server's `disconnect` handler fires and immediately cleans up their presence cache.

@@ -5,10 +5,12 @@ import { getSocket } from '@/lib/socket/socket-client';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Friend } from '@/types';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { tabSync, leaderElection } from '@/lib/broadcast';
 import { ExactTimerStatePayload, TimerEventType } from '@/types/socket';
-import { tabSync } from '@/lib/broadcast';
 
 export function useRealtime() {
+  const queryClient = useQueryClient();
   const { theme } = useTheme();
   const {
     currentUser,
@@ -39,6 +41,53 @@ export function useRealtime() {
       isMountedRef.current = false;
     };
   }, []);
+
+  // React Query for Notifications
+  useQuery({
+    queryKey: ['notifications', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null;
+      const res = await fetch(`/api/notifications?userId=${encodeURIComponent(currentUser.id)}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setNotifications((prev) => {
+          const unpersisted = prev.filter((p) => !data.data.some((n: any) => n.id === p.id));
+          return [...unpersisted, ...data.data];
+        });
+        return data.data;
+      }
+      return null;
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  // React Query for Friends
+  useQuery({
+    queryKey: ['friends', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return null;
+      const res = await fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setFriends((prev) => {
+          const merged = data.data.map((f: Friend) => {
+            const existing = prev.find((p) => p.id === f.id);
+            if (existing && (existing.targetCompletionMs || existing.status === 'paused' || existing.startedAtMs)) {
+              return { ...f, ...existing };
+            }
+            return f;
+          });
+          const extra = prev.filter(
+            (p) => attachedFriendIds.includes(p.id) && !data.data.some((f: Friend) => f.id === p.id)
+          );
+          return [...merged, ...extra];
+        });
+        return data.data;
+      }
+      return null;
+    },
+    enabled: !!currentUser?.id,
+  });
 
   // Helper to build current timer payload with millisecond precision
   const buildCurrentTimerPayload = (event: TimerEventType): ExactTimerStatePayload => {
@@ -99,8 +148,10 @@ export function useRealtime() {
 
       const payload = buildCurrentTimerPayload(event);
 
-      socket.emit('timer:event', payload);
-      socket.emit('timer:sync_state', payload);
+      if (leaderElection.isLeader) {
+        socket.emit('timer:sync_state', payload);
+      }
+      
       tabSync.publish({
         type: 'TIMER_EVENT_SYNC',
         payload,
@@ -158,11 +209,13 @@ export function useRealtime() {
       }
 
       const emitHeartbeat = () => {
-        socket.emit('presence:heartbeat', {
-          userId: currentUser.id,
-          activeGroupId: activeGroupId || undefined,
-        });
-        socket.emit('timer:ping', { clientTime: Date.now() });
+        if (leaderElection.isLeader) {
+          socket.emit('presence:heartbeat', {
+            userId: currentUser.id,
+            activeGroupId: activeGroupId || undefined,
+          });
+          socket.emit('timer:ping', { clientTime: Date.now() });
+        }
       };
 
       const handleTimerPong = ({ clientTime, serverTime }: { clientTime: number; serverTime: number }) => {
@@ -272,7 +325,6 @@ export function useRealtime() {
       const handleTimerStateRequested = (req: any) => {
         if (!req.targetUserId || req.targetUserId === currentUser.id) {
           const payload = buildCurrentTimerPayload('sync');
-          socket.emit('timer:event', payload);
           socket.emit('timer:sync_state', payload);
         }
       };
@@ -339,14 +391,18 @@ export function useRealtime() {
 
         // 3. Immediately emit own current timer state to the partner
         const myStatePayload = buildCurrentTimerPayload('sync');
-        socket.emit('timer:event', myStatePayload);
-        socket.emit('timer:sync_state', myStatePayload);
+        
+        if (leaderElection.isLeader) {
+          socket.emit('timer:sync_state', myStatePayload);
+        }
 
         // 4. Request partner's exact state
-        socket.emit('timer:request_state', {
-          requesterId: currentUser.id,
-          targetUserId: partnerId,
-        });
+        if (leaderElection.isLeader) {
+          socket.emit('timer:request_state', {
+            requesterId: currentUser.id,
+            targetUserId: partnerId,
+          });
+        }
       };
 
       // Co-work disconnected: detach on both sides
@@ -359,23 +415,33 @@ export function useRealtime() {
         detachFriend(toRemove);
       };
 
+      // Friend request received
       const handleFriendRequestReceived = (payload: any) => {
+        if (!currentUser) return;
+        queryClient.invalidateQueries({ queryKey: ['notifications', currentUser.id] });
         setNotifications((prev) => [
           {
-            id: payload.requestId,
+            id: payload.requestId || `freq-${Date.now()}`,
             title: 'New Friend Request',
-            message: `${payload.sender.name} sent you a friend request.`,
-            type: 'friend_request',
+            message: `${payload.sender?.name || 'A user'} sent you a friend request.`,
+            type: 'friend_request' as any,
             time: 'Just now',
             read: false,
-            actionPayload: { requestId: payload.requestId, senderId: payload.sender.id },
+            actionPayload: {
+              requestId: payload.requestId,
+              senderId: payload.sender?.id,
+              sender: payload.sender,
+            },
           },
           ...prev,
         ]);
       };
 
+      // Friend request accepted
       const handleFriendRequestAccepted = (payload: any) => {
-        console.log('🎉 [Socket.IO Client] Friend request accepted event received:', payload);
+        if (!currentUser) return;
+        queryClient.invalidateQueries({ queryKey: ['friends', currentUser.id] });
+        queryClient.invalidateQueries({ queryKey: ['notifications', currentUser.id] });
         if (payload?.friend?.id) {
           setFriends((prev) => {
             if (prev.some((f) => f.id === payload.friend.id)) return prev;
@@ -462,6 +528,17 @@ export function useRealtime() {
       const handlePresenceUpdate = (payload: { onlineUserIds: string[] }) => {
         if (!payload?.onlineUserIds) return;
         const onlineSet = new Set(payload.onlineUserIds);
+
+        setFriends((prev) =>
+          prev.map((f) => {
+            const isOnline = onlineSet.has(f.id);
+            return {
+              ...f,
+              status: isOnline ? (f.status === 'offline' ? 'online' : f.status) : 'offline',
+            };
+          })
+        );
+
         setGroups((prev) =>
           prev.map((g) => ({
             ...g,
@@ -504,7 +581,9 @@ export function useRealtime() {
 
       // Group invite notification received
       const handleGroupInviteReceived = (payload: any) => {
-        console.log('📬 [Socket.IO Client] Group invite received:', payload);
+        if (currentUser) {
+          queryClient.invalidateQueries({ queryKey: ['notifications', currentUser.id] });
+        }
         setNotifications((prev) => [
           {
             id: payload.id || `notif-grp-${Date.now()}`,
@@ -524,7 +603,6 @@ export function useRealtime() {
       };
 
       socket.on('timer:state_synced', handleTimerStateSynced);
-      socket.on('timer:event_synced', handleTimerStateSynced);
       socket.on('timer:state_requested', handleTimerStateRequested);
       socket.on('cowork:requested', handleCoworkRequested);
       socket.on('cowork:accepted', handleCoworkAccepted);
@@ -582,48 +660,13 @@ export function useRealtime() {
       console.warn('Socket realtime connection error:', err);
     }
 
-    // 2. Periodic poll for notifications & friends
-    const pollInterval = setInterval(async () => {
-      if (!isMountedRef.current || !currentUser?.id) return;
-      try {
-        const notifRes = await fetch(`/api/notifications?userId=${encodeURIComponent(currentUser.id)}`);
-        const notifData = await notifRes.json();
-        if (notifData.success && Array.isArray(notifData.data)) {
-          setNotifications((prev) => {
-            const unpersisted = prev.filter((p) => !notifData.data.some((n: any) => n.id === p.id));
-            return [...unpersisted, ...notifData.data];
-          });
-        }
-
-        const friendsRes = await fetch(`/api/friends?userId=${encodeURIComponent(currentUser.id)}`);
-        const friendsData = await friendsRes.json();
-        if (friendsData.success && Array.isArray(friendsData.data)) {
-          setFriends((prev) => {
-            const merged = friendsData.data.map((f: Friend) => {
-              const existing = prev.find((p) => p.id === f.id);
-              if (existing && (existing.targetCompletionMs || existing.status === 'paused' || existing.startedAtMs)) {
-                return { ...f, ...existing };
-              }
-              return f;
-            });
-            const extra = prev.filter(
-              (p) => attachedFriendIds.includes(p.id) && !friendsData.data.some((f: Friend) => f.id === p.id)
-            );
-            return [...merged, ...extra];
-          });
-        }
-      } catch {}
-    }, 3500);
-
     return () => {
-      clearInterval(pollInterval);
       if (unsubTab) unsubTab();
       if (socket) {
         try {
           socket.off('connect');
           socket.off('timer:pong');
           socket.off('timer:state_synced');
-          socket.off('timer:event_synced');
           socket.off('timer:state_requested');
           socket.off('cowork:requested');
           socket.off('cowork:accepted');

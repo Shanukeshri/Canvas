@@ -32,6 +32,7 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
     userAvatar,
     isAuthenticated,
     currentUser,
+    saveUserPreferences,
   } = useApp();
   const { isDarkMode, toggleDarkMode, theme } = useTheme();
 
@@ -242,7 +243,10 @@ export function Sidebar({ onOpenProductPage }: SidebarProps) {
         {/* Dark/Light Mode Switcher */}
         <div className="relative group flex items-center justify-center w-full">
           <button
-            onClick={toggleDarkMode}
+            onClick={() => {
+              toggleDarkMode();
+              saveUserPreferences?.({ isDarkMode: !isDarkMode });
+            }}
             aria-label="Toggle Theme Mode"
             className="w-10 h-10 flex items-center justify-center rounded-full text-outline hover:text-primary hover:bg-surface-container-low transition-colors"
           >

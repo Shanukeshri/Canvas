@@ -130,7 +130,7 @@ export interface NotificationItem {
   title: string;
   message: string;
   time: string;
-  type: "friend_request" | "group_invite" | "cowork_request" | "timer_complete" | "system";
+  type: "friend_request" | "friend_accepted" | "group_invite" | "cowork_request" | "timer_complete" | "system";
   read: boolean;
   actionPayload?: any;
 }

@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/db/prisma';
 
 export async function createNotificationAction(data: {
@@ -20,7 +20,7 @@ export async function createNotificationAction(data: {
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, notification: notif };
 }
 
@@ -33,7 +33,7 @@ export async function markNotificationReadAction(userId: string, notificationId:
     data: { read: true },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }
 
@@ -48,6 +48,6 @@ export async function removeNotificationAction(userId: string, notificationId: s
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }

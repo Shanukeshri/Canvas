@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/db/prisma';
 import { CreateGroupSchema } from '@/lib/validation/schemas';
 import {
@@ -52,7 +52,7 @@ export async function createGroupAction(userId: string, data: unknown) {
     return createdGroup;
   });
 
-  revalidatePath('/app');
+
   return { success: true, group };
 }
 
@@ -121,7 +121,7 @@ export async function inviteFriendToGroupAction(userId: string, groupId: string,
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, invitation, notification };
 }
 
@@ -153,8 +153,8 @@ export async function acceptGroupInvitationAction(
     throw new Error('Focus group was not found.');
   }
 
-  await prisma.$transaction([
-    prisma.groupMembership.upsert({
+  await prisma.$transaction(async (tx) => {
+    await tx.groupMembership.upsert({
       where: {
         groupId_userId: {
           groupId: group.id,
@@ -167,32 +167,32 @@ export async function acceptGroupInvitationAction(
         userId,
         role: 'member',
       },
-    }),
-    ...(invitation
-      ? [
-          prisma.groupInvitation.update({
-            where: { id: invitation.id },
-            data: { status: 'accepted' },
-          }),
-        ]
-      : [
-          prisma.groupInvitation.updateMany({
-            where: {
-              groupId: group.id,
-              inviteeId: userId,
-            },
-            data: { status: 'accepted' },
-          }),
-        ]),
-    prisma.activityEvent.create({
+    });
+
+    if (invitation) {
+      await tx.groupInvitation.update({
+        where: { id: invitation.id },
+        data: { status: 'accepted' },
+      });
+    } else {
+      await tx.groupInvitation.updateMany({
+        where: {
+          groupId: group.id,
+          inviteeId: userId,
+        },
+        data: { status: 'accepted' },
+      });
+    }
+
+    await tx.activityEvent.create({
       data: {
         groupId: group.id,
         actorId: userId,
         type: 'MEMBER_JOINED',
         payload: JSON.stringify({ role: 'member' }),
       },
-    }),
-  ]);
+    });
+  });
 
   // Once accepted, delete all matching group invite notifications for this user from the database
   await prisma.notification.deleteMany({
@@ -206,21 +206,19 @@ export async function acceptGroupInvitationAction(
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, groupId: group.id, groupName: group.name };
 }
 
 export async function leaveGroupAction(userId: string, groupId: string) {
-  await prisma.groupMembership.delete({
+  await prisma.groupMembership.deleteMany({
     where: {
-      groupId_userId: {
-        groupId,
-        userId,
-      },
+      groupId,
+      userId,
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }
 
@@ -231,6 +229,6 @@ export async function deleteGroupAction(userId: string, groupId: string) {
     where: { id: groupId },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }

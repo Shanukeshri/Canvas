@@ -17,6 +17,7 @@ import {
   Check,
   ListTodo,
   Waves,
+  ChevronDown,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -318,8 +319,15 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       className="w-full h-screen overflow-y-auto snap-y snap-mandatory scroll-smooth bg-surface text-on-surface select-none selection:bg-primary selection:text-white relative"
       style={{ scrollbarWidth: 'none' }}
     >
-      {/* Top Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 py-4 backdrop-blur-xl bg-surface/80 border-b border-surface-variant/30">
+      {/* Top Navigation Bar - hidden on first page, smoothly fades in when scrolling */}
+      <nav
+        className={clsx(
+          'fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 sm:px-10 py-4 backdrop-blur-xl bg-surface/80 border-b border-surface-variant/30 transition-all duration-500',
+          activeSegment === 0 && scrollRatio < 0.08
+            ? 'opacity-0 pointer-events-none -translate-y-4'
+            : 'opacity-100 pointer-events-auto translate-y-0'
+        )}
+      >
         <div className="flex items-center gap-3">
           <div
             className="w-10 h-10 rounded-2xl flex items-center justify-center border border-surface-variant/40 shadow-sm transition-transform hover:rotate-180 duration-500"
@@ -343,8 +351,15 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
         </div>
       </nav>
 
-      {/* Segment Side Pagination Dots */}
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col gap-3">
+      {/* Segment Side Pagination Dots - hidden on first page, smoothly fades in when scrolling */}
+      <div
+        className={clsx(
+          'fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col gap-3 transition-all duration-500',
+          activeSegment === 0 && scrollRatio < 0.08
+            ? 'opacity-0 pointer-events-none translate-x-4'
+            : 'opacity-100 pointer-events-auto translate-x-0'
+        )}
+      >
         {SEGMENTS.map((seg, idx) => (
           <button
             key={seg.id}
@@ -378,52 +393,43 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
       </div>
 
       {/* ============================================================ */}
-      {/* SEGMENT 0: HERO — "Everything can wait." */}
+      {/* SEGMENT 0: HERO — Huge focal timer only, nothing written and nothing else */}
       {/* ============================================================ */}
       <section
         data-segment="0"
-        className="h-screen w-full snap-start snap-always shrink-0 flex flex-col items-center justify-center relative px-6 text-center overflow-hidden pt-16"
+        className="h-screen w-full snap-start snap-always shrink-0 flex items-center justify-center relative px-6 text-center overflow-hidden"
       >
         <div
-          className="absolute w-[500px] h-[500px] rounded-full blur-[140px] opacity-20 pointer-events-none"
+          className="absolute w-[600px] h-[600px] rounded-full blur-[160px] opacity-25 pointer-events-none transition-all duration-700"
           style={{ backgroundColor: theme.hex }}
         />
 
-        <div className="flex flex-col items-center max-w-4xl z-10">
-          <span
-            className="text-[11px] font-bold uppercase tracking-widest mb-6 px-4 py-1.5 rounded-full border shadow-sm"
-            style={{
-              backgroundColor: theme.hex + '15',
-              borderColor: theme.hex + '35',
-              color: theme.hex,
-            }}
-          >
-            The Canvas is the Application
-          </span>
-
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-black font-display tracking-tight text-on-surface leading-none">
-            Everything <br />
-            <span style={{ color: theme.hex }}>can wait.</span>
-          </h1>
-
-          {/* Focal Timer Anchor */}
+        <div className="flex flex-col items-center justify-center z-10">
+          {/* Focal Huge Timer Anchor - nothing written, nothing else */}
           <div
-            className="mt-10 w-56 h-56 sm:w-60 sm:h-60 rounded-full border-4 flex flex-col items-center justify-center shadow-2xl backdrop-blur-2xl bg-surface-container-low/90 transition-transform hover:scale-105"
-            style={{ borderColor: theme.hex }}
+            onClick={onEnterApp}
+            className="w-72 h-72 sm:w-96 sm:h-96 md:w-[460px] md:h-[460px] lg:w-[520px] lg:h-[520px] rounded-full border-4 sm:border-[6px] md:border-8 flex items-center justify-center shadow-2xl backdrop-blur-3xl bg-surface-container-low/95 transition-all duration-500 hover:scale-105 active:scale-98 cursor-pointer select-none group"
+            style={{
+              borderColor: theme.hex,
+              boxShadow: `0 0 80px ${theme.hex}30, 0 25px 50px -12px rgba(0,0,0,0.35)`,
+            }}
+            title="Click to enter workspace"
           >
-            <span className="font-mono text-5xl font-extrabold text-on-surface tracking-tight">
+            <span className="font-mono text-6xl sm:text-8xl md:text-9xl lg:text-[140px] font-extrabold text-on-surface tracking-tighter transition-transform group-hover:scale-102">
               25:00
             </span>
-            <div className="flex items-center gap-1.5 mt-2">
-              <Hourglass className="w-3.5 h-3.5" style={{ color: theme.hex }} />
-              <span
-                className="text-xs font-bold uppercase tracking-widest"
-                style={{ color: theme.hex }}
-              >
-                FOCUS
-              </span>
-            </div>
           </div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <div 
+          className={clsx(
+            "absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-all duration-700",
+            scrollRatio > 0.05 ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-70 animate-bounce"
+          )}
+        >
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: theme.hex }}>Scroll</span>
+          <ChevronDown className="w-6 h-6" style={{ color: theme.hex }} />
         </div>
       </section>
 

@@ -43,12 +43,10 @@ export function getSocket(userId?: string): Socket<ServerToClientEvents, ClientT
       console.log(`🔄 [Socket.IO Client] Reconnected after ${attempt} attempts! Socket ID: ${socket?.id}`);
     });
   } else if (userId && (!socket.io.opts.query || (socket.io.opts.query as any).userId !== userId)) {
-    socket.io.opts.query = { userId };
-    if (socket.connected) {
-      socket.emit('presence:heartbeat', { userId });
-    } else {
-      socket.connect();
-    }
+    console.log(`🔌 [Socket.IO Client] User identity changed, recreating socket.`);
+    socket.disconnect();
+    socket = null;
+    return getSocket(userId);
   }
 
   if (socket && !socket.connected) {

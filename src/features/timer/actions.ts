@@ -1,9 +1,10 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/db/prisma';
 import { FocusSessionSchema, TimerPresetSchema } from '@/lib/validation/schemas';
 import { TimerEngineState } from './timer-engine';
+import { redis } from '@/lib/redis';
 
 export async function recordFocusSessionAction(userId: string, data: unknown) {
   const parsed = FocusSessionSchema.parse(data);
@@ -19,16 +20,35 @@ export async function recordFocusSessionAction(userId: string, data: unknown) {
   }
 
   if (parsed.id) {
-    const session = await prisma.focusSession.upsert({
+    const existing = await prisma.focusSession.findUnique({
       where: { id: parsed.id },
-      update: {
-        taskId: parsed.taskId || null,
-        groupId: parsed.groupId || null,
-        endedAtMs: BigInt(parsed.endedAtMs),
-        elapsedDurationMs: BigInt(parsed.elapsedDurationMs),
-        status: parsed.status,
-      },
-      create: {
+      select: { status: true, elapsedDurationMs: true },
+    });
+
+    if (existing) {
+      // Prevent overwriting a completed session with a running one, or reducing elapsed time
+      if (
+        (existing.status === 'completed' && parsed.status !== 'completed') ||
+        BigInt(parsed.elapsedDurationMs) < existing.elapsedDurationMs
+      ) {
+        return { success: true, sessionId: parsed.id };
+      }
+
+      const session = await prisma.focusSession.update({
+        where: { id: parsed.id },
+        data: {
+          taskId: parsed.taskId || null,
+          groupId: parsed.groupId || null,
+          endedAtMs: BigInt(parsed.endedAtMs),
+          elapsedDurationMs: BigInt(parsed.elapsedDurationMs),
+          status: parsed.status,
+        },
+      });
+      return { success: true, sessionId: session.id };
+    }
+
+    const session = await prisma.focusSession.create({
+      data: {
         id: parsed.id,
         userId,
         type: parsed.type,
@@ -61,6 +81,12 @@ export async function recordFocusSessionAction(userId: string, data: unknown) {
 }
 
 export async function saveTimerStateCheckpointAction(userId: string, state: TimerEngineState) {
+  if (redis) {
+    await redis.set(`timer_state:${userId}`, JSON.stringify(state), 'EX', 300);
+    return { success: true };
+  }
+
+  // Fallback to Postgres if no Redis
   await prisma.timerState.upsert({
     where: { userId },
     update: {

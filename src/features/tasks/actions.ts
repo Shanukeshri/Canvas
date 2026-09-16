@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/db/prisma';
 import { CreateTaskSchema, UpdateTaskSchema } from '@/lib/validation/schemas';
 import { assertTaskDeletionAllowed, assertGroupMembership } from '@/lib/auth/authorization';
@@ -42,7 +42,7 @@ export async function createTaskAction(userId: string, data: unknown) {
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, task };
 }
 
@@ -79,11 +79,11 @@ export async function updateTaskAction(userId: string, data: unknown) {
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, task: updated };
 }
 
-export async function toggleTaskCompleteAction(userId: string, taskId: string) {
+export async function toggleTaskCompleteAction(userId: string, taskId: string, targetState: boolean) {
   const existing = await prisma.task.findUnique({
     where: { id: taskId },
   });
@@ -96,16 +96,15 @@ export async function toggleTaskCompleteAction(userId: string, taskId: string) {
     await assertGroupMembership(existing.groupId, userId);
   }
 
-  const newCompleted = !existing.completed;
   const updated = await prisma.task.update({
     where: { id: taskId },
     data: {
-      completed: newCompleted,
-      completedAt: newCompleted ? new Date() : null,
+      completed: targetState,
+      completedAt: targetState ? new Date() : null,
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true, task: updated };
 }
 
@@ -117,7 +116,7 @@ export async function deleteTaskAction(userId: string, taskId: string) {
     where: { id: taskId },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }
 
@@ -135,6 +134,6 @@ export async function reorderTasksAction(userId: string, orderedTaskIds: string[
     )
   );
 
-  revalidatePath('/app');
+
   return { success: true };
 }

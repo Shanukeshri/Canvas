@@ -18,6 +18,7 @@ export interface RunningTimerState extends BaseTimerState {
   startedAtMs: number;
   pausedDurationMs: number;
   targetCompletionMs?: number; // Only for pomodoro
+  lastTickAtMs?: number;
 }
 
 export interface PausedTimerState extends BaseTimerState {
@@ -92,6 +93,7 @@ export function startTimer(
       startedAtMs: currentState.startedAtMs,
       pausedDurationMs: (nowMs - currentState.startedAtMs) - currentState.elapsedDurationMs,
       targetCompletionMs: isPomodoro ? nowMs + remainingMs : undefined,
+      lastTickAtMs: nowMs,
     };
   }
 
@@ -106,6 +108,7 @@ export function startTimer(
     startedAtMs: nowMs,
     pausedDurationMs: 0,
     targetCompletionMs: isPomodoro ? nowMs + currentState.durationMs : undefined,
+    lastTickAtMs: nowMs,
   };
 }
 
@@ -195,12 +198,20 @@ export function computeTimerSnapshot(
     }
 
     case 'running': {
+      // Check for phantom run (tab asleep or closed)
+      if (state.lastTickAtMs && nowMs - state.lastTickAtMs > 60000) {
+        // Treat as paused at lastTickAtMs
+        const pausedState = pauseTimer(state, state.lastTickAtMs);
+        return computeTimerSnapshot(pausedState, nowMs);
+      }
+
       if (state.mode === 'stopwatch') {
         const elapsedMs = Math.max(0, nowMs - state.startedAtMs - state.pausedDurationMs);
         return {
           state: {
             ...state,
             elapsedDurationMs: elapsedMs,
+            lastTickAtMs: nowMs,
           },
           remainingMs: 0,
           remainingSeconds: 0,
@@ -243,6 +254,7 @@ export function computeTimerSnapshot(
         state: {
           ...state,
           elapsedDurationMs: totalElapsedMs,
+          lastTickAtMs: nowMs,
         },
         remainingMs,
         remainingSeconds: Math.ceil(remainingMs / 1000),

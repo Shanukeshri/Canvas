@@ -38,12 +38,7 @@ export async function getUserFriends(userId: string): Promise<Friend[]> {
       handle: profile.handle,
       avatar: profile.avatar,
       color: profile.themeColor || '#6366f1',
-      status: 'focusing',
-      currentTask: 'Deep focus work',
-      timerMinutes: 25,
-      timerSeconds: 0,
-      mode: 'pomodoro',
-      isFocusing: true,
+      status: 'offline',
     };
   });
 }

@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+
 import { prisma } from '@/lib/db/prisma';
 import { FriendRequestSchema } from '@/lib/validation/schemas';
 
@@ -160,7 +160,7 @@ export async function acceptFriendRequestAction(userId: string, requestId: strin
     },
   });
 
-  revalidatePath('/app');
+
   return {
     success: true,
     friend: {
@@ -196,7 +196,7 @@ export async function declineFriendRequestAction(userId: string, requestId: stri
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }
 
@@ -210,6 +210,6 @@ export async function removeFriendAction(userId: string, friendId: string) {
     },
   });
 
-  revalidatePath('/app');
+
   return { success: true };
 }

@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: parsed.email.toLowerCase().trim() },
+      include: { timerState: true },
     });
 
     if (!user) {
@@ -70,6 +71,17 @@ export async function POST(req: NextRequest) {
       handle: user.handle,
       avatar: user.avatar,
       themeColor: user.themeColor || '#6366f1',
+      preferences: user.preferences,
+      timerState: user.timerState ? {
+        mode: user.timerState.mode,
+        status: user.timerState.status,
+        phase: user.timerState.phase,
+        durationMs: Number(user.timerState.durationMs),
+        startedAtMs: user.timerState.startedAtMs ? Number(user.timerState.startedAtMs) : undefined,
+        pausedAtMs: user.timerState.pausedAtMs ? Number(user.timerState.pausedAtMs) : undefined,
+        elapsedDurationMs: Number(user.timerState.elapsedDurationMs),
+        targetCompletionMs: user.timerState.targetCompletionMs ? Number(user.timerState.targetCompletionMs) : undefined,
+      } : undefined,
       provider: 'email',
       createdAt: user.createdAt.toLocaleDateString(),
     };

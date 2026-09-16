@@ -27,7 +27,7 @@ import {
   TimerEngineState,
   calculateFocusContributionMs,
 } from '@/features/timer/timer-engine';
-import { tabSync } from '@/lib/broadcast';
+import { tabSync, leaderElection } from '@/lib/broadcast';
 import { useTheme } from '@/context/ThemeContext';
 import { audioEngine } from '@/features/sounds/audio-engine';
 import {
@@ -41,6 +41,7 @@ import {
   createGroupAction,
   leaveGroupAction,
   inviteFriendToGroupAction,
+  acceptGroupInvitationAction,
 } from '@/features/groups/actions';
 import {
   acceptFriendRequestAction,
@@ -325,7 +326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (guestRaw && data.user.id) {
               const guestSessions: any[] = JSON.parse(guestRaw);
               if (Array.isArray(guestSessions) && guestSessions.length > 0) {
-                guestSessions.forEach((s) => {
+                const promises = guestSessions.map((s) => 
                   recordFocusSessionAction(data.user.id, {
                     id: s.id,
                     type: s.type,
@@ -335,9 +336,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     endedAtMs: s.endedAtMs,
                     elapsedDurationMs: s.elapsedDurationMs,
                     status: s.status || 'completed',
-                  }).catch(() => {});
+                  }).then(res => ({ id: s.id, success: res.success }))
+                    .catch(() => ({ id: s.id, success: false }))
+                );
+                
+                Promise.all(promises).then((results) => {
+                  const successfulIds = new Set(results.filter(r => r.success).map(r => r.id));
+                  const remaining = guestSessions.filter(s => !successfulIds.has(s.id));
+                  if (remaining.length > 0) {
+                    localStorage.setItem('canvas_guest_focus_sessions_v1', JSON.stringify(remaining));
+                  } else {
+                    localStorage.removeItem('canvas_guest_focus_sessions_v1');
+                  }
                 });
-                localStorage.removeItem('canvas_guest_focus_sessions_v1');
               }
             }
           } catch {}
@@ -528,8 +539,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       status,
     };
 
-    // 1. Authoritative DB upsert if logged in
-    if (currentUser?.id) {
+    // 1. Authoritative DB upsert if logged in (Only Leader Tab does this!)
+    if (currentUser?.id && leaderElection.isLeader) {
       recordFocusSessionAction(currentUser.id, payload).catch((err) =>
         console.warn('Failed to checkpoint focus session to server:', err)
       );
@@ -885,7 +896,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (currentUser) {
-      toggleTaskCompleteAction(currentUser.id, id).catch((e) => console.error(e));
+      const task = tasks.find(t => t.id === id);
+      const targetState = task ? !task.completed : true;
+      toggleTaskCompleteAction(currentUser.id, id, targetState).catch((e) => console.error(e));
     }
   };
 
@@ -1116,7 +1129,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (currentUser) {
-      toggleTaskCompleteAction(currentUser.id, taskId).catch((e) => console.error(e));
+      let targetState = true;
+      groups.forEach(g => {
+        if (g.id === groupId) {
+          const task = g.tasks.find(t => t.id === taskId);
+          if (task) targetState = !task.completed;
+        }
+      });
+      toggleTaskCompleteAction(currentUser.id, taskId, targetState).catch((e) => console.error(e));
     }
   };
 
@@ -1419,8 +1439,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await acceptGroupInvitationAction(currentUser.id, invitationId || groupId, groupId);
-      } catch (err) {
-        console.warn('acceptGroupInvitationAction warning:', err);
+      } catch (e) {
+        console.error('Failed to join group:', e);
       }
 
       // Re-fetch groups to guarantee full sync
@@ -1615,6 +1635,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('canvas_current_user_v1');
       localStorage.removeItem('zen_current_user_v1');
     }
+    
+    // Disconnect socket to prevent ghost presence
+    if (currentUser?.id) {
+      try {
+        const socket = getSocket(currentUser.id);
+        if (socket && socket.connected) {
+          socket.disconnect();
+        }
+      } catch (e) {
+        console.warn('Failed to disconnect socket on logout:', e);
+      }
+    }
+
     setCurrentUser(null);
     setIsAuthenticated(false);
     setTasks([]);

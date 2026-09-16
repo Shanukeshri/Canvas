@@ -14,7 +14,6 @@
     "seed": "npx tsx src/lib/db/run-seed.ts",
     "socket": "npx tsx src/server/socket-server.ts"
   },
-
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@prisma/client": "^6.4.1",

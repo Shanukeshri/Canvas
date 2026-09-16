@@ -18,6 +18,6 @@ export const redis: Redis | null = redisUrl
     })
   : null;
 
-if (process.env.NODE_ENV !== 'production' && redis) {
+if (redis) {
   globalForRedis.redis = redis;
 }

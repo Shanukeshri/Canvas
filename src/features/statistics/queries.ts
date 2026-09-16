@@ -284,9 +284,24 @@ export async function getUserSummaryMetrics(
   const now = new Date();
   const todayKey = getLocalDateString(now, timeZone);
 
+  // Determine startDate based on timeRange
+  let startDate: Date | undefined;
+  if (timeRange === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (timeRange === 'week') {
+    startDate = new Date();
+    startDate.setDate(now.getDate() - 7);
+  } else if (timeRange === 'month') {
+    startDate = new Date();
+    startDate.setDate(now.getDate() - 30);
+  }
+
   const [allSessions, completedTasksCount] = await Promise.all([
     prisma.focusSession.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(startDate ? { createdAt: { gte: startDate } } : {})
+      },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.task.count({
@@ -294,18 +309,10 @@ export async function getUserSummaryMetrics(
     }),
   ]);
 
-  // Filter sessions according to timeRange
+  // Filter sessions according to timeRange (for today, strictly match local date string)
   let filteredSessions = allSessions;
   if (timeRange === 'today') {
     filteredSessions = allSessions.filter((s) => getLocalDateString(s.createdAt, timeZone) === todayKey);
-  } else if (timeRange === 'week') {
-    const weekAgo = new Date();
-    weekAgo.setDate(now.getDate() - 7);
-    filteredSessions = allSessions.filter((s) => s.createdAt >= weekAgo);
-  } else if (timeRange === 'month') {
-    const monthAgo = new Date();
-    monthAgo.setDate(now.getDate() - 30);
-    filteredSessions = allSessions.filter((s) => s.createdAt >= monthAgo);
   }
 
   const totalSessions = filteredSessions.length;

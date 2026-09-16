@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
       handle: user.handle,
       avatar: user.avatar,
       themeColor: user.themeColor || '#6366f1',
+      preferences: user.preferences,
       provider: 'email',
       createdAt: user.createdAt.toLocaleDateString(),
     };
