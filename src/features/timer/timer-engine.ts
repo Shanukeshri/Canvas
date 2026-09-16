@@ -198,12 +198,6 @@ export function computeTimerSnapshot(
     }
 
     case 'running': {
-      // Check for phantom run (tab asleep or closed)
-      if (state.lastTickAtMs && nowMs - state.lastTickAtMs > 60000) {
-        // Treat as paused at lastTickAtMs
-        const pausedState = pauseTimer(state, state.lastTickAtMs);
-        return computeTimerSnapshot(pausedState, nowMs);
-      }
 
       if (state.mode === 'stopwatch') {
         const elapsedMs = Math.max(0, nowMs - state.startedAtMs - state.pausedDurationMs);
