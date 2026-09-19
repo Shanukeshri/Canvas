@@ -44,9 +44,13 @@ export function useDocumentPiP() {
 
       copyStyles();
 
-      // Initial class sync for Tailwind dark mode
-      pip.document.documentElement.className = document.documentElement.className;
-      pip.document.body.className = document.body.className;
+      // Initial sync of all attributes (classes, data-themes, inline styles) for accurate theme copying
+      Array.from(document.documentElement.attributes).forEach(attr => {
+        pip.document.documentElement.setAttribute(attr.name, attr.value);
+      });
+      Array.from(document.body.attributes).forEach(attr => {
+        pip.document.body.setAttribute(attr.name, attr.value);
+      });
       pip.document.body.classList.add('bg-surface'); // Ensure theme background applies
 
       // Apply base styles to body for layout
@@ -58,22 +62,33 @@ export function useDocumentPiP() {
       pip.document.body.style.alignItems = 'center';
       pip.document.body.style.justifyContent = 'center';
 
-      // Set up a MutationObserver to sync theme changes (dark/light mode toggles) in real-time
+      // Set up a MutationObserver to sync theme changes (all attributes) in real-time
       const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-          if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-            if (mutation.target === document.documentElement) {
-              pip.document.documentElement.className = document.documentElement.className;
-            } else if (mutation.target === document.body) {
-              pip.document.body.className = document.body.className;
-              pip.document.body.classList.add('bg-surface');
+          if (mutation.type === 'attributes' && mutation.attributeName) {
+            const target = mutation.target as HTMLElement;
+            const pipTarget = target === document.documentElement ? pip.document.documentElement : 
+                              target === document.body ? pip.document.body : null;
+            
+            if (pipTarget) {
+              const newValue = target.getAttribute(mutation.attributeName);
+              if (newValue !== null) {
+                pipTarget.setAttribute(mutation.attributeName, newValue);
+              } else {
+                pipTarget.removeAttribute(mutation.attributeName);
+              }
+              
+              // Ensure our base background class remains on the body
+              if (target === document.body && mutation.attributeName === 'class') {
+                pipTarget.classList.add('bg-surface');
+              }
             }
           }
         });
       });
 
-      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      observer.observe(document.documentElement, { attributes: true });
+      observer.observe(document.body, { attributes: true });
 
       // Listen for the PiP window closing
       pip.addEventListener('pagehide', () => {
