@@ -12,6 +12,7 @@ import { tabSync } from '@/lib/broadcast';
 interface OrbitBubblesProps {
   attachedFriends: Friend[];
   compact?: boolean;
+  isPip?: boolean;
 }
 
 // Distinct theme color tokens for each friend matching the main timer's aesthetic
@@ -33,7 +34,7 @@ interface BubblePhysics {
   isDragging: boolean;
 }
 
-export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesProps) {
+export function OrbitBubbles({ attachedFriends, compact = false, isPip = false }: OrbitBubblesProps) {
   const { toggleAttachFriend, setAttachedFriendIds, currentUser } = useApp();
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
   const [, setTick] = useState(0);
@@ -126,7 +127,8 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
       const halfH = h / 2;
 
       // 2. LIVE DYNAMIC MAIN TIMER MEASUREMENT
-      const mainTimerEl = typeof document !== 'undefined' ? document.getElementById('main-timer-ring') : null;
+      const timerDoc = isPip ? containerEl?.ownerDocument : (typeof document !== 'undefined' ? document : null);
+      const mainTimerEl = timerDoc ? timerDoc.getElementById('main-timer-ring') : null;
       const mainTimerRect = mainTimerEl ? mainTimerEl.getBoundingClientRect() : null;
       const mainTimerRadius = mainTimerRect && mainTimerRect.width > 20 ? mainTimerRect.width / 2 : (compact ? 130 : 180);
 
@@ -465,7 +467,9 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
             <div
               className={clsx(
                 'relative flex flex-col items-center justify-center select-none shrink-0 transition-transform',
-                compact
+                isPip 
+                  ? 'w-[25vmin] h-[25vmin]'
+                  : compact
                   ? 'w-[150px] h-[150px] md:w-[160px] md:h-[160px]'
                   : 'w-[210px] h-[210px] lg:w-[230px] lg:h-[230px]'
               )}
@@ -511,12 +515,13 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                   }}
                   className={clsx(
                     'absolute rounded-full bg-surface-container border border-surface-variant hover:bg-error hover:text-white hover:border-error transition-all flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 z-30 cursor-pointer',
+                    isPip ? 'top-[0.5vmin] right-[0.5vmin] w-[3.5vmin] h-[3.5vmin] text-[1.5vmin]' :
                     compact ? 'top-1 right-1 w-5 h-5 text-[10px]' : 'top-2 right-2 w-6 h-6'
                   )}
                   title={`Remove ${friend.name} from canvas`}
                   aria-label={`Remove ${friend.name}`}
                 >
-                  <X className={compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
+                  <X className={isPip ? 'w-[2vmin] h-[2vmin]' : compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} />
                 </button>
               )}
 
@@ -560,6 +565,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                 <span
                   className={clsx(
                     "font-label-md uppercase transition-colors font-medium truncate max-w-[110px] text-center",
+                    isPip ? "text-[2vmin] tracking-[0.15em]" :
                     compact ? "text-[10px] md:text-[11px] tracking-[0.16em]" : "text-xs md:text-sm tracking-[0.25em]",
                     isInactive ? "text-outline" : "group-hover:opacity-90"
                   )}
@@ -572,6 +578,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                 <span
                   className={clsx(
                     "font-timer-display leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+                    isPip ? "text-[6vmin]" :
                     compact ? "text-[28px] md:text-[32px]" : "text-[42px] lg:text-[48px]",
                     isInactive && "opacity-50"
                   )}
@@ -585,18 +592,20 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                   <span
                     className={clsx(
                       "font-label-md uppercase font-semibold tracking-[0.15em] text-outline",
+                      isPip ? "text-[1.8vmin] pt-[0.5vmin]" :
                       compact ? "text-[8px] pt-0.5" : "text-[10px] pt-1"
                     )}
                   >
                     OFFLINE
                   </span>
                 ) : (
-                <div className={clsx("flex items-center", compact ? "gap-1 pt-0.5" : "gap-1.5 pt-1.5")}>
+                <div className={clsx("flex items-center", isPip ? "gap-[0.5vmin] pt-[0.8vmin]" : compact ? "gap-1 pt-0.5" : "gap-1.5 pt-1.5")}>
                   {[0, 1, 2, 3].map((i) => (
                     <span
                       key={i}
                       className={clsx(
                         'rounded-full transition-all',
+                        isPip ? 'w-[0.8vmin] h-[0.8vmin]' :
                         compact ? 'w-1 h-1' : 'w-1.5 h-1.5',
                         i < 2 ? 'scale-125' : 'opacity-30'
                       )}

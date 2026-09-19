@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { OrbitBubbles } from './OrbitBubbles';
-import { Plus } from 'lucide-react';
+import { Plus, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
+import { useDocumentPiP } from '@/hooks/useDocumentPiP';
 
 export function ImmersiveTimer() {
   const {
@@ -28,6 +30,7 @@ export function ImmersiveTimer() {
   } = useApp();
 
   const { theme } = useTheme();
+  const { pipWindow, requestPiP, closePiP } = useDocumentPiP();
 
   // Format MM:SS
   const formatTime = (secs: number) => {
@@ -81,20 +84,33 @@ export function ImmersiveTimer() {
     resetTimer();
   };
 
-  return (
-    <main className="flex-1 h-screen w-full relative bg-surface select-none overflow-hidden flex items-center justify-center p-6 md:p-8">
+  const handlePipClick = () => {
+    if (pipWindow) {
+      closePiP();
+    } else {
+      requestPiP({ width: 350, height: 350 });
+    }
+  };
+
+  const renderTimerContent = (isPip: boolean) => (
+    <main className={clsx(
+      "flex-1 w-full relative bg-surface select-none overflow-hidden flex items-center justify-center p-6 md:p-8",
+      isPip ? "h-full min-h-screen" : "h-screen"
+    )}>
       {/* Floating & Repelling Circular Friend Timers Layer (Canvas Minimalist) */}
-      <OrbitBubbles attachedFriends={attachedFriends} />
+      <OrbitBubbles attachedFriends={attachedFriends} isPip={isPip} />
 
       {/* Focus Task Heading */}
-      <div className="absolute top-[calc((50vh-207px)/2)] lg:top-[calc((50vh-265px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none w-full max-w-3xl px-6">
-        <span
-          className="font-body-lg text-sm md:text-base lg:text-lg font-medium tracking-wide truncate block"
-          style={{ color: 'var(--primary)' }}
-        >
-          {selectedTask ? selectedTask.title : 'Deep Focus Session'}
-        </span>
-      </div>
+      {!isPip && (
+        <div className="absolute top-[calc((50vh-207px)/2)] lg:top-[calc((50vh-265px)/2)] left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 pointer-events-none w-full max-w-3xl px-6">
+          <span
+            className="font-body-lg text-sm md:text-base lg:text-lg font-medium tracking-wide truncate block"
+            style={{ color: 'var(--primary)' }}
+          >
+            {selectedTask ? selectedTask.title : 'Deep Focus Session'}
+          </span>
+        </div>
+      )}
 
       {/* Center Primary Timer Ring: Minimalist Canvas Design with Rich Theme Presence */}
       <button
@@ -102,7 +118,10 @@ export function ImmersiveTimer() {
         type="button"
         onClick={handleTimerClick}
         onDoubleClick={handleTimerDoubleClick}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center w-[414px] h-[414px] lg:w-[530px] lg:h-[530px] z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none"
+        className={clsx(
+          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center z-30 cursor-pointer group active:scale-[0.99] transition-transform select-none bg-transparent border-none p-0 outline-none focus:outline-none",
+          isPip ? "w-[80vmin] h-[80vmin]" : "w-[414px] h-[414px] lg:w-[530px] lg:h-[530px]"
+        )}
         title="Click to Start/Pause • Double-click to Reset"
       >
         {/* Subtle Tinted Inner Canvas Disc */}
@@ -147,7 +166,8 @@ export function ImmersiveTimer() {
           {/* Main Timer label: Only FOCUS or BREAK */}
           <span
             className={clsx(
-              "font-label-md text-xs lg:text-sm tracking-[0.28em] uppercase font-medium transition-colors",
+              "tracking-[0.28em] uppercase font-medium transition-colors",
+              isPip ? "text-[4vmin]" : "font-label-md text-xs lg:text-sm",
               timerState === 'paused' && "opacity-70"
             )}
             style={{ color: timerState === 'paused' ? 'var(--outline)' : theme.hex }}
@@ -157,7 +177,8 @@ export function ImmersiveTimer() {
 
           <span
             className={clsx(
-              "font-timer-display text-[78px] lg:text-[100px] leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+              "leading-none tabular-nums tracking-tighter transition-all group-hover:opacity-95 font-light",
+              isPip ? "text-[20vmin]" : "font-timer-display text-[78px] lg:text-[100px]",
               timerState === 'paused' && "opacity-50"
             )}
             style={{ color: timerState === 'paused' ? 'var(--outline)' : 'var(--timer-digits, var(--primary))' }}
@@ -167,12 +188,13 @@ export function ImmersiveTimer() {
 
           {/* Session Indicator Dots in User Theme Color for Pomodoro */}
           {timerMode === 'pomodoro' && (
-            <div className="flex items-center gap-2 pt-3">
+            <div className={clsx("flex items-center gap-2", isPip ? "pt-[2vmin]" : "pt-3")}>
               {Array.from({ length: targetSessions }).map((_, idx) => (
                 <span
                   key={idx}
                   className={clsx(
-                    'w-2 h-2 rounded-full transition-all',
+                    'rounded-full transition-all',
+                    isPip ? "w-[1.5vmin] h-[1.5vmin]" : "w-2 h-2",
                     idx < sessionsCompleted ? 'scale-125' : 'opacity-30'
                   )}
                   style={{
@@ -186,14 +208,52 @@ export function ImmersiveTimer() {
       </button>
 
       {/* Floating Invite / Add Friends Plus Button in Bottom Right */}
-      <button
-        onClick= { () => setOverlay('friends') }
-        aria-label="Invite Friends & Add to Window"
-        className="fixed bottom-7 right-7 w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm z-30 group cursor-pointer"
-        title="Invite friends & add to canvas"
-      >
-        <Plus className="w-4 h-4 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300 text-primary" />
-      </button>
+      {!isPip && (
+        <div className="fixed bottom-7 right-7 flex flex-col gap-3 z-30">
+          <button
+            onClick={handlePipClick}
+            aria-label="Pop Out Timer"
+            className="w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm group cursor-pointer"
+            title="Pop out timer (Picture-in-Picture)"
+          >
+            <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-all duration-300 text-primary" />
+          </button>
+          
+          <button
+            onClick={() => setOverlay('friends')}
+            aria-label="Invite Friends & Add to Window"
+            className="w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm group cursor-pointer"
+            title="Invite friends & add to canvas"
+          >
+            <Plus className="w-4 h-4 group-hover:scale-110 group-hover:rotate-90 transition-all duration-300 text-primary" />
+          </button>
+        </div>
+      )}
     </main>
   );
+
+  if (pipWindow) {
+    return (
+      <>
+        {createPortal(renderTimerContent(true), pipWindow.document.body)}
+        <div className="flex-1 h-screen w-full bg-surface flex flex-col items-center justify-center">
+          <div className="text-center space-y-4">
+            <ExternalLink className="w-12 h-12 mx-auto text-outline" />
+            <h2 className="text-xl font-medium text-on-surface">Timer is running in floating window</h2>
+            <p className="text-outline max-w-sm mx-auto">
+              You can resize and move the floating window anywhere on your screen.
+            </p>
+            <button
+              onClick={closePiP}
+              className="mt-6 px-4 py-2 bg-surface-container-highest hover:bg-surface-variant rounded-full text-sm font-medium transition-colors"
+            >
+              Bring Timer Back
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return renderTimerContent(false);
 }

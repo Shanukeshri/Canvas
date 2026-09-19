@@ -651,6 +651,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let animationId: number;
     let lastSecondReported = -1;
+    let intervalId: NodeJS.Timeout;
 
     const tick = () => {
       const now = Date.now();
@@ -695,12 +696,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return;
         }
       }
-
-      animationId = requestAnimationFrame(tick);
     };
 
-    animationId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animationId);
+    const loop = () => {
+      tick();
+      animationId = requestAnimationFrame(loop);
+    };
+
+    animationId = requestAnimationFrame(loop);
+    
+    // Fallback interval for background tabs where requestAnimationFrame is suspended
+    intervalId = setInterval(tick, 1000);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      clearInterval(intervalId);
+    };
   }, [engineState, isBreakPhase, currentUser, selectedTask, activeGroupId]);
 
   // Friends Autonomous Independent Focus Sessions Loop

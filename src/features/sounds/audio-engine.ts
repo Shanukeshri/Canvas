@@ -577,23 +577,27 @@ export class WebAudioEngine {
 
   public playTing() {
     if (this.isMuted) return;
+
     const ctx = this.initContext();
+    const now = ctx.currentTime;
+
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
 
+    // Bell-like tone
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.5);
+    osc.frequency.setValueAtTime(1200, now);
 
-    gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+    // Very quick attack, natural bell decay
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(0.6, now + 0.005);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
 
     osc.connect(gainNode);
     gainNode.connect(this.masterGain!);
 
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 1.5);
+    osc.start(now);
+    osc.stop(now + 0.8);
   }
 }
 
