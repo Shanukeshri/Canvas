@@ -179,28 +179,28 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         let totalFy = fyDrive;
 
         // 2. Center Timer Clearance Guidance:
-        // If distance < centerAvoidDist, push away.
-        // If vertical room is tight (|y| approaching maxY), redirect repulsion force horizontally into X rather than into Y!
+        // If distance < centerAvoidDist, gently push away at a calm, serene pace.
         const distFromCenter = Math.hypot(body.x, body.y);
-        if (distFromCenter < centerAvoidDist && distFromCenter > 0) {
+        if (distFromCenter < centerAvoidDist && distFromCenter > 0.001) {
           const overlap = centerAvoidDist - distFromCenter;
           let nx = body.x / distFromCenter;
           let ny = body.y / distFromCenter;
 
-          // If vertical space is constrained, redirect vertical push to horizontal side clearance
-          if (Math.abs(body.y) > maxY * 0.7) {
+          // If vertical room is tight (|y| approaching maxY), gently bias horizontal clearance without violent sideways snap
+          if (Math.abs(body.y) > maxY * 0.75) {
             const sideSign = body.x >= 0 ? 1 : -1;
-            nx = sideSign * Math.max(0.7, Math.abs(nx));
-            ny *= 0.3; // soften vertical push so it doesn't slam into the wall
+            nx = (nx + sideSign * 0.4) / 1.4;
+            ny *= 0.5;
           }
 
-          const pushForce = (overlap / (centerAvoidDist - minCenterDist + 30)) * 600;
+          // Gentle, progressive repulsion (reduced from 600 down to 140 for slow, graceful movement)
+          const pushForce = Math.min(140, (overlap / (centerAvoidDist - minCenterDist + 30)) * 120);
           totalFx += nx * pushForce;
           totalFy += ny * pushForce;
 
-          // Add gentle tangential guidance around timer
-          totalFx += -ny * 35;
-          totalFy += nx * 35;
+          // Gentle tangential guidance around timer
+          totalFx += -ny * 15;
+          totalFy += nx * 15;
         }
 
         // 3. Mutual Live Friends Avoidance (Using live measured radii of both bubbles)
@@ -216,7 +216,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
             const overlap = liveAvoidDist - d;
             const nx = dx / d;
             const ny = dy / d;
-            const push = (overlap / liveAvoidDist) * 450;
+            const push = (overlap / liveAvoidDist) * 350;
             totalFx += nx * push;
             totalFy += ny * push;
           }
@@ -224,29 +224,29 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
 
         // 4. Viewport Live Edge Boundaries Avoidance (Soft spring walls)
         if (body.x < minX) {
-          totalFx += (minX - body.x) * 5.0;
+          totalFx += (minX - body.x) * 4.0;
           if (body.vx < 0) body.vx *= 0.7;
         } else if (body.x > maxX) {
-          totalFx += (maxX - body.x) * 5.0;
+          totalFx += (maxX - body.x) * 4.0;
           if (body.vx > 0) body.vx *= 0.7;
         }
 
         if (body.y < minY) {
-          totalFy += (minY - body.y) * 5.0;
+          totalFy += (minY - body.y) * 4.0;
           if (body.vy < 0) body.vy *= 0.7;
         } else if (body.y > maxY) {
-          totalFy += (maxY - body.y) * 5.0;
+          totalFy += (maxY - body.y) * 4.0;
           if (body.vy > 0) body.vy *= 0.7;
         }
 
         // Integrate acceleration, apply smooth velocity damping for calm motion
-        const damping = 0.92;
+        const damping = 0.90;
         body.vx = (body.vx + totalFx * dt) * damping;
         body.vy = (body.vy + totalFy * dt) * damping;
 
         // Cap maximum velocity for slow, peaceful drift
         const currentSpeed = Math.hypot(body.vx, body.vy);
-        const maxSpeed = 70; // pixels per second cap
+        const maxSpeed = 50; // pixels per second cap for calm, slower drift
         if (currentSpeed > maxSpeed) {
           body.vx = (body.vx / currentSpeed) * maxSpeed;
           body.vy = (body.vy / currentSpeed) * maxSpeed;
@@ -256,33 +256,31 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         body.x += body.vx * dt;
         body.y += body.vy * dt;
 
-        // 5. HARMONIOUS CONSTRAINT PROJECTION (Simultaneous Center & Boundary Solvation)
-        // First clamp Y strictly inside [minY, maxY]
-        body.y = Math.max(minY, Math.min(maxY, body.y));
-
-        // Check if inside center clearance:
+        // 5. SMOOTH CONSTRAINT RELAXATION (Gentle outward relaxation instead of instantaneous snap)
         const currentDist = Math.hypot(body.x, body.y);
-        if (currentDist < minCenterDist) {
-          // Calculate the required safe X on the side for this valid Y
-          const safeYSquared = body.y * body.y;
-          const reqX = Math.sqrt(Math.max(10, minCenterDist * minCenterDist - safeYSquared));
-          const sideSign = body.x >= 0 ? 1 : -1;
-          body.x = sideSign * reqX;
+        if (currentDist < minCenterDist && currentDist > 0.001) {
+          const penetration = minCenterDist - currentDist;
+          // Smooth relaxation step: gently push outwards along radial vector by a fraction of penetration per frame
+          const easeStep = Math.min(penetration * 0.08, 1.8);
+          const nx = body.x / currentDist;
+          const ny = body.y / currentDist;
 
-          // Deflect radial velocity tangentially around the timer circle
-          const nx = body.x / minCenterDist;
-          const ny = body.y / minCenterDist;
+          body.x += nx * easeStep;
+          body.y += ny * easeStep;
+
+          // Dampen any radial velocity pointing inwards towards the timer
           const dotRadial = body.vx * nx + body.vy * ny;
           if (dotRadial < 0) {
             body.vx -= dotRadial * nx;
             body.vy -= dotRadial * ny;
           }
-          body.vx += -ny * 12;
-          body.vy += nx * 12;
+          body.vx += nx * 6 * dt;
+          body.vy += ny * 6 * dt;
         }
 
-        // Finally clamp X strictly inside [minX, maxX]
+        // Clamp strictly inside viewport bounds
         body.x = Math.max(minX, Math.min(maxX, body.x));
+        body.y = Math.max(minY, Math.min(maxY, body.y));
       });
 
       // Update DOM elements transforms directly for 60/120fps smooth motion
@@ -331,9 +329,12 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         const body = physicsRef.current[activeId];
         if (body) {
           body.isDragging = false;
-          // Re-estimate phase from dropped angle so it continues infinity loop naturally
+          // Re-estimate phase from dropped angle so it continues guidance orbit naturally
           const angle = Math.atan2(body.y, body.x);
           body.phase = angle;
+          // Zero velocity upon release so it doesn't fling
+          body.vx = 0;
+          body.vy = 0;
         }
         activeDragIdRef.current = null;
         setActiveDragId(null);
@@ -360,6 +361,10 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
     const body = physicsRef.current[friendId];
     if (!body) return;
 
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+
     body.isDragging = true;
     activeDragIdRef.current = friendId;
     dragOffsetRef.current = {
@@ -374,7 +379,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-20"
+      className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-visible z-35"
     >
       {attachedFriends.map((friend) => {
         const isDragging = activeDragId === friend.id;
@@ -437,7 +442,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
             ref={(el) => {
               bubbleDomRefs.current[friend.id] = el;
             }}
-            onPointerDown={isFriendOffline ? undefined : (e) => handlePointerDown(friend.id, e)}
+            onPointerDown={(e) => handlePointerDown(friend.id, e)}
             style={{
               position: 'absolute',
               top: '50%',
@@ -452,9 +457,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
             }}
             className={clsx(
               'pointer-events-auto group select-none',
-              isFriendOffline
-                ? 'cursor-default'
-                : isDragging ? 'cursor-grabbing z-50 scale-[1.02]' : 'cursor-grab hover:z-40'
+              isDragging ? 'cursor-grabbing z-50 scale-[1.02]' : 'cursor-grab hover:z-40'
             )}
             title="Drag with hand or mouse to reposition • Floats slowly avoiding center and boundaries"
           >
