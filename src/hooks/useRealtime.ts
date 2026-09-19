@@ -95,7 +95,22 @@ export function useRealtime() {
     const task = selectedTaskRef.current;
     const isStopwatch = state.mode === 'stopwatch';
     const durationMs = Number(state.durationMs || 0);
-    const elapsedMs = Number(state.elapsedDurationMs || 0);
+    const nowMs = Date.now();
+
+    // For running stopwatch, compute live elapsed (subtracting paused time)
+    let elapsedMs: number;
+    let pausedDurationMs = 0;
+    if (isStopwatch && state.status === 'running' && 'startedAtMs' in state) {
+      const runState = state as any;
+      pausedDurationMs = Number(runState.pausedDurationMs || 0);
+      elapsedMs = Math.max(0, nowMs - Number(runState.startedAtMs) - pausedDurationMs);
+    } else {
+      elapsedMs = Number(state.elapsedDurationMs || 0);
+      if (state.status === 'running' && 'pausedDurationMs' in state) {
+        pausedDurationMs = Number((state as any).pausedDurationMs || 0);
+      }
+    }
+
     const remainingMs = isStopwatch ? 0 : Math.max(0, durationMs - elapsedMs);
     const currentTimeMs = isStopwatch ? elapsedMs : remainingMs;
 
@@ -119,7 +134,8 @@ export function useRealtime() {
         ? Number(state.targetCompletionMs)
         : null,
       startedAtMs: 'startedAtMs' in state ? Number((state as any).startedAtMs) : null,
-      timestampMs: Date.now(),
+      pausedDurationMs,
+      timestampMs: nowMs,
       currentTask: task?.title || 'Deep focus work',
     };
   };
@@ -258,11 +274,16 @@ export function useRealtime() {
         let friendSeconds = 0;
         let remainingMs = 0;
         let elapsedMs = 0;
+        let virtualStartedAtMs: number | null = null;
 
         if (isStopwatch) {
           if (isRunning) {
-            const startedAt = payload.startedAtMs || (payload.timestampMs - (payload.currentTimeMs || 0));
-            elapsedMs = Math.max(0, syncedNow - startedAt);
+            // Use virtual start = startedAtMs + pausedDurationMs so that
+            // Date.now() - virtualStart = correct active elapsed
+            const rawStart = payload.startedAtMs || (payload.timestampMs - (payload.currentTimeMs || 0));
+            const pausedMs = payload.pausedDurationMs || 0;
+            virtualStartedAtMs = rawStart + pausedMs;
+            elapsedMs = Math.max(0, syncedNow - virtualStartedAtMs);
           } else {
             elapsedMs = Math.max(0, payload.currentTimeMs ?? payload.elapsedDurationMs ?? 0);
           }
@@ -291,34 +312,57 @@ export function useRealtime() {
           ? 'paused'
           : 'online';
 
+        const updatedData: Partial<Friend> = {
+          status: friendStatus as any,
+          isFocusing: isRunning && payload.phase === 'focus',
+          timerMinutes: Math.max(0, friendMinutes),
+          timerSeconds: Math.max(0, friendSeconds),
+          mode: payload.mode,
+          timerType: isStopwatch ? 'stopwatch' : 'timer',
+          durationMs: payload.durationMs,
+          remainingMs: Math.max(0, remainingMs),
+          currentTimeMs: isStopwatch ? Math.max(0, elapsedMs) : Math.max(0, remainingMs),
+          elapsedDurationMs: Math.max(0, elapsedMs),
+          targetCompletionMs: isStopwatch ? null : payload.targetCompletionMs,
+          // For stopwatch: store virtual start (startedAtMs + pausedDurationMs) so tick loops compute correct elapsed
+          startedAtMs: isStopwatch ? (virtualStartedAtMs || Date.now() - elapsedMs) : null,
+          pausedDurationMs: 0, // Already baked into virtualStartedAtMs
+          lastUpdatedMs: Date.now(),
+          currentTask: payload.currentTask || (isRunning ? 'Deep focus' : 'Online'),
+        };
+
+        if (payload.userColor) {
+          updatedData.color = payload.userColor;
+        }
+
+        // Update friends list
         setFriends((prev) => {
           const exists = prev.some((f) => f.id === payload.userId);
-          const updatedData: Partial<Friend> = {
-            status: friendStatus as any,
-            isFocusing: isRunning && payload.phase === 'focus',
-            timerMinutes: Math.max(0, friendMinutes),
-            timerSeconds: Math.max(0, friendSeconds),
-            mode: payload.mode,
-            timerType: isStopwatch ? 'stopwatch' : 'timer',
-            durationMs: payload.durationMs,
-            remainingMs: Math.max(0, remainingMs),
-            currentTimeMs: isStopwatch ? Math.max(0, elapsedMs) : Math.max(0, remainingMs),
-            elapsedDurationMs: Math.max(0, elapsedMs),
-            targetCompletionMs: isStopwatch ? null : payload.targetCompletionMs,
-            startedAtMs: isStopwatch ? (payload.startedAtMs || Date.now() - elapsedMs) : null,
-            lastUpdatedMs: Date.now(),
-            currentTask: payload.currentTask || (isRunning ? 'Deep focus' : 'Online'),
-          };
-
-          if (payload.userColor) {
-            updatedData.color = payload.userColor;
-          }
-
           if (exists) {
             return prev.map((f) => (f.id === payload.userId ? { ...f, ...updatedData } : f));
           }
           return prev;
         });
+
+        // Also update group members so the group view reflects peer timer state
+        const timerTimeStr = `${String(friendMinutes).padStart(2, '0')}:${String(friendSeconds).padStart(2, '0')}`;
+        setGroups((prev) =>
+          prev.map((g) => ({
+            ...g,
+            members: g.members.map((m) =>
+              m.id === payload.userId
+                ? {
+                    ...m,
+                    status: (friendStatus === 'focusing' || friendStatus === 'break' ? friendStatus : m.status) as any,
+                    timerTime: timerTimeStr,
+                    currentTask: payload.currentTask || m.currentTask,
+                    isConnected: true,
+                    color: payload.userColor || m.color,
+                  }
+                : m
+            ),
+          }))
+        );
       };
 
       // Handler when a coworker requests current state on joining/attaching
@@ -419,22 +463,27 @@ export function useRealtime() {
       const handleFriendRequestReceived = (payload: any) => {
         if (!currentUser) return;
         queryClient.invalidateQueries({ queryKey: ['notifications', currentUser.id] });
-        setNotifications((prev) => [
-          {
-            id: payload.requestId || `freq-${Date.now()}`,
-            title: 'New Friend Request',
-            message: `${payload.sender?.name || 'A user'} sent you a friend request.`,
-            type: 'friend_request' as any,
-            time: 'Just now',
-            read: false,
-            actionPayload: {
-              requestId: payload.requestId,
-              senderId: payload.sender?.id,
-              sender: payload.sender,
-            },
+        const senderId = payload.sender?.id;
+        const newNotif = {
+          id: payload.requestId || `freq-${Date.now()}`,
+          title: 'New Friend Request',
+          message: `${payload.sender?.name || 'A user'} sent you a friend request.`,
+          type: 'friend_request' as any,
+          time: 'Just now',
+          read: false,
+          actionPayload: {
+            requestId: payload.requestId,
+            senderId,
+            sender: payload.sender,
           },
-          ...prev,
-        ]);
+        };
+        setNotifications((prev) => {
+          // Remove any existing friend_request from the same sender (keep only latest)
+          const filtered = prev.filter(
+            (n) => !(n.type === 'friend_request' && n.actionPayload?.senderId === senderId)
+          );
+          return [newNotif, ...filtered];
+        });
       };
 
       // Friend request accepted
@@ -584,22 +633,56 @@ export function useRealtime() {
         if (currentUser) {
           queryClient.invalidateQueries({ queryKey: ['notifications', currentUser.id] });
         }
-        setNotifications((prev) => [
-          {
-            id: payload.id || `notif-grp-${Date.now()}`,
-            title: 'Group Room Invitation',
-            message: `${payload.inviter?.name || 'A coworker'} invited you to join "${payload.groupName || 'a focus room'}".`,
-            type: 'group_invite' as any,
-            time: 'Just now',
-            read: false,
-            actionPayload: {
-              groupId: payload.groupId,
-              invitationId: payload.invitationId,
-              inviteeId: currentUser?.id,
-            },
+        const notif = {
+          id: payload.id || `notif-grp-${Date.now()}`,
+          title: 'Group Room Invitation',
+          message: `${payload.inviter?.name || 'A coworker'} invited you to join "${payload.groupName || 'a focus room'}".`,
+          type: 'group_invite' as any,
+          time: 'Just now',
+          read: false,
+          actionPayload: {
+            groupId: payload.groupId,
+            invitationId: payload.invitationId,
+            inviteeId: currentUser?.id,
           },
-          ...prev,
-        ]);
+        };
+        setNotifications((prev) => {
+          // Remove any existing group_invite for the same group (keep only latest)
+          const filtered = prev.filter(
+            (n) => !(n.type === 'group_invite' && n.actionPayload?.groupId === payload.groupId)
+          );
+          return [notif, ...filtered];
+        });
+      };
+
+      // Group task changed by another member
+      const handleGroupTaskChanged = (payload: { groupId: string; task: any; action: string; timestampMs: number }) => {
+        if (!payload?.groupId || !payload?.task) return;
+        setGroups((prev) =>
+          prev.map((g) => {
+            if (g.id !== payload.groupId) return g;
+            switch (payload.action) {
+              case 'create':
+                if (g.tasks.some((t) => t.id === payload.task.id)) return g;
+                return { ...g, tasks: [payload.task, ...g.tasks] };
+              case 'update':
+                return { ...g, tasks: g.tasks.map((t) => (t.id === payload.task.id ? { ...t, ...payload.task } : t)) };
+              case 'delete':
+                return { ...g, tasks: g.tasks.filter((t) => t.id !== payload.task.id) };
+              case 'complete':
+                return {
+                  ...g,
+                  tasks: g.tasks.map((t) =>
+                    t.id === payload.task.id
+                      ? { ...t, completed: payload.task.completed, completedAt: payload.task.completedAt }
+                      : t
+                  ),
+                };
+              default:
+                return g;
+            }
+          })
+        );
       };
 
       socket.on('timer:state_synced', handleTimerStateSynced);
@@ -614,6 +697,7 @@ export function useRealtime() {
       socket.on('group:member_joined', handleGroupMemberJoined);
       socket.on('group:member_left', handleGroupMemberLeft);
       socket.on('group:invite_received', handleGroupInviteReceived);
+      socket.on('group:task_changed', handleGroupTaskChanged);
       socket.on('presence:update', handlePresenceUpdate);
 
       // Multi-tab channel fallback for multi-user local testing
@@ -678,6 +762,7 @@ export function useRealtime() {
           socket.off('group:member_joined');
           socket.off('group:member_left');
           socket.off('group:invite_received');
+          socket.off('group:task_changed');
           socket.off('presence:update');
         } catch {}
       }

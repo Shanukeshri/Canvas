@@ -47,6 +47,15 @@ export async function sendFriendRequestAction(senderId: string, data: unknown) {
     },
   });
 
+  // Delete any existing pending friend_request notifications from this sender to this receiver
+  await prisma.notification.deleteMany({
+    where: {
+      userId: parsed.receiverId,
+      type: 'friend_request',
+      actionPayload: { contains: senderId },
+    },
+  });
+
   // Create persistent notification for receiver
   await prisma.notification.create({
     data: {

@@ -718,6 +718,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (isStopwatch) {
             let elapsedMs = 0;
             if (f.startedAtMs) {
+              // startedAtMs is the virtual start (already adjusted for pauses)
+              // so Date.now() - startedAtMs = correct active elapsed
               elapsedMs = Math.max(0, Date.now() - f.startedAtMs);
             } else if (f.lastUpdatedMs) {
               const delta = Math.max(0, Date.now() - f.lastUpdatedMs);
@@ -1104,29 +1106,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       prev.map((g) => (g.id === groupId ? { ...g, tasks: [newGTask, ...g.tasks] } : g))
     );
 
+    // Emit to other group members via socket
+    try {
+      const socket = getSocket(currentUser?.id || 'guest');
+      socket.emit('group:task_update', { groupId, task: newGTask, action: 'create' });
+    } catch {}
+
     if (currentUser) {
       createTaskAction(currentUser.id, {
         ...taskData,
         groupId,
+      }).then((res) => {
+        if (res.success && res.task) {
+          // Update local temp ID with real DB ID
+          setGroups((prev) =>
+            prev.map((g) => g.id === groupId
+              ? { ...g, tasks: g.tasks.map((t) => (t.id === tempId ? { ...t, id: res.task.id } : t)) }
+              : g
+            )
+          );
+        }
       }).catch((e) => console.error(e));
     }
   };
 
   const toggleGroupTaskComplete = (groupId: string, taskId: string) => {
+    let toggledTask: Task | undefined;
     setGroups((prev) =>
       prev.map((g) =>
         g.id === groupId
           ? {
               ...g,
-              tasks: g.tasks.map((t) =>
-                t.id === taskId
-                  ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
-                  : t
-              ),
+              tasks: g.tasks.map((t) => {
+                if (t.id === taskId) {
+                  const updated = { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined };
+                  toggledTask = updated;
+                  return updated;
+                }
+                return t;
+              }),
             }
           : g
       )
     );
+
+    // Emit to other group members via socket
+    if (toggledTask) {
+      try {
+        const socket = getSocket(currentUser?.id || 'guest');
+        socket.emit('group:task_update', { groupId, task: toggledTask, action: 'complete' });
+      } catch {}
+    }
 
     if (currentUser) {
       let targetState = true;
@@ -1146,6 +1176,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         g.id === groupId ? { ...g, tasks: g.tasks.filter((t) => t.id !== taskId) } : g
       )
     );
+
+    // Emit to other group members via socket
+    try {
+      const socket = getSocket(currentUser?.id || 'guest');
+      socket.emit('group:task_update', { groupId, task: { id: taskId } as any, action: 'delete' });
+    } catch {}
 
     if (currentUser) {
       deleteTaskAction(currentUser.id, taskId).catch((e) => console.error(e));

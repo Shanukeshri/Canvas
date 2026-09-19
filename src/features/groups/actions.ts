@@ -104,6 +104,15 @@ export async function inviteFriendToGroupAction(userId: string, groupId: string,
     },
   });
 
+  // Delete any existing group_invite notifications for this group and invitee (keep only latest)
+  await prisma.notification.deleteMany({
+    where: {
+      userId: inviteeId,
+      type: 'group_invite',
+      actionPayload: { contains: groupId },
+    },
+  });
+
   // Create persistent notification for invitee
   const notification = await prisma.notification.create({
     data: {

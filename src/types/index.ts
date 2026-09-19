@@ -58,6 +58,7 @@ export interface Friend {
   currentTimeMs?: number;
   targetCompletionMs?: number | null;
   startedAtMs?: number | null;
+  pausedDurationMs?: number;
   lastUpdatedMs?: number;
 }
 

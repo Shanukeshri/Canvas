@@ -125,10 +125,11 @@ export function CanvasGroupsPage() {
   }
 
   // Convert other group members to Friend items for OrbitBubbles
-  // ONLY show when they are actually connected from the other side!
+  // Show connected members normally, disconnected members as offline (dulled)
   const groupFriends: Friend[] = (currentGroup.members || [])
-    .filter((m) => !m.isUser && m.isConnected === true && m.status !== 'offline')
+    .filter((m) => !m.isUser)
     .map((m) => {
+      const isConnected = m.isConnected === true && m.status !== 'offline';
       const parts = m.timerTime?.split(':') || ['25', '00'];
       const mins = parseInt(parts[0], 10) || 25;
       const secs = parseInt(parts[1], 10) || 0;
@@ -138,12 +139,14 @@ export function CanvasGroupsPage() {
         handle: m.handle,
         avatar: m.avatar,
         color: m.color,
-        status: m.status === 'break' ? 'break' : 'focusing',
-        currentTask: m.currentTask || 'Focusing',
+        status: isConnected
+          ? (m.status === 'break' ? 'break' : 'focusing')
+          : 'offline',
+        currentTask: m.currentTask || (isConnected ? 'Focusing' : 'Offline'),
         timerMinutes: mins,
         timerSeconds: secs,
         mode: 'pomodoro',
-        isFocusing: m.status === 'focusing',
+        isFocusing: isConnected && m.status === 'focusing',
       };
     });
 
@@ -178,13 +181,18 @@ export function CanvasGroupsPage() {
             <span
               className={clsx(
                 'w-2 h-2 rounded-full',
-                groupFriends.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-outline/60'
+                groupFriends.filter((f) => f.status !== 'offline').length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-outline/60'
               )}
             />
             <span>
-              {groupFriends.length > 0
-                ? `${groupFriends.length + 1} connected`
-                : '1 in room'}
+              {(() => {
+                const onlineCount = groupFriends.filter((f) => f.status !== 'offline').length + 1;
+                const totalCount = groupFriends.length + 1;
+                if (totalCount > onlineCount) {
+                  return `${onlineCount} online / ${totalCount} members`;
+                }
+                return onlineCount > 1 ? `${onlineCount} connected` : '1 in room';
+              })()}
             </span>
             {Boolean(currentGroup.pendingInvites?.length) && (
               <span className="text-[10px] text-amber-500 font-semibold ml-1 px-1.5 py-0.5 rounded-md bg-amber-500/10">

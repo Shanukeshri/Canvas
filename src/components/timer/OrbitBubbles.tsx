@@ -382,6 +382,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         // High-precision remaining seconds: use exact targetCompletionMs if running timer, or startedAtMs if running stopwatch
         const isFriendFocusing = friend.status === 'focusing' || friend.isFocusing === true;
         const isFriendBreak = friend.status === 'break';
+        const isFriendOffline = friend.status === 'offline';
         const isInactive = !isFriendFocusing && !isFriendBreak;
         const isFriendStopwatch = friend.timerType === 'stopwatch' || friend.mode === 'stopwatch';
 
@@ -420,11 +421,13 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
         const strokeDashoffset = Math.max(0, 301.59 - 301.59 * progressFraction);
 
         // Use live broadcasted friend theme color with fallback
-        const friendColor = isFriendBreak
+        const friendColor = isFriendOffline
+          ? 'var(--outline)'
+          : isFriendBreak
           ? '#34d399'
           : (friend.color || FRIEND_THEMES[friend.id]?.primary || '#c084fc');
         // Theme-tinted white for countdown digits matching main timer's --timer-digits aesthetic
-        const friendDigitsColor = isInactive
+        const friendDigitsColor = (isInactive || isFriendOffline)
           ? 'var(--outline)'
           : mixColor({ r: 248, g: 248, b: 252 }, hexToRgb(friendColor), 0.48);
 
@@ -434,7 +437,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
             ref={(el) => {
               bubbleDomRefs.current[friend.id] = el;
             }}
-            onPointerDown={(e) => handlePointerDown(friend.id, e)}
+            onPointerDown={isFriendOffline ? undefined : (e) => handlePointerDown(friend.id, e)}
             style={{
               position: 'absolute',
               top: '50%',
@@ -443,10 +446,15 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
               willChange: 'transform',
               touchAction: 'none',
               userSelect: 'none',
+              opacity: isFriendOffline ? 0.35 : 1,
+              filter: isFriendOffline ? 'grayscale(0.7)' : 'none',
+              transition: 'opacity 0.5s ease, filter 0.5s ease',
             }}
             className={clsx(
               'pointer-events-auto group select-none',
-              isDragging ? 'cursor-grabbing z-50 scale-[1.02]' : 'cursor-grab hover:z-40'
+              isFriendOffline
+                ? 'cursor-default'
+                : isDragging ? 'cursor-grabbing z-50 scale-[1.02]' : 'cursor-grab hover:z-40'
             )}
             title="Drag with hand or mouse to reposition • Floats slowly avoiding center and boundaries"
           >
@@ -569,7 +577,17 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                   {displayMinutes}:{displaySeconds.toString().padStart(2, '0')}
                 </span>
 
-                {/* Session Indicator Dots */}
+                {/* Session Indicator Dots / Offline Label */}
+                {isFriendOffline ? (
+                  <span
+                    className={clsx(
+                      "font-label-md uppercase font-semibold tracking-[0.15em] text-outline",
+                      compact ? "text-[8px] pt-0.5" : "text-[10px] pt-1"
+                    )}
+                  >
+                    OFFLINE
+                  </span>
+                ) : (
                 <div className={clsx("flex items-center", compact ? "gap-1 pt-0.5" : "gap-1.5 pt-1.5")}>
                   {[0, 1, 2, 3].map((i) => (
                     <span
@@ -585,6 +603,7 @@ export function OrbitBubbles({ attachedFriends, compact = false }: OrbitBubblesP
                     />
                   ))}
                 </div>
+                )}
               </div>
             </div>
           </div>

@@ -38,6 +38,7 @@ export interface ExactTimerStatePayload {
   elapsedDurationMs: number;
   targetCompletionMs?: number | null;
   startedAtMs?: number | null;
+  pausedDurationMs?: number;
   timestampMs: number;
   currentTask?: string;
 }
