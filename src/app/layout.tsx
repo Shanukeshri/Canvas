@@ -5,7 +5,7 @@ import { AppProvider } from '@/context/AppContext';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 
 export const metadata: Metadata = {
-  title: 'Canvas — Quiet Focus Environment',
+  title: 'Canvas-Productivity',
   description:
     'A quiet, minimalist productivity application designed around deep focus, independent timers, ambient soundscapes, and shared focus groups.',
   openGraph: {

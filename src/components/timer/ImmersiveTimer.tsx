@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { OrbitBubbles } from './OrbitBubbles';
-import { Plus, ExternalLink } from 'lucide-react';
+import { Plus, PictureInPicture2 } from 'lucide-react';
 import clsx from 'clsx';
 import { useDocumentPiP } from '@/hooks/useDocumentPiP';
 
@@ -216,7 +216,7 @@ export function ImmersiveTimer() {
             className="w-11 h-11 rounded-full bg-surface-container-low border border-surface-variant flex items-center justify-center text-outline hover:text-primary hover:border-primary transition-all duration-300 shadow-sm group cursor-pointer"
             title="Pop out timer (Picture-in-Picture)"
           >
-            <ExternalLink className="w-4 h-4 group-hover:scale-110 transition-all duration-300 text-primary" />
+            <PictureInPicture2 className="w-4 h-4 group-hover:scale-110 transition-all duration-300 text-primary" />
           </button>
           
           <button
@@ -238,7 +238,7 @@ export function ImmersiveTimer() {
         {createPortal(renderTimerContent(true), pipWindow.document.body)}
         <div className="flex-1 h-screen w-full bg-surface flex flex-col items-center justify-center">
           <div className="text-center space-y-4">
-            <ExternalLink className="w-12 h-12 mx-auto text-outline" />
+            <PictureInPicture2 className="w-12 h-12 mx-auto text-outline" />
             <h2 className="text-xl font-medium text-on-surface">Timer is running in floating window</h2>
             <p className="text-outline max-w-sm mx-auto">
               You can resize and move the floating window anywhere on your screen.
