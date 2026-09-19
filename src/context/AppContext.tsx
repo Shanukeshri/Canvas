@@ -680,6 +680,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         // Check completion transition
         if (snapshot.isCompleted && (engineState.status as string) !== 'completed') {
+          if (audioEngine) {
+            audioEngine.playTing();
+          }
           setEngineState(snapshot.state);
           tabSync.publish({ type: 'TIMER_STATE_SYNC', payload: snapshot.state, userId: currentUser?.id || 'guest' });
 

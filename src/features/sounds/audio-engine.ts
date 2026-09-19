@@ -574,6 +574,27 @@ export class WebAudioEngine {
       },
     };
   }
+
+  public playTing() {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 1.5);
+
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.5);
+
+    osc.connect(gainNode);
+    gainNode.connect(this.masterGain!);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.5);
+  }
 }
 
 export const audioEngine = typeof window !== 'undefined' ? new WebAudioEngine() : null;
