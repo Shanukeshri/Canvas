@@ -408,14 +408,14 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
           {/* Focal Huge Timer Anchor - nothing written, nothing else */}
           <div
             onClick={onEnterApp}
-            className="w-72 h-72 sm:w-96 sm:h-96 md:w-[460px] md:h-[460px] lg:w-[520px] lg:h-[520px] rounded-full border-4 sm:border-[6px] md:border-8 flex items-center justify-center shadow-2xl backdrop-blur-3xl bg-surface-container-low/95 transition-all duration-500 hover:scale-105 active:scale-98 cursor-pointer select-none group"
+            className="w-[75vmin] h-[75vmin] max-w-[600px] max-h-[600px] min-w-[280px] min-h-[280px] rounded-full border-4 sm:border-[6px] md:border-8 flex items-center justify-center shadow-2xl backdrop-blur-3xl bg-surface-container-low/95 transition-all duration-500 hover:scale-105 active:scale-98 cursor-pointer select-none group"
             style={{
               borderColor: theme.hex,
               boxShadow: `0 0 80px ${theme.hex}30, 0 25px 50px -12px rgba(0,0,0,0.35)`,
             }}
             title="Click to enter workspace"
           >
-            <span className="font-mono text-6xl sm:text-8xl md:text-9xl lg:text-[140px] font-extrabold text-on-surface tracking-tighter transition-transform group-hover:scale-102">
+            <span className="font-mono text-[22vmin] sm:text-[20vmin] md:text-[18vmin] lg:text-[140px] font-extrabold text-on-surface tracking-tighter transition-transform group-hover:scale-102">
               25:00
             </span>
           </div>
@@ -424,12 +424,15 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
         {/* Scroll Indicator */}
         <div 
           className={clsx(
-            "absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-all duration-700",
-            scrollRatio > 0.05 ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-70 animate-bounce"
+            "absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 transition-all duration-700",
+            scrollRatio > 0.05 ? "opacity-0 translate-y-8 pointer-events-none" : "opacity-100 animate-bounce"
           )}
         >
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: theme.hex }}>Scroll</span>
-          <ChevronDown className="w-6 h-6" style={{ color: theme.hex }} />
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.3em] bg-surface-container-low/50 px-4 py-1.5 rounded-full backdrop-blur-sm border border-surface-variant/30" style={{ color: theme.hex }}>Scroll to Explore</span>
+          <div className="flex flex-col -space-y-4">
+            <ChevronDown className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" style={{ color: theme.hex }} />
+            <ChevronDown className="w-8 h-8 sm:w-10 sm:h-10" style={{ color: theme.hex }} />
+          </div>
         </div>
       </section>
 
