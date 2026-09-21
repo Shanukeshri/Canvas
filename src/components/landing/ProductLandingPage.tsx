@@ -424,7 +424,7 @@ export function ProductLandingPage({ onEnterApp }: { onEnterApp: () => void }) {
         {/* Scroll Indicator */}
         <div 
           className={clsx(
-            "absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 transition-all duration-700",
+            "absolute z-20 bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3 transition-all duration-700",
             scrollRatio > 0.05 ? "opacity-0 translate-y-8 pointer-events-none" : "opacity-100 animate-bounce"
           )}
         >
